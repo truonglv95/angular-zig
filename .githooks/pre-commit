@@ -1,0 +1,18 @@
+#!/bin/sh
+echo "Running git hook: pre-commit"
+
+echo "Checking zig formatting..."
+zig fmt --check .
+if [ $? -ne 0 ]; then
+  echo "Error: Code formatting failed. Please run 'zig fmt .' to fix formatting before committing."
+  exit 1
+fi
+
+echo "Running zig tests..."
+zig build test
+if [ $? -ne 0 ]; then
+  echo "Error: Tests failed."
+  exit 1
+fi
+
+echo "All checks passed!"

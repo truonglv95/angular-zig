@@ -1,0 +1,20 @@
+# Build artifacts
+zig-cache/
+.zig-cache/
+zig-out/
+test_emit
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
