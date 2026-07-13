@@ -54,7 +54,7 @@ const ir_enums = @import("ir/enums.zig");
 const CompilationMode = ir_enums.CompilationMode;
 
 const ir_ingest = @import("ir/ingest.zig");
-const ir_phases = @import("ir/phases.zig");
+const ir_phases = @import("ir/phases/registry.zig");
 const ir_emit = @import("ir/emit.zig");
 
 const output_ast = @import("output/ast.zig");

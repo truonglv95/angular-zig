@@ -12,33 +12,33 @@
 ///   Post    — final analysis / cleanup after all transformations
 const std = @import("std");
 
-const job_mod = @import("job.zig");
+const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-const ir_ops = @import("ops.zig");
+const ir_ops = @import("../ops.zig");
 const IrOp = ir_ops.IrOp;
 pub const OpKind = ir_ops.OpKind;
 const hasTrait = ir_ops.hasTrait;
 const OpTrait = ir_ops.OpTrait;
 pub const Namespace = ir_ops.Namespace;
 
-const ir_enums = @import("enums.zig");
+const ir_enums = @import("../enums.zig");
 const CompilationKind = ir_enums.CompilationKind;
 const BindingKind = ir_enums.BindingKind;
 const isCreationOp = ir_enums.isCreationOp;
 
-const ir_expr = @import("expression.zig");
+const ir_expr = @import("../expression.zig");
 const IrExpr = ir_expr.IrExpr;
 const ExpressionKind = ir_enums.ExpressionKind;
 
-const source_span = @import("../source_span.zig");
+const source_span = @import("../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-const schema = @import("../schema/registry.zig");
+const schema = @import("../../schema/registry.zig");
 const SecurityContext = schema.SecurityContext;
 
-const html_tags = @import("../html/tags.zig");
+const html_tags = @import("../../html/tags.zig");
 
 // ─── Helpers ──────────────────────────────────────────────────
 

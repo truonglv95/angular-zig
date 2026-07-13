@@ -63,7 +63,7 @@ pub const ir = struct {
     pub const job = @import("ir/job.zig");
     pub const ingest = @import("ir/ingest.zig");
     pub const conversion = @import("ir/conversion.zig");
-    pub const phases = @import("ir/phases.zig");
+    pub const phases = @import("ir/phases/registry.zig");
     pub const emit = @import("ir/emit.zig");
     pub const reify = @import("ir/reify.zig");
 };
@@ -117,7 +117,7 @@ test {
     _ = @import("template/transform.zig");
     _ = @import("template/preparser.zig");
     _ = @import("ir/ingest.zig");
-    _ = @import("ir/phases.zig");
+    _ = @import("ir/phases/registry.zig");
     _ = @import("ir/emit.zig");
     _ = @import("ir/conversion.zig");
     _ = @import("schema/registry.zig");
