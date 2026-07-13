@@ -178,7 +178,7 @@ pub const BindingParser = struct {
             }
         }
 
-        return .{ .parts = parts.items };
+        return .{ .parts = try parts.toOwnedSlice() };
     }
 };
 

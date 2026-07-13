@@ -125,8 +125,8 @@ pub fn parseQuery(allocator: Allocator, source: []const u8) Allocator.Error!Comp
     }
 
     return .{
-        .nodes = nodes.items,
-        .source = source,
+        .nodes = try nodes.toOwnedSlice(),
+        .source = try allocator.dupe(u8, source),
     };
 }
 
@@ -319,7 +319,7 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
         .kind = .Group,
         .name = "",
         .value = "",
-        .children = parts.items,
+        .children = try parts.toOwnedSlice(),
     };
 }
 
@@ -465,7 +465,7 @@ pub fn buildQueryContext(
     return .{
         .tag_name = tag_name,
         .attributes = attrs,
-        .classes = classes.items,
+        .classes = try classes.toOwnedSlice(),
     };
 }
 

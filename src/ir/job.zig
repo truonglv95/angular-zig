@@ -73,22 +73,27 @@ pub const ConstantPool = struct {
     }
 
     pub fn deinit(self: *ConstantPool) void {
+        // Free each constant's owned string (duped in `add`)
+        for (self.constants.items) |entry| {
+            self.allocator.free(entry.value);
+        }
         self.constants.deinit();
     }
 
     /// Add a constant, returns its index.
     /// DOD: O(n) dedup scan — n is typically small (<100 constants per component).
     /// Prevents duplicate string/number entries in the generated _cN array.
+    /// The pool dupes the value — caller retains ownership of the input.
     pub fn add(self: *ConstantPool, value: []const u8, kind: ConstantKind) !u32 {
         // Dedup: scan for existing entry with same (value, kind) pair.
-        // O(n) but n is bounded by constant pool size per component.
         for (self.constants.items, 0..) |entry, i| {
             if (entry.kind == kind and std.mem.eql(u8, entry.value, value)) {
                 return @intCast(i);
             }
         }
+        const owned = try self.allocator.dupe(u8, value);
         const index: u32 = @intCast(self.constants.items.len);
-        try self.constants.append(.{ .value = value, .kind = kind });
+        try self.constants.append(.{ .value = owned, .kind = kind });
         return index;
     }
 
@@ -164,6 +169,9 @@ pub const ViewCompilationUnit = struct {
 /// The top-level compilation state for a single component.
 pub const ComponentCompilationJob = struct {
     allocator: Allocator,
+    /// Arena backing all IrExpr nodes allocated via `job.allocator.create(IrExpr)`.
+    /// Freed in one shot at `deinit` — no per-node free needed.
+    expr_arena: std.heap.ArenaAllocator,
     root: ViewCompilationUnit,
     views: std.StringHashMap(*ViewCompilationUnit),
     pool: ConstantPool,
@@ -174,6 +182,7 @@ pub const ComponentCompilationJob = struct {
     pub fn init(allocator: Allocator, component_name: []const u8, mode: CompilationMode) !ComponentCompilationJob {
         return .{
             .allocator = allocator,
+            .expr_arena = std.heap.ArenaAllocator.init(allocator),
             .root = ViewCompilationUnit.init(allocator, 0, null),
             .views = std.StringHashMap(*ViewCompilationUnit).init(allocator),
             .pool = ConstantPool.init(allocator),
@@ -192,6 +201,13 @@ pub const ComponentCompilationJob = struct {
         }
         self.views.deinit();
         self.pool.deinit();
+        // Free all IrExpr nodes in one shot
+        self.expr_arena.deinit();
+    }
+
+    /// Allocate an IrExpr node on the expr_arena (single free at deinit).
+    pub fn allocExpr(self: *ComponentCompilationJob, comptime T: type) !*T {
+        return self.expr_arena.allocator().create(T);
     }
 
     /// Allocate an embedded view

@@ -360,7 +360,7 @@ pub fn kebabToCamel(allocator: Allocator, name: []const u8) ![]const u8 {
     for (name) |ch| {
         if (ch == '-') hyphens += 1;
     }
-    if (hyphens == 0) return name;
+    if (hyphens == 0) return allocator.dupe(u8, name);
 
     var result = try std.array_list.Managed(u8).initCapacity(allocator, name.len - hyphens);
     errdefer result.deinit();

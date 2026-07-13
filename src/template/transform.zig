@@ -106,7 +106,7 @@ pub fn transformHtmlToR3(
 ) !TransformResult {
     // Pre-allocate with estimated capacity (heuristic: ~1.5x HTML nodes)
     const estimated = html_nodes.len * 3 / 2 + 4;
-    var r3_nodes = try std.array_list.Managed(*R3Node).initCapacity(ctx.allocator, estimated);
+    var r3_nodes = try std.array_list.Managed(*R3Node).initCapacity(ctx.arena.allocator(), estimated);
 
     for (html_nodes) |hn| {
         const r3 = try transformNode(ctx, hn);
@@ -177,20 +177,15 @@ fn transformElement(ctx: *TransformContext, html_node: *const HtmlNode, elem: El
 
 fn transformRegularElement(ctx: *TransformContext, html_node: *const HtmlNode, elem: ElementNode) error{OutOfMemory}!?*R3Node {
     // Separate attributes into classified groups
-    var text_attrs = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, elem.attrs.len) catch unreachable;
-    defer text_attrs.deinit();
+    var text_attrs = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), elem.attrs.len) catch unreachable;
 
-    var bound_attrs = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, elem.attrs.len) catch unreachable;
-    defer bound_attrs.deinit();
+    var bound_attrs = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), elem.attrs.len) catch unreachable;
 
-    var bound_events = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer bound_events.deinit();
+    var bound_events = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
-    var references = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer references.deinit();
+    var references = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
-    var variables = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer variables.deinit();
+    var variables = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
     var i18n_attr: ?[]const u8 = null;
     var structural_attr: ?*R3Node = null;
@@ -397,8 +392,7 @@ fn transformRegularElement(ctx: *TransformContext, html_node: *const HtmlNode, e
     }
 
     // Transform children
-    var r3_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.allocator, elem.children.len) catch unreachable;
-    defer r3_children.deinit();
+    var r3_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.arena.allocator(), elem.children.len) catch unreachable;
     for (elem.children) |c| {
         if (try transformNode(ctx, c)) |rn| {
             try r3_children.append(rn);
@@ -492,8 +486,7 @@ fn transformControlFlowBlock(ctx: *TransformContext, html_node: *const HtmlNode,
 
 fn transformIfBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem: ElementNode) error{OutOfMemory}!?*R3Node {
     // @if (condition) { ... } @else if (cond2) { ... } @else { ... }
-    var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer branches.deinit();
+    var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
     // First @if block
     const cond_expr = if (elem.attrs.len > 0)
@@ -592,11 +585,9 @@ fn transformSwitchBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem
     const expr_ast_node = try parseExpression(ctx, expr_str, elem.start_span, .{ .is_binding = true });
 
     // Parse @case children into groups
-    var groups = std.array_list.Managed(SwitchBlockCaseGroup).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer groups.deinit();
+    var groups = std.array_list.Managed(SwitchBlockCaseGroup).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
-    var current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.allocator, 1) catch unreachable;
-    defer current_cases.deinit();
+    var current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
 
     for (elem.children) |c| {
         if (c.kind == .Element) {
@@ -608,7 +599,7 @@ fn transformSwitchBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem
                         .cases = current_cases.items,
                         .children = &[_]*const R3Node{},
                     });
-                    current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.allocator, 1) catch unreachable;
+                    current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
                 }
                 // Extract case value from attribute
                 const case_val = if (elem_data.attrs.len > 0) elem_data.attrs[0].value else "";
@@ -623,7 +614,7 @@ fn transformSwitchBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem
                         .cases = current_cases.items,
                         .children = &[_]*const R3Node{},
                     });
-                    current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.allocator, 1) catch unreachable;
+                    current_cases = std.array_list.Managed(SwitchBlockCase).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
                 }
                 try current_cases.append(.{
                     .value = "",
@@ -655,8 +646,7 @@ fn transformSwitchBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem
 
 fn transformDeferBlock(ctx: *TransformContext, html_node: *const HtmlNode, elem: ElementNode) error{OutOfMemory}!?*R3Node {
     // Parse triggers from attributes: on idle, on viewport, on interaction, etc.
-    var triggers = std.array_list.Managed(DeferredTrigger).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer triggers.deinit();
+    var triggers = std.array_list.Managed(DeferredTrigger).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
 
     for (elem.attrs) |attr| {
         const name = attr.name;
@@ -748,8 +738,7 @@ fn transformNgTemplate(ctx: *TransformContext, html_node: *const HtmlNode, elem:
     const children = try transformChildren(ctx, elem.children);
 
     // Extract variables from let-* attributes
-    var r3_vars = std.array_list.Managed(R3Node).initCapacity(ctx.allocator, 2) catch unreachable;
-    defer r3_vars.deinit();
+    var r3_vars = std.array_list.Managed(R3Node).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
     for (elem.attrs) |attr| {
         if (std.mem.startsWith(u8, attr.name, "let-")) {
             const r3 = try ctx.arena.create(R3Node);
@@ -1048,20 +1037,17 @@ fn transformExpansion(ctx: *TransformContext, html_node: *const HtmlNode, exp: h
     const switch_expr = try parseExpression(ctx, exp.switch_value, html_node.source_span.absolute(), .{ .is_binding = true });
 
     // Build ICU placeholder nodes from each case
-    var placeholders = std.array_list.Managed(r3_ast.IcuPlaceholder).initCapacity(ctx.allocator, exp.cases.len) catch unreachable;
-    defer placeholders.deinit();
+    var placeholders = std.array_list.Managed(r3_ast.IcuPlaceholder).initCapacity(ctx.arena.allocator(), exp.cases.len) catch unreachable;
 
     // Collect context variables (ICU variables like "=0", "one", "other")
-    var icu_vars = std.array_list.Managed(r3_ast.IcuPlaceholder).initCapacity(ctx.allocator, exp.cases.len) catch unreachable;
-    defer icu_vars.deinit();
+    var icu_vars = std.array_list.Managed(r3_ast.IcuPlaceholder).initCapacity(ctx.arena.allocator(), exp.cases.len) catch unreachable;
 
     for (exp.cases) |case_node| {
         if (case_node.kind != .ExpansionCase) continue;
         const case = case_node.data.ExpansionCase;
 
         // Transform the case's children into R3 nodes
-        var case_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.allocator, case.children.len) catch unreachable;
-        defer case_children.deinit();
+        var case_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.arena.allocator(), case.children.len) catch unreachable;
         for (case.children) |c| {
             if (try transformNode(ctx, c)) |rn| {
                 try case_children.append(rn);
@@ -1127,8 +1113,7 @@ fn transformBlock(ctx: *TransformContext, html_node: *const HtmlNode, block: htm
         else
             null;
 
-        var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.allocator, 1) catch unreachable;
-        defer branches.deinit();
+        var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
         try branches.append(.{
             .expression = cond_expr,
             .children = children,
@@ -1223,8 +1208,7 @@ fn transformBlock(ctx: *TransformContext, html_node: *const HtmlNode, block: htm
 // ─── Utility Helpers ─────────────────────────────────────────
 
 fn transformChildren(ctx: *TransformContext, children: []const *const HtmlNode) error{OutOfMemory}![]const *const R3Node {
-    var r3_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.allocator, children.len) catch unreachable;
-    defer r3_children.deinit();
+    var r3_children = std.array_list.Managed(*const R3Node).initCapacity(ctx.arena.allocator(), children.len) catch unreachable;
     for (children) |c| {
         if (try transformNode(ctx, c)) |rn| {
             try r3_children.append(rn);

@@ -248,7 +248,7 @@ pub const SchemaRegistry = struct {
         for (name) |ch| {
             if (ch >= 'A' and ch <= 'Z') dash_count += 1;
         }
-        if (dash_count == 0) return name;
+        if (dash_count == 0) return allocator.dupe(u8, name);
 
         var result = try std.array_list.Managed(u8).initCapacity(allocator, name.len + dash_count);
         defer result.deinit();

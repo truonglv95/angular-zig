@@ -247,7 +247,7 @@ pub fn parseSelector(allocator: Allocator, input: []const u8) !Selector {
         }
     }
 
-    return .{ .parts = parts.items };
+    return .{ .parts = try parts.toOwnedSlice() };
 }
 
 /// Check if a character is valid in a CSS selector identifier.
@@ -458,8 +458,8 @@ pub fn matchDirectives(
     }
 
     return .{
-        .matched = matched_indices.items,
-        .specificities = matched_specs.items,
+        .matched = try matched_indices.toOwnedSlice(),
+        .specificities = try matched_specs.toOwnedSlice(),
     };
 }
 
@@ -493,7 +493,7 @@ pub fn buildMatchContext(
     return .{
         .tag_name = tag_name,
         .attributes = attrs,
-        .classes = classes.items,
+        .classes = try classes.toOwnedSlice(),
     };
 }
 

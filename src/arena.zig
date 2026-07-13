@@ -12,15 +12,12 @@ const Allocator = std.mem.Allocator;
 
 pub const AstArena = struct {
     backing: std.heap.ArenaAllocator,
-    allocator: Allocator,
     /// Total bytes allocated (for stats)
     total_allocated: usize = 0,
 
     pub fn init(backing_allocator: Allocator) AstArena {
-        var arena = std.heap.ArenaAllocator.init(backing_allocator);
         return .{
-            .backing = arena,
-            .allocator = arena.allocator(),
+            .backing = std.heap.ArenaAllocator.init(backing_allocator),
         };
     }
 
@@ -28,30 +25,35 @@ pub const AstArena = struct {
         self.backing.deinit();
     }
 
+    /// Get the arena allocator (must be called on `self`, never cached).
+    pub fn allocator(self: *AstArena) Allocator {
+        return self.backing.allocator();
+    }
+
     /// Allocate a single AST node — zero-cost, just bump pointer
     pub fn create(self: *AstArena, comptime T: type) !*T {
-        const ptr = try self.allocator.create(T);
+        const ptr = try self.backing.allocator().create(T);
         self.total_allocated += @sizeOf(T);
         return ptr;
     }
 
     /// Allocate array of AST nodes
     pub fn alloc(self: *AstArena, comptime T: type, n: usize) ![]T {
-        const slice = try self.allocator.alloc(T, n);
+        const slice = try self.backing.allocator().alloc(T, n);
         self.total_allocated += @sizeOf(T) * n;
         return slice;
     }
 
     /// Duplicate a string into the arena
     pub fn dupe(self: *AstArena, str: []const u8) ![]const u8 {
-        const duped = try self.allocator.dupe(u8, str);
+        const duped = try self.backing.allocator().dupe(u8, str);
         self.total_allocated += str.len;
         return duped;
     }
 
     /// Duplicate a null-terminated string
     pub fn dupeZ(self: *AstArena, str: []const u8) ![:0]const u8 {
-        const duped = try self.allocator.dupeZ(u8, str);
+        const duped = try self.backing.allocator().dupeZ(u8, str);
         self.total_allocated += str.len + 1;
         return duped;
     }

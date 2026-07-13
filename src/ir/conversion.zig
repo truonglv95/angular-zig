@@ -32,7 +32,7 @@ const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 /// Returns an arena-allocated IrExpr pointer.
 pub fn convertExpr(job: *ComponentCompilationJob, ast_node: *const Ast) error{ OutOfMemory, NoSpaceLeft }!*IrExpr {
     const ir = try convertExprInner(job, ast_node);
-    const ptr = try job.allocator.create(IrExpr);
+    const ptr = try job.allocExpr(IrExpr);
     ptr.* = ir;
     return ptr;
 }
@@ -131,11 +131,11 @@ fn convertSafePropertyRead(
     name: []const u8,
 ) !IrExpr {
     const recv_ir = try convertExpr(job, receiver);
-    const prop_ptr = try job.allocator.create(IrExpr);
+    const prop_ptr = try job.allocExpr(IrExpr);
     prop_ptr.* = IrExpr.readPropExpr(recv_ir, name, span);
-    const null_ptr = try job.allocator.create(IrExpr);
+    const null_ptr = try job.allocExpr(IrExpr);
     null_ptr.* = IrExpr.literalExpr("null", span);
-    const null_check_ptr = try job.allocator.create(IrExpr);
+    const null_check_ptr = try job.allocExpr(IrExpr);
     null_check_ptr.* = IrExpr.binaryExpr(recv_ir, @intFromEnum(BinaryOp.NotIdentical), null_ptr, span);
     return IrExpr.conditionalExpr(null_check_ptr, prop_ptr, null_ptr, span);
 }
@@ -148,9 +148,9 @@ fn convertKeyedRead(
 ) !IrExpr {
     const recv_ir = try convertExpr(job, receiver);
     const key_ir = try convertExpr(job, key);
-    const recv_ptr = try job.allocator.create(IrExpr);
+    const recv_ptr = try job.allocExpr(IrExpr);
     recv_ptr.* = recv_ir.*;
-    const key_ptr = try job.allocator.create(IrExpr);
+    const key_ptr = try job.allocExpr(IrExpr);
     key_ptr.* = key_ir.*;
     return .{
         .kind = .SafeKeyedRead,
@@ -170,9 +170,9 @@ fn convertSafeKeyedRead(
 ) !IrExpr {
     const recv_ir = try convertExpr(job, receiver);
     const key_ir = try convertExpr(job, key);
-    const recv_ptr = try job.allocator.create(IrExpr);
+    const recv_ptr = try job.allocExpr(IrExpr);
     recv_ptr.* = recv_ir.*;
-    const key_ptr = try job.allocator.create(IrExpr);
+    const key_ptr = try job.allocExpr(IrExpr);
     key_ptr.* = key_ir.*;
     return .{
         .kind = .SafeKeyedRead,
@@ -269,11 +269,11 @@ fn convertSafeCall(
     for (args, 0..) |arg, i| {
         ir_args[i] = try convertExpr(job, arg);
     }
-    const call_ptr = try job.allocator.create(IrExpr);
+    const call_ptr = try job.allocExpr(IrExpr);
     call_ptr.* = IrExpr.callExpr(recv_ir, ir_args, span);
-    const null_ptr = try job.allocator.create(IrExpr);
+    const null_ptr = try job.allocExpr(IrExpr);
     null_ptr.* = IrExpr.literalExpr("null", span);
-    const not_null_ptr = try job.allocator.create(IrExpr);
+    const not_null_ptr = try job.allocExpr(IrExpr);
     not_null_ptr.* = IrExpr.binaryExpr(recv_ir, @intFromEnum(BinaryOp.NotIdentical), null_ptr, span);
     return IrExpr.conditionalExpr(not_null_ptr, call_ptr, null_ptr, span);
 }
@@ -297,7 +297,7 @@ fn convertUnary(
 ) !IrExpr {
     if (operator == '-') {
         const inner_ir = try convertExpr(job, expr);
-        const zero_ptr = try job.allocator.create(IrExpr);
+        const zero_ptr = try job.allocExpr(IrExpr);
         zero_ptr.* = IrExpr.literalExpr("0", span);
         const minus_code: u8 = @intFromEnum(BinaryOp.Minus);
         return IrExpr.binaryExpr(zero_ptr, minus_code, inner_ir, span);
@@ -331,15 +331,15 @@ fn convertArray(
     }
 
     var buf = std.array_list.Managed(u8).initCapacity(job.allocator, 64) catch unreachable;
-    buf.appendAssumeCapacity('[');
+    try buf.append('[');
     for (exprs, 0..) |e, i| {
-        if (i > 0) buf.appendAssumeCapacity(',');
+        if (i > 0) try buf.append(',');
         const ir = try convertExprInner(job, e);
         try appendIrExprSource(&buf, &ir);
     }
-    buf.appendAssumeCapacity(']');
-    const src = try buf.toOwnedSlice();
-    const idx = try job.addConst(src, .Array);
+    try buf.append(']');
+    const idx = try job.addConst(buf.items, .Array);
+    buf.deinit();
     return IrExpr.constCollected(idx, span);
 }
 
@@ -354,19 +354,19 @@ fn convertMap(
     }
 
     var buf = std.array_list.Managed(u8).initCapacity(job.allocator, 64) catch unreachable;
-    buf.appendAssumeCapacity('{');
+    try buf.append('{');
     for (entries, 0..) |e, i| {
-        if (i > 0) buf.appendAssumeCapacity(',');
-        if (e.quoted) buf.appendAssumeCapacity('"');
-        buf.appendSliceAssumeCapacity(e.key);
-        if (e.quoted) buf.appendAssumeCapacity('"');
-        buf.appendAssumeCapacity(':');
+        if (i > 0) try buf.append(',');
+        if (e.quoted) try buf.append('"');
+        try buf.appendSlice(e.key);
+        if (e.quoted) try buf.append('"');
+        try buf.append(':');
         const ir = try convertExprInner(job, e.value);
         try appendIrExprSource(&buf, &ir);
     }
-    buf.appendAssumeCapacity('}');
-    const src = try buf.toOwnedSlice();
-    const idx = try job.addConst(src, .Map);
+    try buf.append('}');
+    const idx = try job.addConst(buf.items, .Map);
+    buf.deinit();
     return IrExpr.constCollected(idx, span);
 }
 
@@ -535,12 +535,12 @@ fn convertInterpolation(
         // Add leading string if present
         if (i < strings.len and strings[i].len > 0) {
             const str_idx = try job.addConst(strings[i], .String);
-            const str_ir = try job.allocator.create(IrExpr);
+            const str_ir = try job.allocExpr(IrExpr);
             str_ir.* = IrExpr.constCollected(str_idx, span);
             if (i == 0) {
                 current = str_ir;
             } else {
-                const concat_ptr = try job.allocator.create(IrExpr);
+                const concat_ptr = try job.allocExpr(IrExpr);
                 concat_ptr.* = IrExpr.binaryExpr(current, @intFromEnum(BinaryOp.Plus), str_ir, span);
                 current = concat_ptr;
             }
@@ -550,7 +550,7 @@ fn convertInterpolation(
         if (i == 0 and (i >= strings.len or strings[i].len == 0)) {
             current = expr_ir;
         } else {
-            const concat_ptr = try job.allocator.create(IrExpr);
+            const concat_ptr = try job.allocExpr(IrExpr);
             concat_ptr.* = IrExpr.binaryExpr(current, @intFromEnum(BinaryOp.Plus), expr_ir, span);
             current = concat_ptr;
         }
@@ -558,9 +558,9 @@ fn convertInterpolation(
     // Add trailing string
     if (strings.len > exprs.len and strings[exprs.len].len > 0) {
         const str_idx = try job.addConst(strings[exprs.len], .String);
-        const str_ir = try job.allocator.create(IrExpr);
+        const str_ir = try job.allocExpr(IrExpr);
         str_ir.* = IrExpr.constCollected(str_idx, span);
-        const concat_ptr = try job.allocator.create(IrExpr);
+        const concat_ptr = try job.allocExpr(IrExpr);
         concat_ptr.* = IrExpr.binaryExpr(current, @intFromEnum(BinaryOp.Plus), str_ir, span);
         current = concat_ptr;
     }

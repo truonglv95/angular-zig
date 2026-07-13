@@ -375,15 +375,15 @@ pub fn orderChainOps(job: *ComponentCompilationJob, view: *ViewCompilationUnit) 
     errdefer result.deinit();
 
     // Partition into: [StoreLets][Variables][Bindings][ControlFlow][Rest]
-    var store_lets = std.array_list.Managed(IrOp).init(allocator);
+    var store_lets = std.array_list.Managed(IrOp).initCapacity(allocator, items.len) catch unreachable;
     defer store_lets.deinit();
-    var variables = std.array_list.Managed(IrOp).init(allocator);
+    var variables = std.array_list.Managed(IrOp).initCapacity(allocator, items.len) catch unreachable;
     defer variables.deinit();
-    var bindings = std.array_list.Managed(IrOp).init(allocator);
+    var bindings = std.array_list.Managed(IrOp).initCapacity(allocator, items.len) catch unreachable;
     defer bindings.deinit();
-    var control_flow = std.array_list.Managed(IrOp).init(allocator);
+    var control_flow = std.array_list.Managed(IrOp).initCapacity(allocator, items.len) catch unreachable;
     defer control_flow.deinit();
-    var rest = std.array_list.Managed(IrOp).init(allocator);
+    var rest = std.array_list.Managed(IrOp).initCapacity(allocator, items.len) catch unreachable;
     defer rest.deinit();
 
     for (items) |op| {

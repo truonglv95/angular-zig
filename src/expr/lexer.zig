@@ -407,7 +407,7 @@ test "tokenize simple expression" {
     const result = try lexer.tokenize();
     const tokens = result.@"0";
 
-    try std.testing.expectEqual(@as(usize, 7), tokens.len); // a, +, b, *, 2, EOF
+    try std.testing.expectEqual(@as(usize, 6), tokens.len); // a, +, b, *, 2, EOF
     try std.testing.expectEqual(TokenType.Identifier, tokens[0].type);
     try std.testing.expectEqualStrings("a", tokens[0].slice("a + b * 2"));
     try std.testing.expectEqual(TokenType.Operator, tokens[1].type);

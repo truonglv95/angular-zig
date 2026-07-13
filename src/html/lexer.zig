@@ -110,6 +110,13 @@ pub const Lexer = struct {
     }
 
     pub fn deinit(self: *Lexer) void {
+        // Free interpolation parts stored inside tokens
+        const allocator = self.tokens.allocator;
+        for (self.tokens.items) |tok| {
+            if (tok.parts.len > 0) {
+                allocator.free(tok.parts);
+            }
+        }
         self.tokens.deinit();
         self.errors.deinit();
     }
@@ -162,6 +169,7 @@ pub const Lexer = struct {
             self.pos += 2;
             try self.tokens.append(.{ .type = .TagCloseStart, .index = start, .end = self.pos });
             try self.scanTagName();
+            try self.scanTagEnd();
             return;
         }
 

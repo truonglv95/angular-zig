@@ -194,6 +194,31 @@ fn callRuntimeStmt(allocator: Allocator, fn_name: []const u8, args: []const Expr
     return Stmt.expressionStmt(try callRuntime(allocator, fn_name, args));
 }
 
+/// Heap-allocate an array of Expr values (replaces stack-allocated &[_]Expr{...}).
+fn allocArgs(allocator: Allocator, args: []const Expr) ![]const Expr {
+    const result = try allocator.alloc(Expr, args.len);
+    @memcpy(result, args);
+    return result;
+}
+
+/// Heap-allocate 2 Expr values.
+fn allocArgs2(allocator: Allocator, a: Expr, b: Expr) ![]const Expr {
+    const result = try allocator.alloc(Expr, 2);
+    result[0] = a;
+    result[1] = b;
+    return result;
+}
+
+/// Heap-allocate 3 Expr values.
+fn allocArgs3(allocator: Allocator, a: Expr, b: Expr, c: Expr) ![]const Expr {
+    const result = try allocator.alloc(Expr, 3);
+    result[0] = a;
+    result[1] = b;
+    result[2] = c;
+    return result;
+}
+
+
 // ─── Main Emit Entry Point ──────────────────────────────────
 
 /// Emit IR ops from a view into an Output AST template function.
@@ -203,7 +228,6 @@ pub fn emitView(
 ) !EmittedTemplate {
     // Generate create-phase statements
     var create_stmts = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.create.len()) catch unreachable;
-    defer create_stmts.deinit();
 
     for (view.create.items()) |op| {
         if (try emitCreateOp(job.allocator, op)) |stmt| {
@@ -213,7 +237,6 @@ pub fn emitView(
 
     // Generate update-phase statements
     var update_stmts = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.update.len()) catch unreachable;
-    defer update_stmts.deinit();
 
     for (view.update.items()) |op| {
         if (try emitUpdateOp(job.allocator, op)) |stmt| {
@@ -223,7 +246,6 @@ pub fn emitView(
 
     // Generate function statements
     var functions = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.functions.items.len) catch unreachable;
-    defer functions.deinit();
 
     for (view.functions.items) |fn_ops| {
         if (fn_ops.items.len > 0) {
@@ -237,9 +259,9 @@ pub fn emitView(
 
     return .{
         .fn_name = fn_name,
-        .create_stmts = create_stmts.items,
-        .update_stmts = update_stmts.items,
-        .functions = functions.items,
+        .create_stmts = try create_stmts.toOwnedSlice(),
+        .update_stmts = try update_stmts.toOwnedSlice(),
+        .functions = try functions.toOwnedSlice(),
     };
 }
 
@@ -286,111 +308,111 @@ fn emitElementStart(allocator: Allocator, slot: u32, name: []const u8, namespace
 
     if (attrs_xref > 0) {
         const attrs_arg = Expr.readVar("_c0");
-        return callRuntimeStmt(allocator, RUNTIME.elementStart, &[_]Expr{ slot_arg, name_arg, attrs_arg });
+        return callRuntimeStmt(allocator, RUNTIME.elementStart, try allocArgs(allocator, &[_]Expr{ slot_arg, name_arg, attrs_arg }));
     }
-    return callRuntimeStmt(allocator, RUNTIME.elementStart, &[_]Expr{ slot_arg, name_arg });
+    return callRuntimeStmt(allocator, RUNTIME.elementStart, try allocArgs(allocator, &[_]Expr{ slot_arg, name_arg }));
 }
 
 fn emitElementEnd(allocator: Allocator, slot: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.elementEnd, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.elementEnd, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitContainerStart(allocator: Allocator, slot: u32, attrs_xref: u32) !?Stmt {
     _ = attrs_xref;
-    return callRuntimeStmt(allocator, RUNTIME.containerStart, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.containerStart, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitContainerEnd(allocator: Allocator, slot: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.containerEnd, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.containerEnd, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitText(allocator: Allocator, slot: u32, const_index: u32) !?Stmt {
     _ = const_index;
     // ɵɵtext(slot)
-    return callRuntimeStmt(allocator, RUNTIME.text, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.text, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitListener(allocator: Allocator, slot: u32, name: []const u8, handler_xref: u32) !?Stmt {
     _ = slot;
     _ = handler_xref;
     // ɵɵlistener("click", handlerFn, false)
-    return callRuntimeStmt(allocator, RUNTIME.listener, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.listener, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         Expr.readVar("handler"),
         Expr.literalNum(0),
-    });
+    }));
 }
 
 fn emitProjection(allocator: Allocator, slot: u32, slot_index: u32, selector: ?[]const u8) !?Stmt {
     _ = slot;
     if (selector) |sel| {
-        return callRuntimeStmt(allocator, RUNTIME.projection, &[_]Expr{
+        return callRuntimeStmt(allocator, RUNTIME.projection, try allocArgs(allocator, &[_]Expr{
             Expr.literalNum(@floatFromInt(slot_index)),
             Expr.literalStr(sel),
-        });
+        }));
     }
-    return callRuntimeStmt(allocator, RUNTIME.projection, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.projection, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot_index)),
-    });
+    }));
 }
 
 fn emitProjectionDef(allocator: Allocator, slot: u32, slot_index: u32, attrs_xref: u32) !?Stmt {
     _ = slot;
     _ = attrs_xref;
-    return callRuntimeStmt(allocator, RUNTIME.projectionDef, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.projectionDef, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot_index)),
-    });
+    }));
 }
 
 fn emitRepeaterCreate(allocator: Allocator, slot: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.repeaterCreate, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.repeaterCreate, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitConditionalCreate(allocator: Allocator, slot: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.conditionalCreate, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.conditionalCreate, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 /// Fixed: uses @intFromEnum directly instead of string roundtrip.
 fn emitNamespaceDeclare(allocator: Allocator, ns: Namespace) !?Stmt {
     const ns_val = @intFromEnum(ns);
-    return callRuntimeStmt(allocator, RUNTIME.namespaceDeclare, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.namespaceDeclare, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(ns_val)),
-    });
+    }));
 }
 
 fn emitDefer(allocator: Allocator, slot: u32, deps_xref: u32) !?Stmt {
     _ = deps_xref;
-    return callRuntimeStmt(allocator, RUNTIME.defer_fn, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.defer_fn, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
-    });
+    }));
 }
 
 fn emitDeferOn(allocator: Allocator, slot: u32, trigger: ir_enums.DeferTriggerKind) !?Stmt {
     const trigger_val: u8 = @intFromEnum(trigger);
-    return callRuntimeStmt(allocator, RUNTIME.defer_fn, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.defer_fn, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
         Expr.literalNum(@floatFromInt(trigger_val)),
-    });
+    }));
 }
 
 fn emitDisableBindings(allocator: Allocator) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.disableBindings, &[_]Expr{});
+    return callRuntimeStmt(allocator, RUNTIME.disableBindings, try allocArgs(allocator, &[_]Expr{}));
 }
 
 fn emitEnableBindings(allocator: Allocator) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.enableBindings, &[_]Expr{});
+    return callRuntimeStmt(allocator, RUNTIME.enableBindings, try allocArgs(allocator, &[_]Expr{}));
 }
 
 fn emitSourceLocation(span: AbsoluteSourceSpan) !?Stmt {
@@ -439,7 +461,7 @@ fn emitInterpolateText(allocator: Allocator, slot: u32, const_indices: []const u
 
     if (total_args <= 10) {
         // Stack-allocated fixed array
-        var args_buf: [10]Expr = undefined;
+        const args_buf = try allocator.alloc(Expr, 10);
         var args_len: usize = 0;
         args_buf[args_len] = slot_arg;
         args_len += 1;
@@ -478,74 +500,74 @@ fn emitInterpolateText(allocator: Allocator, slot: u32, const_indices: []const u
 
 fn emitProperty(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.property, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.property, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitBinding(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.attribute, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.attribute, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitClassProp(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.classProp, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.classProp, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitStyleProp(allocator: Allocator, name: []const u8, expression: *const IrExpr, unit: ?[]const u8) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
     if (unit) |u| {
-        return callRuntimeStmt(allocator, RUNTIME.styleProp, &[_]Expr{
+        return callRuntimeStmt(allocator, RUNTIME.styleProp, try allocArgs(allocator, &[_]Expr{
             Expr.literalStr(name),
             value_arg,
             Expr.literalStr(u),
-        });
+        }));
     }
-    return callRuntimeStmt(allocator, RUNTIME.styleProp, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.styleProp, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitStyleMap(allocator: Allocator, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.styleMap, &[_]Expr{value_arg});
+    return callRuntimeStmt(allocator, RUNTIME.styleMap, try allocArgs(allocator, &[_]Expr{value_arg}));
 }
 
 fn emitClassMap(allocator: Allocator, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.classMap, &[_]Expr{value_arg});
+    return callRuntimeStmt(allocator, RUNTIME.classMap, try allocArgs(allocator, &[_]Expr{value_arg}));
 }
 
 fn emitDomProperty(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.property, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.property, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitTwoWayProperty(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.twoWayProperty, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.twoWayProperty, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitTwoWayListener(allocator: Allocator, name: []const u8, handler_xref: u32) !?Stmt {
     _ = handler_xref;
-    return callRuntimeStmt(allocator, RUNTIME.twoWayListener, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.twoWayListener, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
-    });
+    }));
 }
 
 fn emitPipe(allocator: Allocator, name: []const u8, args: []const *const IrExpr, pure: bool) !?Stmt {
@@ -554,7 +576,7 @@ fn emitPipe(allocator: Allocator, name: []const u8, args: []const *const IrExpr,
     // Stack-allocate: 2 base args + up to 4 pipe args
     const total = 2 + args.len;
     if (total <= 6) {
-        var args_buf: [6]Expr = undefined;
+        const args_buf = try allocator.alloc(Expr, 6);
         args_buf[0] = Expr.literalNum(0); // pipe index
         args_buf[1] = Expr.literalStr(name);
         for (args, 0..) |arg, i| {
@@ -575,24 +597,24 @@ fn emitPipe(allocator: Allocator, name: []const u8, args: []const *const IrExpr,
 
 fn emitStoreLet(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.storeLet, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.storeLet, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitAdvance(allocator: Allocator, d: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.advance, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.advance, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(d)),
-    });
+    }));
 }
 
 fn emitConditional(allocator: Allocator, slot: u32, condition: *const IrExpr) !?Stmt {
     const cond_arg = irExprToOutputExpr(allocator, condition.*);
-    return callRuntimeStmt(allocator, RUNTIME.conditional, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.conditional, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
         cond_arg,
-    });
+    }));
 }
 
 fn emitRepeater(allocator: Allocator, slot: u32, track_by_fn: ?*const IrExpr, collection_expr: ?*const IrExpr) !?Stmt {
@@ -605,10 +627,10 @@ fn emitRepeater(allocator: Allocator, slot: u32, track_by_fn: ?*const IrExpr, co
     else
         Expr.literal(.Null);
 
-    return callRuntimeStmt(allocator, RUNTIME.repeater, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.repeater, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
         expr_arg,
-    });
+    }));
 }
 
 fn emitVariable(allocator: Allocator, name: []const u8, value: *const IrExpr) !?Stmt {
@@ -618,44 +640,44 @@ fn emitVariable(allocator: Allocator, name: []const u8, value: *const IrExpr) !?
 
 fn emitAnimationBinding(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
-    return callRuntimeStmt(allocator, RUNTIME.animation, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.animation, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitAnimationString(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expression.*);
     // ɵɵanimation is also used for animation string bindings
-    return callRuntimeStmt(allocator, RUNTIME.animation, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.animation, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 // ─── Missing Create Op Emitters ───────────────────────────────
 
 fn emitAttribute(allocator: Allocator, slot: u32, name: []const u8, value: []const u8) !?Stmt {
     _ = slot;
-    return callRuntimeStmt(allocator, RUNTIME.attribute, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.attribute, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         Expr.literalStr(value),
-    });
+    }));
 }
 
 fn emitDeferWhen(allocator: Allocator, slot: u32, condition_fn_xref: u32) !?Stmt {
     _ = condition_fn_xref;
     // ɵɵdefer(slot, 6, conditionFn) — 6 = DeferTriggerKind.When
-    return callRuntimeStmt(allocator, RUNTIME.defer_fn, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.defer_fn, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
         Expr.literalNum(6), // When trigger
-    });
+    }));
 }
 
 fn emitI18nStart(allocator: Allocator, xref: u32) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.i18nStart, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.i18nStart, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(xref)),
-    });
+    }));
 }
 
 fn emitI18n(_: Allocator, message: []const u8) !?Stmt {
@@ -666,23 +688,23 @@ fn emitI18n(_: Allocator, message: []const u8) !?Stmt {
 }
 
 fn emitI18nEnd(allocator: Allocator) !?Stmt {
-    return callRuntimeStmt(allocator, RUNTIME.i18nEnd, &[_]Expr{});
+    return callRuntimeStmt(allocator, RUNTIME.i18nEnd, try allocArgs(allocator, &[_]Expr{}));
 }
 
 fn emitAnimation(allocator: Allocator, name: []const u8, expr: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, expr.*);
-    return callRuntimeStmt(allocator, RUNTIME.animation, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.animation, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
         value_arg,
-    });
+    }));
 }
 
 fn emitAnimationListener(allocator: Allocator, name: []const u8, handler_fn_xref: u32, phase: ?[]const u8) !?Stmt {
     _ = handler_fn_xref;
     _ = phase;
-    return callRuntimeStmt(allocator, RUNTIME.animationListener, &[_]Expr{
+    return callRuntimeStmt(allocator, RUNTIME.animationListener, try allocArgs(allocator, &[_]Expr{
         Expr.literalStr(name),
-    });
+    }));
 }
 
 fn emitControlFlowBlock(allocator: Allocator) !?Stmt {
@@ -706,7 +728,7 @@ fn emitI18nExpression(allocator: Allocator, expressions: []const *const IrExpr) 
 
     // Stack-allocate for up to 8 expressions
     if (expressions.len <= 8) {
-        var args_buf: [9]Expr = undefined;
+        const args_buf = try allocator.alloc(Expr, 9);
         args_buf[0] = Expr.literalNum(0); // slot (placeholder)
         for (expressions, 0..) |ir_e, i| {
             args_buf[1 + i] = irExprToOutputExpr(allocator, ir_e.*);
@@ -837,33 +859,18 @@ fn irExprToOutputExpr(allocator: Allocator, ir: IrExpr) Expr {
             fn_ptr.* = fn_expr;
 
             // Build args: pipeIdx, ctx, ...converted_args
-            // Stack-allocate for up to 6 total args
+            // Always heap-allocate — the Expr outlives this function call.
             const total_args = 2 + n;
-            if (total_args <= 6) {
-                var args_buf: [6]Expr = undefined;
-                args_buf[0] = Expr.literalNum(0); // pipe index (placeholder)
-                args_buf[1] = Expr.readVar("ctx");
-                for (pb.args, 0..) |arg, i| {
-                    args_buf[2 + i] = irExprToOutputExpr(allocator, arg.*);
-                }
-                break :blk .{
-                    .kind = .InvokeFunction,
-                    .span = null,
-                    .data = .{ .InvokeFunction = .{ .fn_expr = fn_ptr, .args = args_buf[0..total_args] } },
-                };
-            }
-
-            // Fallback for many args
-            const fb_args = allocator.alloc(Expr, total_args) catch unreachable;
-            fb_args[0] = Expr.literalNum(0);
-            fb_args[1] = Expr.readVar("ctx");
-            for (pb.args, 0..) |arg, j| {
-                fb_args[2 + j] = irExprToOutputExpr(allocator, arg.*);
+            const args_buf = allocator.alloc(Expr, total_args) catch unreachable;
+            args_buf[0] = Expr.literalNum(0); // pipe index (placeholder)
+            args_buf[1] = Expr.readVar("ctx");
+            for (pb.args, 0..) |arg, i| {
+                args_buf[2 + i] = irExprToOutputExpr(allocator, arg.*);
             }
             break :blk .{
                 .kind = .InvokeFunction,
                 .span = null,
-                .data = .{ .InvokeFunction = .{ .fn_expr = fn_ptr, .args = fb_args } },
+                .data = .{ .InvokeFunction = .{ .fn_expr = fn_ptr, .args = args_buf } },
             };
         },
 
@@ -1187,9 +1194,9 @@ test "emitElementStart with attrs" {
 
 test "callRuntime produces InvokeFunction" {
     const allocator = std.testing.allocator;
-    const expr = try callRuntime(allocator, "ɵɵadvance", &[_]Expr{
+    const expr = try callRuntime(allocator, "ɵɵadvance", try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(1),
-    });
+    }));
     try std.testing.expectEqual(ExprKind.InvokeFunction, expr.kind);
     try std.testing.expect(expr.data.InvokeFunction.fn_expr != null);
     try std.testing.expectEqual(@as(usize, 1), expr.data.InvokeFunction.args.len);

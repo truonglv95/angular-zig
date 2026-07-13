@@ -34,8 +34,11 @@ pub const StringPool = struct {
 
     pub fn deinit(self: *StringPool) void {
         self.map.deinit();
-        // Strings are owned by allocator, clear the list
-        self.strings.clearAndFree();
+        // Free each interned string (allocated via dupeZ)
+        for (self.strings.items) |s| {
+            self.allocator.free(s);
+        }
+        self.strings.deinit();
     }
 
     /// Intern a string — returns existing ref if already interned

@@ -616,7 +616,7 @@ pub const Compiler = struct {
         const arena_stats = arena.stats();
 
         return .{
-            .js_source = buf.items,
+            .js_source = try buf.toOwnedSlice(),
             .source_map_json = sm_json,
             .template_fn_name = template_fn_name,
             .const_count = @intCast(job.pool.size()),

@@ -44,7 +44,7 @@ fn resolveEntityInto(buf: *std.array_list.Managed(u8), entity: []const u8) bool 
 
     inline for (entities) |e| {
         if (std.mem.eql(u8, entity, e.@"0")) {
-            buf.appendSliceAssumeCapacity(e.@"1");
+            buf.appendSlice(e.@"1") catch return false;
             return true;
         }
     }
@@ -66,7 +66,7 @@ fn resolveEntityInto(buf: *std.array_list.Managed(u8), entity: []const u8) bool 
         // UTF-8 encode directly into the buffer
         var encode_buf: [4]u8 = undefined;
         if (std.unicode.utf8Encode(code_point, &encode_buf)) |len| {
-            buf.appendSliceAssumeCapacity(encode_buf[0..len]);
+            buf.appendSlice(encode_buf[0..len]) catch return false;
             return true;
         } else |_| {
             return false;

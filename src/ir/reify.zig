@@ -354,7 +354,7 @@ const ReifyContext = struct {
     fn ensureSlot(self: *ReifyContext, xref: u32) void {
         const needed = xref + 1;
         while (self.xref_to_slot.items.len < needed) {
-            self.xref_to_slot.appendAssumeCapacity(0);
+            self.xref_to_slot.append(0) catch unreachable;
         }
     }
 
@@ -381,7 +381,9 @@ const ReifyContext = struct {
 /// Processes root view + all embedded views.
 pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
     var ctx = ReifyContext.init(job.allocator, job.slots.next_xref);
-    defer ctx.deinit();
+    // NOTE: do NOT defer deinit — we transfer ownership of the ArrayLists' backing memory to the returned ReifiedView.
+    // The xref_to_slot list is internal-only and must be freed manually.
+    var xref_to_slot_owned = ctx.xref_to_slot;
 
     // Pre-populate xref_to_slot from the slot allocator
     // (slots allocated during ingest are already sequential)
@@ -396,7 +398,7 @@ pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
         try reifyViewOps(&ctx, entry.value_ptr.*);
     }
 
-    return .{
+    const result = ReifiedView{
         .create_ops = ctx.create_ops.items,
         .update_ops = ctx.update_ops.items,
         .function_ops = ctx.function_ops.items,
@@ -404,6 +406,11 @@ pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
         .decls = job.root.decls orelse 0,
         .slots = job.slots.next_slot,
     };
+
+    // Free only the internal xref_to_slot list; the ops lists' memory is now owned by `result`.
+    xref_to_slot_owned.deinit();
+
+    return result;
 }
 
 /// Reify ops from a single view into the context.
