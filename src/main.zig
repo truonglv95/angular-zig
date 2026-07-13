@@ -150,6 +150,8 @@ test {
     _ = @import("typecheck/ops/signal_forms.zig");
     _ = @import("i18n/index.zig");
     _ = @import("render3/r3_pipe_compiler.zig");
+    _ = @import("render3/r3_control_flow.zig");
+    _ = @import("render3/r3_deferred_triggers.zig");
     _ = @import("compiler.zig");
     _ = @import("render3/r3_identifiers.zig");
     _ = @import("render3/view/query_generation.zig");
