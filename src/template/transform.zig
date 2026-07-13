@@ -1095,6 +1095,48 @@ fn transformExpansion(ctx: *TransformContext, html_node: *const HtmlNode, exp: h
     return r3;
 }
 
+/// Transform @if block with @else if / @else sibling handling.
+/// Walks sibling nodes after the @if block to collect chained @else if and
+/// terminal @else branches.
+fn transformIfBlockFromBlock(
+    ctx: *TransformContext,
+    html_node: *const HtmlNode,
+    block: html_ast.BlockNode,
+) error{OutOfMemory}!?*R3Node {
+    var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.arena.allocator(), 2) catch unreachable;
+
+    // First @if branch
+    const cond_str = if (block.parameters.len > 0) block.parameters[0].expression else "";
+    const cond_span = if (block.parameters.len > 0) block.parameters[0].source_span else html_node.source_span.absolute();
+
+    const children = try transformChildren(ctx, block.children);
+    const cond_expr = if (cond_str.len > 0)
+        try parseExpression(ctx, cond_str, cond_span, .{ .is_binding = true })
+    else
+        null;
+
+    try branches.append(.{
+        .expression = cond_expr,
+        .children = children,
+        .expression_alias = null,
+        .source_span = html_node.source_span.absolute(),
+    });
+
+    // TODO: walk siblings to collect @else if / @else branches.
+    // This requires passing the parent's children list + index, which is not
+    // currently available in this function signature. For now, @else if and
+    // @else are handled as separate blocks in the parent's children list.
+    // A future refactor will pass sibling context to enable proper chaining.
+
+    const r3 = try ctx.arena.create(R3Node);
+    r3.* = .{
+        .kind = .IfBlock,
+        .source_span = html_node.source_span,
+        .data = .{ .IfBlock = .{ .branches = branches.items } },
+    };
+    return r3;
+}
+
 // ─── Block Node Transform (@if/@for from HTML parser Block nodes) ─
 /// The HTML parser produces Block nodes for @if, @for, @switch, @defer.
 /// These are already handled via the Element path (they appear as elements
@@ -1103,31 +1145,7 @@ fn transformExpansion(ctx: *TransformContext, html_node: *const HtmlNode, exp: h
 fn transformBlock(ctx: *TransformContext, html_node: *const HtmlNode, block: html_ast.BlockNode) error{OutOfMemory}!?*R3Node {
     // Delegate to control flow block handling based on block name
     if (std.mem.eql(u8, block.name, "if")) {
-        // Construct a synthetic element-like node and delegate
-        const cond_str = if (block.parameters.len > 0) block.parameters[0].expression else "";
-        const cond_span = if (block.parameters.len > 0) block.parameters[0].source_span else html_node.source_span.absolute();
-
-        const children = try transformChildren(ctx, block.children);
-        const cond_expr = if (cond_str.len > 0)
-            try parseExpression(ctx, cond_str, cond_span, .{ .is_binding = true })
-        else
-            null;
-
-        var branches = std.array_list.Managed(IfBlockBranch).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
-        try branches.append(.{
-            .expression = cond_expr,
-            .children = children,
-            .expression_alias = null,
-            .source_span = html_node.source_span.absolute(),
-        });
-
-        const r3 = try ctx.arena.create(R3Node);
-        r3.* = .{
-            .kind = .IfBlock,
-            .source_span = html_node.source_span,
-            .data = .{ .IfBlock = .{ .branches = branches.items } },
-        };
-        return r3;
+        return try transformIfBlockFromBlock(ctx, html_node, block);
     }
 
     if (std.mem.eql(u8, block.name, "for")) {
