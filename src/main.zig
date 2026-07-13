@@ -152,6 +152,8 @@ test {
     _ = @import("render3/r3_pipe_compiler.zig");
     _ = @import("render3/r3_control_flow.zig");
     _ = @import("render3/r3_deferred_triggers.zig");
+    _ = @import("render3/view/compiler.zig");
+    _ = @import("render3/view/api.zig");
     _ = @import("compiler.zig");
     _ = @import("render3/r3_identifiers.zig");
     _ = @import("render3/view/query_generation.zig");
