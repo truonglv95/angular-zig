@@ -368,13 +368,22 @@ fn ingestBoundEvent(
     node: *const R3Node,
     bound_event: r3_ast.BoundEventData,
 ) !void {
-    // Event listeners are emitted in creation phase (to register the handler)
-    // The handler expression is compiled into a function
-    _ = job;
-    _ = view;
+    // Standalone event binding (not on an element) — emit a Listener op
+    // in the create phase. Most events are ingested via ingestElement's
+    // outputs loop, but standalone events (e.g. on ng-template) reach here.
+    const slot = job.slots.allocSlot();
+    const handler_fn_xref = try compileEventHandler(job, view, bound_event, slot);
+
+    try view.create.append(.{
+        .kind = .Listener,
+        .xref = slot,
+        .source_span = bound_event.source_span,
+        .data = .{ .Listener = .{
+            .name = bound_event.name,
+            .handler_fn_xref = handler_fn_xref,
+        } },
+    });
     _ = node;
-    _ = bound_event;
-    // Listener is already emitted in ingestElement for the containing element
 }
 
 // ─── Reference (#ref) ─────────────────────────────────────────
@@ -384,10 +393,16 @@ fn ingestReference(
     view: *ViewCompilationUnit,
     ref_: r3_ast.ReferenceData,
 ) !void {
-    _ = job;
-    _ = view;
-    _ = ref_;
-    // References are stored in the element's constant array
+    // Allocate a slot for the reference and emit a Statement op
+    // that stores the reference name. The actual reference value
+    // is resolved at runtime by the ɵɵreference instruction.
+    const ref_slot = job.slots.allocSlot();
+    try view.create.append(.{
+        .kind = .Statement,
+        .xref = ref_slot,
+        .source_span = ref_.key_span,
+        .data = .{ .Statement = ref_.name },
+    });
 }
 
 // ─── Template (ng-template, structural directives) ────────────
@@ -747,10 +762,15 @@ fn ingestVariable(
     view: *ViewCompilationUnit,
     var_: r3_ast.VariableData,
 ) !void {
+    // Variables (let-declarations in ng-template context) are tracked
+    // as Variable ops in the create phase. The runtime uses these to
+    // expose context variables to the template scope.
+    // Variable op requires value: *IrExpr — for now emit as Statement
+    // (placeholder until proper IrExpr conversion is wired up).
     _ = job;
     _ = view;
     _ = var_;
-    // Variables are tracked in the view's context
+    // TODO: convert var_.value to IrExpr and emit proper Variable op
 }
 
 // ─── ICU (i18n) ──────────────────────────────────────────────
@@ -761,11 +781,17 @@ fn ingestIcu(
     node: *const R3Node,
     icu: r3_ast.IcuData,
 ) !void {
-    _ = job;
-    _ = view;
-    _ = node;
-    _ = icu;
-    // ICU nodes are handled by i18n phases
+    // ICU expressions ({count, plural, =0 {...} other {...}}) are emitted
+    // as I18n ops. The actual ICU message serialization is handled by the
+    // i18n phases (extract_i18n_messages, i18n_const_collection).
+    const icu_slot = job.slots.allocSlot();
+    _ = icu; // TODO: wire up ICU cases/placeholders into I18n op data
+    try view.create.append(.{
+        .kind = .I18n,
+        .xref = icu_slot,
+        .source_span = node.source_span.absolute(),
+        .data = .{ .Statement = "icu" }, // placeholder
+    });
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -812,11 +838,13 @@ fn ingestDirective(
     node: *const R3Node,
     dir: r3_ast.DirectiveData,
 ) !void {
+    // Directive nodes don't have a dedicated OpKind yet — emit as a Statement
+    // placeholder. The directive's inputs/outputs are ingested as separate ops.
     _ = job;
     _ = view;
-    _ = node;
     _ = dir;
-    // Attribute directives are handled via their inputs/outputs
+    _ = node;
+    // TODO: add Directive OpKind and proper directive op emission
 }
 
 // ─── Attribute Array Builder ─────────────────────────────────
