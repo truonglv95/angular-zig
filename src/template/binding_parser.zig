@@ -135,39 +135,14 @@ pub const BindingParser = struct {
     /// Returns the expression parts
     pub fn parseInterpolation(self: *BindingParser, value: []const u8, _: []const u8, _: u32) !InterpolationResult {
         var parts = std.array_list.Managed(InterpPart).init(self.allocator);
-        defer parts.deinit();
 
         var i: usize = 0;
+        var text_start: usize = 0;
+
         while (i < value.len) {
             // Find {{
             if (i + 1 < value.len and value[i] == '{' and value[i + 1] == '{') {
-                const expr_start = i + 2;
-                // Find }}
-                var depth: u32 = 1;
-                var j = expr_start;
-                while (j < value.len and depth > 0) : (j += 1) {
-                    if (j + 1 < value.len and value[j] == '{' and value[j + 1] == '{') {
-                        depth += 1;
-                        j += 1;
-                    } else if (j + 1 < value.len and value[j] == '}' and value[j + 1] == '}') {
-                        depth -= 1;
-                        j += 1;
-                    }
-                }
-                const expr_str = value[expr_start .. j - 1];
-                try parts.append(.{
-                    .text = null,
-                    .expression = expr_str,
-                    .start = @intCast(i),
-                    .end = @intCast(j + 1),
-                });
-                i = j + 1;
-            } else {
-                // Plain text
-                const text_start = i;
-                while (i < value.len and !(i + 1 < value.len and value[i] == '{' and value[i + 1] == '{')) {
-                    i += 1;
-                }
+                // Emit preceding text if any
                 if (i > text_start) {
                     try parts.append(.{
                         .text = value[text_start..i],
@@ -176,7 +151,36 @@ pub const BindingParser = struct {
                         .end = @intCast(i),
                     });
                 }
+                const expr_start = i + 2;
+                // Find matching }} — simple scan (no nesting in interpolation exprs)
+                var j = expr_start;
+                while (j + 1 < value.len) : (j += 1) {
+                    if (value[j] == '}' and value[j + 1] == '}') break;
+                }
+                const expr_str_raw = value[expr_start..j];
+                // Trim whitespace around expression
+                const expr_str = std.mem.trim(u8, expr_str_raw, " \t\n\r");
+                try parts.append(.{
+                    .text = null,
+                    .expression = expr_str,
+                    .start = @intCast(i),
+                    .end = @intCast(j + 2),
+                });
+                i = j + 2;
+                text_start = i;
+            } else {
+                i += 1;
             }
+        }
+
+        // Trailing text
+        if (text_start < value.len) {
+            try parts.append(.{
+                .text = value[text_start..],
+                .expression = null,
+                .start = @intCast(text_start),
+                .end = @intCast(value.len),
+            });
         }
 
         return .{ .parts = try parts.toOwnedSlice() };
@@ -192,6 +196,10 @@ pub const InterpPart = struct {
 
 pub const InterpolationResult = struct {
     parts: []const InterpPart,
+
+    pub fn deinit(self: InterpolationResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.parts);
+    }
 };
 
 // ─── Tests ────────────────────────────────────────────────────
@@ -257,6 +265,7 @@ test "parse interpolation" {
 
     var bp = BindingParser.init(allocator, &arena);
     const result = try bp.parseInterpolation("Hello {{ name }}!", "test", 0);
+    defer result.deinit(allocator);
 
     try std.testing.expectEqual(@as(usize, 3), result.parts.len);
     try std.testing.expect(result.parts[0].text != null);

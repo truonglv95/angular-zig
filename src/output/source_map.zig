@@ -34,7 +34,7 @@ pub const SourceMap = struct {
         source_index: u32,
         source_line: u32,
         source_column: u32,
-        name_index: u32,
+        name_index: ?u32 = null,
     };
 
     pub fn init(allocator: Allocator, file: []const u8) SourceMap {
@@ -151,11 +151,11 @@ pub const SourceMap = struct {
             try vlqEncode(src_col_delta, &aw.writer);
             prev_source_col = @intCast(m.source_column);
 
-            // Name index delta (only if name_index != 0, meaning no name)
-            if (m.name_index > 0) {
-                const name_idx_delta = @as(i32, @intCast(m.name_index)) - prev_name_idx;
+            // Name index delta (only if name_index is present)
+            if (m.name_index) |ni| {
+                const name_idx_delta = @as(i32, @intCast(ni)) - prev_name_idx;
                 try vlqEncode(name_idx_delta, &aw.writer);
-                prev_name_idx = @intCast(m.name_index);
+                prev_name_idx = @intCast(ni);
             }
         }
 
@@ -380,7 +380,7 @@ test "SourceMap addMapping and encodeMappings" {
         .source_index = 0,
         .source_line = 2,
         .source_column = 5,
-        .name_index = 0,
+        .name_index = null,
     });
 
     const encoded = try sm.encodeMappings();
@@ -407,7 +407,7 @@ test "SourceMap multiple mappings with deltas" {
         .source_index = 0,
         .source_line = 2,
         .source_column = 5,
-        .name_index = 0,
+        .name_index = null,
     });
 
     // Mapping 2: gen(0,20) → src(0, 3, 0) — same line, delta from mapping 1
@@ -417,7 +417,7 @@ test "SourceMap multiple mappings with deltas" {
         .source_index = 0,
         .source_line = 3,
         .source_column = 0,
-        .name_index = 0,
+        .name_index = null,
     });
 
     const encoded = try sm.encodeMappings();
@@ -447,7 +447,7 @@ test "SourceMap multiple lines with semicolons" {
         .source_index = 0,
         .source_line = 0,
         .source_column = 0,
-        .name_index = 0,
+        .name_index = null,
     });
 
     // Line 2, col 5 → src(0, 10)
@@ -457,7 +457,7 @@ test "SourceMap multiple lines with semicolons" {
         .source_index = 0,
         .source_line = 0,
         .source_column = 10,
-        .name_index = 0,
+        .name_index = null,
     });
 
     const encoded = try sm.encodeMappings();
@@ -486,7 +486,7 @@ test "SourceMap toJson basic" {
         .source_index = 0,
         .source_line = 0,
         .source_column = 0,
-        .name_index = 0,
+        .name_index = null,
     });
 
     const json = try sm.toJson();
@@ -564,14 +564,14 @@ test "SourceMap mapping with name" {
         .source_index = 0,
         .source_line = 0,
         .source_column = 0,
-        .name_index = name_idx,
+        .name_index = name_idx, // ?u32 — passing u32 value works since field is ?u32
     });
 
     const encoded = try sm.encodeMappings();
     defer allocator.free(encoded);
 
-    // AAAA + name index 1: 1 << 1 = 2 → 'C'
-    try std.testing.expectEqualStrings("AAAAC", encoded);
+    // AAAA + name index 0 (first name, delta=0): 0 << 1 = 0 → 'A'
+    try std.testing.expectEqualStrings("AAAAA", encoded);
 }
 
 test "vlqEncode round-trip validation" {
