@@ -40,6 +40,14 @@ const SecurityContext = schema.SecurityContext;
 
 const html_tags = @import("../../html/tags.zig");
 
+// ─── Per-phase modules (Phase 3: splitting into per-phase files) ──
+const ng_container = @import("ng_container.zig");
+const resolve_dollar_event = @import("resolve_dollar_event.zig");
+const any_cast = @import("any_cast.zig");
+const track_variables = @import("track_variables.zig");
+const save_restore_view = @import("save_restore_view.zig");
+const strip_nonrequired_parens = @import("strip_nonrequired_parentheses.zig");
+
 // ─── Helpers ──────────────────────────────────────────────────
 
 /// Max nesting depth for stack-allocated tracking arrays.
@@ -157,10 +165,12 @@ pub const Phase = struct {
     pub const PhaseKind = enum { Create, Update, Both, Post };
 };
 
-/// All 50 core phases in dependency order.
+/// All core phases in dependency order.
 /// Create phases first → Both → Update → Post.
+/// Phase 3: Added 6 new phases from Angular original (ng_container, etc.)
 pub const CORE_PHASES: []const Phase = &.{
-    // ── Create Phase (9) ──────────────────────────────────────
+    // ── Create Phase (10) ─────────────────────────────────────
+    .{ .name = "ngContainer", .fn_ptr = ng_container.run, .kind = .Create },
     .{ .name = "orderCreationOps", .fn_ptr = orderCreationOps, .kind = .Create },
     .{ .name = "processDeferredBlocks", .fn_ptr = processDeferredBlocks, .kind = .Create },
     .{ .name = "emitNamespaceChanges", .fn_ptr = emitNamespaceChanges, .kind = .Create },
@@ -205,6 +215,12 @@ pub const CORE_PHASES: []const Phase = &.{
     .{ .name = "normalizeTwoWayBindingPairs", .fn_ptr = normalizeTwoWayBindingPairs, .kind = .Update },
     .{ .name = "hoistConstantExpressions", .fn_ptr = hoistConstantExpressions, .kind = .Update },
     .{ .name = "reorderProjectionBindings", .fn_ptr = reorderProjectionBindings, .kind = .Update },
+    // Phase 3: New update phases from Angular original
+    .{ .name = "resolveDollarEvent", .fn_ptr = resolve_dollar_event.run, .kind = .Update },
+    .{ .name = "deleteAnyCasts", .fn_ptr = any_cast.run, .kind = .Update },
+    .{ .name = "trackVariables", .fn_ptr = track_variables.run, .kind = .Update },
+    .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run, .kind = .Update },
+    .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run, .kind = .Update },
 
     // ── Post Phase (10) ───────────────────────────────────────
     .{ .name = "allocateSlots", .fn_ptr = allocateSlots, .kind = .Post },
@@ -236,6 +252,7 @@ pub const PIPELINE_PHASES: []const PipelinePhase = &.{
     .{ .name = "declareNamespaces", .fn_ptr = declareNamespaces },
 
     // ── Core phases (from CORE_PHASES, minus injectSecurityContexts) ──
+    .{ .name = "ngContainer", .fn_ptr = ng_container.run },
     .{ .name = "orderCreationOps", .fn_ptr = orderCreationOps },
     .{ .name = "processDeferredBlocks", .fn_ptr = processDeferredBlocks },
     .{ .name = "emitNamespaceChanges", .fn_ptr = emitNamespaceChanges },
@@ -275,6 +292,12 @@ pub const PIPELINE_PHASES: []const PipelinePhase = &.{
     .{ .name = "normalizeTwoWayBindingPairs", .fn_ptr = normalizeTwoWayBindingPairs },
     .{ .name = "hoistConstantExpressions", .fn_ptr = hoistConstantExpressions },
     .{ .name = "reorderProjectionBindings", .fn_ptr = reorderProjectionBindings },
+    // Phase 3: New update phases
+    .{ .name = "resolveDollarEvent", .fn_ptr = resolve_dollar_event.run },
+    .{ .name = "deleteAnyCasts", .fn_ptr = any_cast.run },
+    .{ .name = "trackVariables", .fn_ptr = track_variables.run },
+    .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run },
+    .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run },
     .{ .name = "allocateSlots", .fn_ptr = allocateSlots },
     .{ .name = "countVariables", .fn_ptr = countVariables },
     .{ .name = "validateXrefs", .fn_ptr = validateXrefs },
