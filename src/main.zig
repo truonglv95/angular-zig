@@ -52,8 +52,8 @@ pub const template = struct {
 
 // ─── R3 Template AST (Ivy) ───────────────────────────────────
 pub const r3_ast = @import("render3/r3_ast.zig");
-pub const r3_identifiers = @import("render3/identifiers.zig");
-pub const r3_query = @import("render3/query.zig");
+pub const r3_identifiers = @import("render3/r3_identifiers.zig");
+pub const r3_query = @import("render3/view/query_generation.zig");
 
 // ─── IR (Intermediate Representation) ─────────────────────────
 pub const ir = struct {
@@ -127,8 +127,8 @@ test {
     _ = @import("i18n/index.zig");
     _ = @import("render3/r3_pipe_compiler.zig");
     _ = @import("compiler.zig");
-    _ = @import("render3/identifiers.zig");
-    _ = @import("render3/query.zig");
+    _ = @import("render3/r3_identifiers.zig");
+    _ = @import("render3/view/query_generation.zig");
     _ = @import("template/pipeline/ir/reify.zig");
     _ = @import("directive_matching.zig");
     _ = @import("render3/view/t2_binder.zig");
