@@ -42,6 +42,8 @@ pub const Instruction = struct {
     pub const pipeBind3 = "ɵɵpipeBind3";
     pub const pipeBind4 = "ɵɵpipeBind4";
     pub const pipeBindV = "ɵɵpipeBindV";
+    pub const foreignComponent = "ɵɵforeignComponent";
+    pub const foreignContent = "ɵɵforeignContent";
     pub const pureFunction0 = "ɵɵpureFunction0";
     pub const pureFunction1 = "ɵɵpureFunction1";
     pub const pureFunction2 = "ɵɵpureFunction2";
@@ -58,7 +60,7 @@ pub const Instruction = struct {
     pub const namespaceDeclare = "ɵɵnamespaceDeclare";
     pub const projection = "ɵɵprojection";
     pub const projectionDef = "ɵɵprojectionDef";
-    pub const defer = "ɵɵdefer";
+    pub const deferOp = "ɵɵdefer";
     pub const deferOnIdle = "ɵɵdeferOnIdle";
     pub const deferOnViewport = "ɵɵdeferOnViewport";
     pub const deferOnInteraction = "ɵɵdeferOnInteraction";
@@ -136,7 +138,7 @@ pub fn pipe(allocator: std.mem.Allocator, slot: u32, name: []const u8) ![]const 
 
 /// Generate an ɵɵpipeBindN(pipeSlot, ctxSlot, ...args) instruction call.
 pub fn pipeBind(allocator: std.mem.Allocator, n: u32, pipe_slot: u32, ctx_slot: u32, args: []const []const u8) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
+    var buf = std.array_list.Managed(u8).init(allocator);
     const fn_name = switch (n) {
         0 => Instruction.pipeBind1,
         1 => Instruction.pipeBind1,
@@ -226,8 +228,9 @@ pub fn storeLet(allocator: std.mem.Allocator, slot: u32, name: []const u8, expr:
 }
 
 /// Generate an ɵɵdefer(slot) instruction call.
-pub fn defer(allocator: std.mem.Allocator, slot: u32) ![]const u8 {
-    return std.fmt.allocPrint(allocator, "{s}({d})", .{ Instruction.defer, slot });
+/// Note: function name is `deferOp` because `defer` is a Zig keyword.
+pub fn deferOp(allocator: std.mem.Allocator, slot: u32) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "{s}({d})", .{ Instruction.deferOp, slot });
 }
 
 /// Generate an ɵɵdeferOnIdle() instruction call.
@@ -329,66 +332,262 @@ test "advance instruction" {
     try std.testing.expectEqualStrings("ɵɵadvance(3)", result);
 }
 
-pub fn foreignComponent(allocator: std.mem.Allocator) void { _ = allocator; }
+// ─── Remaining instruction helpers (expanded from stubs) ─────
 
-pub fn foreignContent(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵforeignComponent(slot, ref, props) instruction call.
+pub fn foreignComponent(allocator: std.mem.Allocator, slot: u32, ref: []const u8, props: ?[]const u8) ![]const u8 {
+    if (props) |p| {
+        return std.fmt.allocPrint(allocator, "{s}({d}, {s}, {s})", .{ Instruction.foreignComponent, slot, ref, p });
+    }
+    return std.fmt.allocPrint(allocator, "{s}({d}, {s})", .{ Instruction.foreignComponent, slot, ref });
+}
 
-pub fn elementContainerStart(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵforeignContent(slot, index) instruction call.
+pub fn foreignContent(allocator: std.mem.Allocator, slot: u32, index: u32) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "{s}({d}, {d})", .{ Instruction.foreignContent, slot, index });
+}
 
-pub fn elementContainer(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵelementContainerStart(slot, tag) instruction call.
+pub fn elementContainerStart(allocator: std.mem.Allocator, slot: u32, tag: ?[]const u8) ![]const u8 {
+    if (tag) |t| {
+        return std.fmt.allocPrint(allocator, "{s}({d}, \"{s}\")", .{ Instruction.containerStart, slot, t });
+    }
+    return std.fmt.allocPrint(allocator, "{s}({d})", .{ Instruction.containerStart, slot });
+}
 
-pub fn elementContainerEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵelementContainer(slot, tag) instruction call.
+pub fn elementContainer(allocator: std.mem.Allocator, slot: u32, tag: ?[]const u8) ![]const u8 {
+    if (tag) |t| {
+        return std.fmt.allocPrint(allocator, "{s}({d}, \"{s}\")", .{ Instruction.element, slot, t });
+    }
+    return std.fmt.allocPrint(allocator, "{s}({d})", .{ Instruction.element, slot });
+}
 
-pub fn twoWayBindingSet(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵelementContainerEnd() instruction call.
+pub fn elementContainerEnd(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, Instruction.containerEnd ++ "()");
+}
 
-pub fn namespaceHTML(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a two-way binding set expression: target = value.
+pub fn twoWayBindingSet(allocator: std.mem.Allocator, target: []const u8, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "{s} = {s}", .{ target, value });
+}
 
-pub fn namespaceSVG(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵnamespaceHTML() instruction call.
+pub fn namespaceHTML(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵnamespaceHTML()");
+}
 
-pub fn namespaceMath(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵnamespaceSVG() instruction call.
+pub fn namespaceSVG(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵnamespaceSVG()");
+}
 
-pub fn resetView(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵnamespaceMath() instruction call.
+pub fn namespaceMath(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵnamespaceMath()");
+}
 
-pub fn enableIncrementalHydrationRuntime(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵresetView(value) instruction call.
+pub fn resetView(allocator: std.mem.Allocator, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵresetView({s})", .{value});
+}
 
-pub fn conditionalBranchCreate(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵenableIncrementalHydrationRuntime() instruction call.
+pub fn enableIncrementalHydrationRuntime(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵenableIncrementalHydrationRuntime()");
+}
 
-pub fn declareLet(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵconditionalBranchCreate(slot, fn) instruction call.
+pub fn conditionalBranchCreate(allocator: std.mem.Allocator, slot: u32, fn_name: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵconditionalBranchCreate({d}, {s})", .{ slot, fn_name });
+}
 
-pub fn readContextLet(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵdeclareLet(slot, name) instruction call.
+pub fn declareLet(allocator: std.mem.Allocator, slot: u32, name: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdeclareLet({d}, \"{s}\")", .{ slot, name });
+}
 
-pub fn ariaProperty(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵreadContextLet(slot) instruction call.
+pub fn readContextLet(allocator: std.mem.Allocator, slot: u32) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵreadContextLet({d})", .{slot});
+}
 
-pub fn control(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵariaProperty(slot, name, value) instruction call.
+pub fn ariaProperty(allocator: std.mem.Allocator, slot: u32, name: []const u8, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵariaProperty({d}, \"{s}\", {s})", .{ slot, name, value });
+}
 
-pub fn controlCreate(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵcontrol(slot) instruction call.
+pub fn control(allocator: std.mem.Allocator, slot: u32) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵcontrol({d})", .{slot});
+}
 
-pub fn domElement(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵcontrolCreate(sourceSpan) instruction call.
+pub fn controlCreate(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵcontrolCreate()");
+}
 
-pub fn domElementStart(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElement(slot, tag) instruction call.
+pub fn domElement(allocator: std.mem.Allocator, slot: u32, tag: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomElement({d}, \"{s}\")", .{ slot, tag });
+}
 
-pub fn domElementEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElementStart(slot, tag) instruction call.
+pub fn domElementStart(allocator: std.mem.Allocator, slot: u32, tag: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomElementStart({d}, \"{s}\")", .{ slot, tag });
+}
 
-pub fn domElementContainerStart(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElementEnd() instruction call.
+pub fn domElementEnd(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵdomElementEnd()");
+}
 
-pub fn domElementContainer(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElementContainerStart(slot, tag) instruction call.
+pub fn domElementContainerStart(allocator: std.mem.Allocator, slot: u32, tag: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomElementContainerStart({d}, \"{s}\")", .{ slot, tag });
+}
 
-pub fn domElementContainerEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElementContainer(slot, tag) instruction call.
+pub fn domElementContainer(allocator: std.mem.Allocator, slot: u32, tag: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomElementContainer({d}, \"{s}\")", .{ slot, tag });
+}
 
-pub fn domListener(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomElementContainerEnd() instruction call.
+pub fn domElementContainerEnd(allocator: std.mem.Allocator) ![]const u8 {
+    return allocator.dupe(u8, "ɵɵdomElementContainerEnd()");
+}
 
-pub fn domTemplate(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomListener(name, handler) instruction call.
+pub fn domListener(allocator: std.mem.Allocator, name: []const u8, handler: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomListener(\"{s}\", {s})", .{ name, handler });
+}
 
-pub fn i18nExp(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate a ɵɵdomTemplate(slot, fn) instruction call.
+pub fn domTemplate(allocator: std.mem.Allocator, slot: u32, fn_name: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomTemplate({d}, {s})", .{ slot, fn_name });
+}
 
-pub fn domProperty(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵi18nExp(expr) instruction call.
+pub fn i18nExp(allocator: std.mem.Allocator, expr: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵi18nExp({s})", .{expr});
+}
 
-pub fn animation(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵi18nApply(slot) instruction call.
+pub fn i18nApply(allocator: std.mem.Allocator, slot: u32) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵi18nApply({d})", .{slot});
+}
 
-pub fn animationString(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵdomProperty(slot, name, value) instruction call.
+pub fn domProperty(allocator: std.mem.Allocator, slot: u32, name: []const u8, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵdomProperty({d}, \"{s}\", {s})", .{ slot, name, value });
+}
 
-pub fn animationListener(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵanimation(name, slot, handler) instruction call.
+pub fn animation(allocator: std.mem.Allocator, name: []const u8, slot: u32, handler: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵanimation(\"{s}\", {d}, {s})", .{ name, slot, handler });
+}
 
-pub fn attachSourceLocation(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵanimationString(name, slot, value) instruction call.
+pub fn animationString(allocator: std.mem.Allocator, name: []const u8, slot: u32, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵanimationString(\"{s}\", {d}, {s})", .{ name, slot, value });
+}
 
-pub fn arrowFunction(allocator: std.mem.Allocator) void { _ = allocator; }
+/// Generate an ɵɵanimationListener(name, handler, phase) instruction call.
+pub fn animationListener(allocator: std.mem.Allocator, name: []const u8, handler: []const u8, phase: ?[]const u8) ![]const u8 {
+    if (phase) |p| {
+        return std.fmt.allocPrint(allocator, "ɵɵanimationListener(\"{s}\", {s}, \"{s}\")", .{ name, handler, p });
+    }
+    return std.fmt.allocPrint(allocator, "ɵɵanimationListener(\"{s}\", {s})", .{ name, handler });
+}
+
+/// Generate an ɵɵattachSourceLocation(slot, location) instruction call.
+pub fn attachSourceLocation(allocator: std.mem.Allocator, slot: u32, location: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵattachSourceLocation({d}, {s})", .{ slot, location });
+}
+
+/// Generate an arrow function expression: (params) => body.
+pub fn arrowFunction(allocator: std.mem.Allocator, params: []const []const u8, body: []const u8) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.append('(');
+    for (params, 0..) |param, i| {
+        if (i > 0) try buf.appendSlice(", ");
+        try buf.appendSlice(param);
+    }
+    try buf.appendSlice(") => ");
+    try buf.appendSlice(body);
+    return buf.toOwnedSlice();
+}
+
+/// Generate a ɵɵconditional(slot, cases) instruction call.
+pub fn conditional(allocator: std.mem.Allocator, slot: u32, cases: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵconditional({d}, {s})", .{ slot, cases });
+}
+
+/// Generate a ɵɵsyntheticHostProperty(name, value) instruction call.
+pub fn syntheticHostProperty(allocator: std.mem.Allocator, name: []const u8, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵsyntheticHostProperty(\"{s}\", {s})", .{ name, value });
+}
+
+/// Generate a ɵɵpureFunction(slot, fn, args) instruction call.
+pub fn pureFunction(allocator: std.mem.Allocator, slot: u32, fn_name: []const u8, args: []const []const u8) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.appendSlice("ɵɵpureFunction(");
+    try std.fmt.format(buf.writer(), "{d}, {s}", .{ slot, fn_name });
+    for (args) |arg| {
+        try buf.appendSlice(", ");
+        try buf.appendSlice(arg);
+    }
+    try buf.append(')');
+    return buf.toOwnedSlice();
+}
+
+/// Generate an ɵɵattribute(slot, name, value) instruction call.
+pub fn attribute(allocator: std.mem.Allocator, slot: u32, name: []const u8, value: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵattribute({d}, \"{s}\", {s})", .{ slot, name, value });
+}
+
+/// Generate a ɵɵpipeBindV(slot, offset, args) instruction call.
+pub fn pipeBindV(allocator: std.mem.Allocator, slot: u32, offset: u32, args: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(allocator, "ɵɵpipeBindV({d}, {d}, {s})", .{ slot, offset, args });
+}
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "foreignComponent instruction" {
+    const allocator = std.testing.allocator;
+    const result = try foreignComponent(allocator, 0, "Comp", null);
+    defer allocator.free(result);
+    try std.testing.expect(std.mem.indexOf(u8, result, "ɵɵforeignComponent(0, Comp)") != null);
+}
+
+test "namespaceHTML instruction" {
+    const allocator = std.testing.allocator;
+    const result = try namespaceHTML(allocator);
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("ɵɵnamespaceHTML()", result);
+}
+
+test "conditionalBranchCreate instruction" {
+    const allocator = std.testing.allocator;
+    const result = try conditionalBranchCreate(allocator, 1, "BranchFn");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("ɵɵconditionalBranchCreate(1, BranchFn)", result);
+}
+
+test "declareLet instruction" {
+    const allocator = std.testing.allocator;
+    const result = try declareLet(allocator, 0, "myLet");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("ɵɵdeclareLet(0, \"myLet\")", result);
+}
+
+test "arrowFunction instruction" {
+    const allocator = std.testing.allocator;
+    const params = [_][]const u8{ "$event", "ctx" };
+    const result = try arrowFunction(allocator, &params, "return $event");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("($event, ctx) => return $event", result);
+}

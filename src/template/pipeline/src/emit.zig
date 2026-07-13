@@ -78,7 +78,7 @@ pub fn emitTemplateFn(
     // (In the TS source: emitChildViews(tpl.root, pool))
     // Our simplified version just emits the root function.
 
-    return buf.toOwnedSlice();
+    const result: []const u8 = try buf.toOwnedSlice(); return result;
 }
 
 /// Emit a template function for an individual view.
@@ -126,7 +126,7 @@ pub fn emitView(job: *CompilationJob, view: *ViewCompilationUnit) ![]const u8 {
 
     try buf.appendSlice("}\n");
 
-    return buf.toOwnedSlice();
+    const result: []const u8 = try buf.toOwnedSlice(); return result;
 }
 
 /// Emit a host binding function.
@@ -141,7 +141,6 @@ pub fn emitHostBindingFunction(job: *CompilationJob) !?[]const u8 {
 
     var buf = std.array_list.Managed(u8).init(job.allocator);
     errdefer buf.deinit();
-
     try buf.appendSlice("function ");
     try buf.appendSlice(fn_name);
     try buf.appendSlice("(");
@@ -176,7 +175,7 @@ pub fn emitHostBindingFunction(job: *CompilationJob) !?[]const u8 {
 
     try buf.appendSlice("}\n");
 
-    return buf.toOwnedSlice();
+    const result: []const u8 = try buf.toOwnedSlice(); return result;
 }
 
 /// Transform a compilation job by running all phases.
@@ -238,7 +237,19 @@ fn opKindToInstruction(kind: OpKind) []const u8 {
         .AnimationString => "ɵɵanimationString",
         .NamespaceDeclare => "ɵɵnamespace",
         .ProjectionDef => "ɵɵprojectionDef",
-        .AnimationString => "ɵɵanimationString",
+        // New op kinds added for 1:1 fidelity.
+        .Template => "ɵɵtemplate",
+        .ConditionalBranchCreate => "ɵɵconditionalBranchCreate",
+        .ForeignComponent => "ɵɵforeignComponent",
+        .I18nAttributes => "ɵɵi18nAttributes",
+        .I18nContext => "",
+        .IcuStart => "ɵɵicuStart",
+        .IcuEnd => "ɵɵicuEnd",
+        .IcuPlaceholder => "ɵɵicuPlaceholder",
+        .ExtractedAttribute => "ɵɵextractedAttribute",
+        .ControlCreate => "ɵɵcontrolCreate",
+        .Control => "ɵɵcontrol",
+        .EnableIncrementalHydrationRuntime => "ɵɵenableIncrementalHydrationRuntime",
     };
 }
 

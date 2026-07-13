@@ -119,6 +119,10 @@ test {
     _ = @import("template/pipeline/ir/ingest.zig");
     _ = @import("template/pipeline/src/registry.zig");
     _ = @import("template/pipeline/src/ingest.zig");
+    _ = @import("template/pipeline/src/instruction.zig");
+    _ = @import("template/pipeline/src/emit.zig");
+    _ = @import("template/pipeline/src/conversion.zig");
+    _ = @import("template/pipeline/src/namespaces.zig");
     _ = @import("template/pipeline/ir/emit.zig");
     _ = @import("template/pipeline/ir/conversion.zig");
     _ = @import("schema/dom_element_schema_registry.zig");
