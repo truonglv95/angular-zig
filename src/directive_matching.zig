@@ -167,19 +167,19 @@ pub fn parseSelector(allocator: Allocator, input: []const u8) !Selector {
                 if (i < input.len and input[i] == '=') i += 1;
 
                 // Parse the value (quoted or unquoted)
-                const value = if (i < input.len and (input[i] == '"' or input[i] == '\'')) {
+                var value: ?[]const u8 = null;
+                if (i < input.len and (input[i] == '"' or input[i] == '\'')) {
                     const quote = input[i];
                     i += 1;
                     const v_start = i;
                     while (i < input.len and input[i] != quote) i += 1;
-                    const val = input[v_start..i];
+                    value = input[v_start..i];
                     if (i < input.len) i += 1; // skip closing quote
-                    val;
                 } else {
                     const v_start = i;
                     while (i < input.len and input[i] != ']') i += 1;
-                    input[v_start..i];
-                };
+                    value = input[v_start..i];
+                }
 
                 // Skip to closing bracket
                 while (i < input.len and input[i] != ']') i += 1;
@@ -188,7 +188,7 @@ pub fn parseSelector(allocator: Allocator, input: []const u8) !Selector {
                 try parts.append(.{
                     .kind = kind,
                     .name = attr_name,
-                    .value = value,
+                    .value = value orelse "",
                     .inner = null,
                 });
             }
@@ -326,7 +326,7 @@ pub fn matchesSimple(sel: SimpleSelector, ctx: *const ElementMatchContext) bool 
             if (std.mem.eql(u8, sel.name, "not")) {
                 // :not(selector) — matches if the inner selector does NOT match
                 for (inner) |s| {
-                    if (matchesSimple(s, ctx)) return false;
+                    if (matchesSelector(&s, ctx)) return false;
                 }
                 return true;
             }

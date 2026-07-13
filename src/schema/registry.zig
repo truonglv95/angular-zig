@@ -66,7 +66,7 @@ const VOID_ELEMENTS = std.StaticStringMap(void).initComptime(.{
 /// Property security contexts.
 /// Maps DOM property names to their required SecurityContext level.
 /// O(1) lookup via comptime hash map.
-const SECURITY_CONTEXTS = std.StaticStringMap(u8).initComptime(.{
+const SECURITY_CONTEXTS = std.StaticStringMap(SecurityContext).initComptime(.{
     .{ "innerHTML", SecurityContext.HTML },
     .{ "outerHTML", SecurityContext.HTML },
     .{ "href", SecurityContext.URL },
@@ -417,7 +417,7 @@ test "getContentModel" {
 
 test "VOID_ELEMENTS comptime table size" {
     comptime {
-        @import("std").testing.expectEqual(@as(usize, 17), VOID_ELEMENTS.kvs.len) catch unreachable;
+        @import("std").testing.expectEqual(@as(usize, 18), VOID_ELEMENTS.kvs.len) catch unreachable;
     }
 }
 
@@ -476,6 +476,6 @@ test "getDefaultComponentElementName — no uppercase returns as-is" {
 
 test "VOID_ELEMENTS comptime table entry count" {
     comptime {
-        @import("std").testing.expectEqual(@as(usize, 17), VOID_ELEMENTS.kvs.len) catch unreachable;
+        @import("std").testing.expectEqual(@as(usize, 18), VOID_ELEMENTS.kvs.len) catch unreachable;
     }
 }

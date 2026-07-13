@@ -79,7 +79,7 @@ pub const CompiledQuery = struct {
 ///   - Child combinator (>)
 ///   - Adjacent sibling (+)
 ///   - Group (comma-separated)
-pub fn parseQuery(allocator: Allocator, source: []const u8) !CompiledQuery {
+pub fn parseQuery(allocator: Allocator, source: []const u8) Allocator.Error!CompiledQuery {
     var nodes = std.array_list.Managed(QueryNode).init(allocator);
     errdefer nodes.deinit();
 
@@ -131,7 +131,7 @@ pub fn parseQuery(allocator: Allocator, source: []const u8) !CompiledQuery {
 }
 
 /// Parse a single selector (sequence of simple selectors with optional combinators).
-fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !QueryNode {
+fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allocator.Error!QueryNode {
     var parts = std.array_list.Managed(QueryNode).init(allocator);
     errdefer parts.deinit();
 
@@ -149,7 +149,8 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !Que
             const next = source[i.*];
             if (next == '>') {
                 // Child combinator
-                const left = try allocator.dupe(QueryNode, parts.items);
+                const left_items = try allocator.dupe(QueryNode, parts.items);
+                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
                 i.* += 1;
                 while (i.* < source.len and isSpace(source[i.*])) i.* += 1;
@@ -159,11 +160,12 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !Que
                     .kind = .Child,
                     .name = "",
                     .value = "",
-                    .children = &[_]QueryNode{ left, right },
+                    .children = try allocator.dupe(QueryNode, &[_]QueryNode{ left, right }),
                 });
             } else if (next == '+') {
                 // Adjacent sibling combinator
-                const left = try allocator.dupe(QueryNode, parts.items);
+                const left_items = try allocator.dupe(QueryNode, parts.items);
+                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
                 i.* += 1;
                 while (i.* < source.len and isSpace(source[i.*])) i.* += 1;
@@ -173,11 +175,12 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !Que
                     .kind = .Adjacent,
                     .name = "",
                     .value = "",
-                    .children = &[_]QueryNode{ left, right },
+                    .children = try allocator.dupe(QueryNode, &[_]QueryNode{ left, right }),
                 });
             } else {
                 // Descendant combinator (implicit)
-                const left = try allocator.dupe(QueryNode, parts.items);
+                const left_items = try allocator.dupe(QueryNode, parts.items);
+                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
 
                 const right = try parseSingleSelector(allocator, source, i);
@@ -185,7 +188,7 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !Que
                     .kind = .Descendant,
                     .name = "",
                     .value = "",
-                    .children = &[_]QueryNode{ left, right },
+                    .children = try allocator.dupe(QueryNode, &[_]QueryNode{ left, right }),
                 });
             }
             break;
@@ -229,19 +232,19 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) !Que
                 if (i.* < source.len and source[i.*] == '=') i.* += 1;
 
                 // Parse value
-                const value = if (i.* < source.len and (source[i.*] == '"' or source[i.*] == '\'')) {
+                var value: []const u8 = "";
+                if (i.* < source.len and (source[i.*] == '"' or source[i.*] == '\'')) {
                     const quote = source[i.*];
                     i.* += 1;
                     const v_start = i.*;
                     while (i.* < source.len and source[i.*] != quote) i.* += 1;
-                    const val = source[v_start..i.*];
+                    value = source[v_start..i.*];
                     if (i.* < source.len) i.* += 1;
-                    val;
                 } else {
                     const v_start = i.*;
                     while (i.* < source.len and source[i.*] != ']') i.* += 1;
-                    source[v_start..i.*];
-                };
+                    value = source[v_start..i.*];
+                }
 
                 // Skip to ']'
                 while (i.* < source.len and source[i.*] != ']') i.* += 1;
@@ -477,7 +480,7 @@ pub fn queryToString(allocator: Allocator, query: *const CompiledQuery) ![]const
     var buf = std.array_list.Managed(u8).init(allocator);
     errdefer buf.deinit();
 
-    for (query.nodes, 0..) |node, idx| {
+    for (query.nodes, 0..) |*node, idx| {
         if (idx > 0) try buf.appendSlice(", ");
         try nodeToString(&buf, node);
     }
@@ -502,7 +505,7 @@ fn nodeToString(buf: *std.array_list.Managed(u8), node: *const QueryNode) !void 
             try buf.appendSlice("\"]");
         },
         .ClassMatch => {
-            try buf.appendByte('.');
+            try buf.append('.');
             try buf.appendSlice(node.name);
         },
         .NotPseudo => {

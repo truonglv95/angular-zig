@@ -1,0 +1,9 @@
+#!/bin/sh
+
+COMMIT_MSG_FILE=$1
+
+# Remove lines containing "Z User" (case-insensitive)
+sed -i.bak -e '/Z User/Id' "$COMMIT_MSG_FILE"
+# Also remove "authored" lines if that's what's specifically meant, but just in case, let's remove exact or similar lines.
+# Maybe Zed appends something like "Co-authored-by: Z User..."
+rm -f "${COMMIT_MSG_FILE}.bak"

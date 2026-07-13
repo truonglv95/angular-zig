@@ -111,7 +111,7 @@ pub const IdentifierGenerator = struct {
         writer.writeAll(component_name) catch unreachable;
         writer.writeByte(sep) catch unreachable;
         writer.print("{d}", .{view_index}) catch unreachable;
-        const name = buf[0..writer.context.pos];
+        const name = buf[0..writer.end];
 
         // Dedup
         if (self.seen.get(name)) |_| {
@@ -130,7 +130,7 @@ pub const IdentifierGenerator = struct {
         var writer = std.Io.Writer.fixed(buf[0..]);
         writer.writeAll("TemplateRef_") catch unreachable;
         writer.print("{d}", .{ref_index}) catch unreachable;
-        const len: usize = writer.context.pos;
+        const len: usize = writer.end;
         return self.allocator.dupe(u8, buf[0..len]);
     }
 
@@ -142,7 +142,7 @@ pub const IdentifierGenerator = struct {
         writer.writeAll(component_name) catch unreachable;
         writer.writeAll("_Template_") catch unreachable;
         writer.print("{d}", .{view_index}) catch unreachable;
-        const len: usize = writer.context.pos;
+        const len: usize = writer.end;
         return self.allocator.dupe(u8, buf[0..len]);
     }
 
@@ -156,7 +156,7 @@ pub const IdentifierGenerator = struct {
         writer.writeAll(pipe_name) catch unreachable;
         writer.writeByte('_') catch unreachable;
         writer.print("{d}", .{pipe_index}) catch unreachable;
-        const len: usize = writer.context.pos;
+        const len: usize = writer.end;
         return self.allocator.dupe(u8, buf[0..len]);
     }
 
@@ -177,7 +177,7 @@ pub const IdentifierGenerator = struct {
         }
         writer.writeByte('_') catch unreachable;
         writer.print("{d}", .{handler_index}) catch unreachable;
-        const len: usize = writer.context.pos;
+        const len: usize = writer.end;
         return self.allocator.dupe(u8, buf[0..len]);
     }
 
@@ -210,7 +210,7 @@ pub const IdentifierGenerator = struct {
         writer.writeAll(parts.module_name) catch unreachable;
         writer.writeByte(sep) catch unreachable;
         writer.writeAll(parts.type_name) catch unreachable;
-        const len: usize = writer.context.pos;
+        const len: usize = writer.end;
         const name = buf[0..len];
 
         // Dedup: if we've seen this name before, return the original
@@ -263,9 +263,9 @@ pub const IdKind = enum(u8) {
 pub fn classifyId(name: []const u8) IdKind {
     if (std.mem.startsWith(u8, name, "Component_")) return .Component;
     if (std.mem.startsWith(u8, name, "Directive_")) return .Directive;
-    if (std.mem.endsWith(u8, "_pipe_")) return .Pipe;
+    if (std.mem.endsWith(u8, name, "_pipe_")) return .Pipe;
     if (std.mem.startsWith(u8, name, "View_")) return .View;
-    if (std.mem.indexOf(u8, "_handle") != null) return .Handler;
+    if (std.mem.indexOf(u8, name, "_handle") != null) return .Handler;
     if (std.mem.startsWith(u8, name, "TemplateRef_")) return .TemplateRef;
     return .Unknown;
 }

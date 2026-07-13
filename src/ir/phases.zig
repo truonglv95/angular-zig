@@ -726,7 +726,7 @@ fn injectSecurityContexts(job: *ComponentCompilationJob, view: *ViewCompilationU
 
                 // O(1) comptime StaticStringMap lookup
                 if (registry.getPropertySecurityContext(attr.name)) |ctx| {
-                    attr.security_context = ctx;
+                    attr.security_context = @intFromEnum(ctx);
                 }
 
                 // Check for javascript: URLs on href/src (runtime value check)
@@ -749,13 +749,13 @@ fn injectSecurityContexts(job: *ComponentCompilationJob, view: *ViewCompilationU
                     if (p.security_context != null) continue;
                     // O(1) comptime lookup — covers innerHTML, outerHTML, href, src, etc.
                     if (registry.getPropertySecurityContext(p.name)) |ctx| {
-                        p.security_context = ctx;
+                        p.security_context = @intFromEnum(ctx);
                     }
                 },
                 .DomProperty => |*d| {
                     if (d.security_context != null) continue;
                     if (registry.getPropertySecurityContext(d.name)) |ctx| {
-                        d.security_context = ctx;
+                        d.security_context = @intFromEnum(ctx);
                     }
                 },
                 .Binding => |*b| {
@@ -2773,12 +2773,12 @@ test "markSecurityContexts marks innerHTML" {
     // Check create op's innerHTML was marked with SecurityContext.HTML
     const create_items = job.root.create.ops.items;
     try std.testing.expect(create_items[0].data.Attribute.security_context != null);
-    try std.testing.expectEqual(SecurityContext.HTML, create_items[0].data.Attribute.security_context.?);
+    try std.testing.expectEqual(@intFromEnum(SecurityContext.HTML), create_items[0].data.Attribute.security_context.?);
 
     // Check update op's innerHTML was marked with SecurityContext.HTML
     const update_items = job.root.update.ops.items;
     try std.testing.expect(update_items[0].data.Property.security_context != null);
-    try std.testing.expectEqual(SecurityContext.HTML, update_items[0].data.Property.security_context.?);
+    try std.testing.expectEqual(@intFromEnum(SecurityContext.HTML), update_items[0].data.Property.security_context.?);
 }
 
 test "injectSecurityContexts uses schema registry for href/src" {
@@ -2814,8 +2814,8 @@ test "injectSecurityContexts uses schema registry for href/src" {
     try injectSecurityContexts(&job, &job.root);
 
     const items = job.root.update.ops.items;
-    try std.testing.expectEqual(SecurityContext.URL, items[0].data.Property.security_context.?);
-    try std.testing.expectEqual(SecurityContext.RESOURCE_URL, items[1].data.Property.security_context.?);
+    try std.testing.expectEqual(@intFromEnum(SecurityContext.URL), items[0].data.Property.security_context.?);
+    try std.testing.expectEqual(@intFromEnum(SecurityContext.RESOURCE_URL), items[1].data.Property.security_context.?);
     try std.testing.expectEqual(null, items[2].data.Property.security_context);
 }
 
@@ -2841,7 +2841,7 @@ test "injectSecurityContexts marks all InterpolateText as HTML" {
     try injectSecurityContexts(&job, &job.root);
 
     const items = job.root.update.ops.items;
-    try std.testing.expectEqual(SecurityContext.HTML, items[0].data.InterpolateText.security_context.?);
+    try std.testing.expectEqual(@intFromEnum(SecurityContext.HTML), items[0].data.InterpolateText.security_context.?);
 }
 
 test "declareNamespaces inserts NamespaceDeclare for SVG" {
