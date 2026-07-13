@@ -15,7 +15,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const source_span = @import("source_span.zig");
+const source_span = @import("../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
 // ─── Message ID ──────────────────────────────────────────────

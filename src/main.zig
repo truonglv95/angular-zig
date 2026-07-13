@@ -86,7 +86,7 @@ pub const schema = @import("schema/registry.zig");
 pub const type_checker = @import("type_checker.zig");
 
 // ─── i18n (Internationalization) ────────────────────────────────
-pub const i18n = @import("i18n.zig");
+pub const i18n = @import("i18n/index.zig");
 
 // ─── Pipe Compilation ───────────────────────────────────────────
 pub const pipe_compiler = @import("pipe_compiler.zig");
@@ -124,7 +124,7 @@ test {
     _ = @import("html/entities.zig");
     _ = @import("expr/serializer.zig");
     _ = @import("type_checker.zig");
-    _ = @import("i18n.zig");
+    _ = @import("i18n/index.zig");
     _ = @import("pipe_compiler.zig");
     _ = @import("compiler.zig");
     _ = @import("render3/identifiers.zig");
