@@ -74,8 +74,8 @@ pub const t2_binder = @import("render3/view/t2_binder.zig");
 
 // ─── Output / Code Generation ─────────────────────────────────
 pub const output = struct {
-    pub const Ast = @import("output/ast.zig");
-    pub const Emitter = @import("output/emitter.zig");
+    pub const Ast = @import("output/output_ast.zig");
+    pub const Emitter = @import("output/abstract_emitter.zig");
     pub const SourceMap = @import("output/source_map.zig");
 };
 
@@ -111,8 +111,8 @@ test {
     _ = @import("template/pipeline/ir/expression.zig");
     _ = @import("template/pipeline/ir/ops.zig");
     _ = @import("template/pipeline/ir/job.zig");
-    _ = @import("output/ast.zig");
-    _ = @import("output/emitter.zig");
+    _ = @import("output/output_ast.zig");
+    _ = @import("output/abstract_emitter.zig");
     _ = @import("output/source_map.zig");
     _ = @import("template/transform.zig");
     _ = @import("template_parser/template_preparser.zig");

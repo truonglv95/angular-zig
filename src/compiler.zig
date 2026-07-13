@@ -57,8 +57,8 @@ const ir_ingest = @import("template/pipeline/ir/ingest.zig");
 const ir_phases = @import("template/pipeline/src/registry.zig");
 const ir_emit = @import("template/pipeline/ir/emit.zig");
 
-const output_ast = @import("output/ast.zig");
-const output_emitter = @import("output/emitter.zig");
+const output_ast = @import("output/output_ast.zig");
+const output_emitter = @import("output/abstract_emitter.zig");
 const Emitter = output_emitter.Emitter;
 const Stmt = output_ast.Stmt;
 const Expr = output_ast.Expr;

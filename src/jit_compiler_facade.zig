@@ -6,8 +6,8 @@
 /// with Angular's runtime API, we provide the interface and basic
 /// compilation functions that would be called in JIT mode.
 const std = @import("std");
-const output_ast = @import("output/ast.zig");
-const output_emitter = @import("output/emitter.zig");
+const output_ast = @import("output/output_ast.zig");
+const output_emitter = @import("output/abstract_emitter.zig");
 
 /// Factory target enum (matching Angular's FactoryTarget).
 pub const FactoryTarget = enum(u8) {

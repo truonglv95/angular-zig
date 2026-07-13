@@ -11,7 +11,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const base64 = std.base64;
 
-const oast = @import("ast.zig");
+const oast = @import("output_ast.zig");
 const Expr = oast.Expr;
 const ExprKind = oast.ExprKind;
 const Stmt = oast.Stmt;

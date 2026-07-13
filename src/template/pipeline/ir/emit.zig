@@ -30,7 +30,7 @@ const IrExpr = ir_expr.IrExpr;
 const ir_enums = @import("enums.zig");
 const Namespace = ir_enums.Namespace;
 
-const oast = @import("../../../output/ast.zig");
+const oast = @import("../../../output/output_ast.zig");
 const Expr = oast.Expr;
 const Stmt = oast.Stmt;
 const ExprKind = oast.ExprKind;
