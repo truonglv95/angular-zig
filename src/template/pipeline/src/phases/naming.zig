@@ -140,3 +140,5 @@ fn propagateVarNames(expr: *IrExpr, var_names: *const std.AutoHashMap(u32, []con
         else => {},
     }
 }
+
+pub fn nameFunctionsAndVariables(allocator: std.mem.Allocator) void { _ = allocator; }

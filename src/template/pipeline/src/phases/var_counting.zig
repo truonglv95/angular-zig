@@ -121,3 +121,5 @@ pub fn validateXrefs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) 
         _ = clean_xref;
     }
 }
+
+pub fn countVariables(allocator: std.mem.Allocator) void { _ = allocator; }

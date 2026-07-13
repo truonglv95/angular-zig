@@ -15,3 +15,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
     view.create.ops.items.len = write;
 }
+
+pub fn removeI18nContexts(allocator: std.mem.Allocator) void { _ = allocator; }

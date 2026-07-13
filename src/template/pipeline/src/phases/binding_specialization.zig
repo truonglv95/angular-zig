@@ -90,3 +90,5 @@ pub fn convertAttributeToProperty(job: *ComponentCompilationJob, view: *ViewComp
         }
     }
 }
+
+pub fn specializeBindings(allocator: std.mem.Allocator) void { _ = allocator; }

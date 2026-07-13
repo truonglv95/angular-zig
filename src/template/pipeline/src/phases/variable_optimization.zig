@@ -160,3 +160,5 @@ pub fn inlineSimpleVariables(job: *ComponentCompilationJob, view: *ViewCompilati
     }
     view.update.ops.items.len = write;
 }
+
+pub fn optimizeVariables(allocator: std.mem.Allocator) void { _ = allocator; }

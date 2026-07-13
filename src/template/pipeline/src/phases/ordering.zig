@@ -122,3 +122,5 @@ pub fn validateNesting(job: *ComponentCompilationJob, view: *ViewCompilationUnit
     }
     // depth should be 0 if all elements are properly closed
 }
+
+pub fn orderOps(allocator: std.mem.Allocator) void { _ = allocator; }

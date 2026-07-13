@@ -328,3 +328,67 @@ test "advance instruction" {
     defer allocator.free(result);
     try std.testing.expectEqualStrings("ɵɵadvance(3)", result);
 }
+
+pub fn foreignComponent(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn foreignContent(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn elementContainerStart(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn elementContainer(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn elementContainerEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn twoWayBindingSet(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn namespaceHTML(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn namespaceSVG(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn namespaceMath(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn resetView(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn enableIncrementalHydrationRuntime(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn conditionalBranchCreate(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn declareLet(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn readContextLet(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn ariaProperty(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn control(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn controlCreate(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElement(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElementStart(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElementEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElementContainerStart(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElementContainer(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domElementContainerEnd(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domListener(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domTemplate(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn i18nExp(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn domProperty(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn animation(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn animationString(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn animationListener(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn attachSourceLocation(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn arrowFunction(allocator: std.mem.Allocator) void { _ = allocator; }

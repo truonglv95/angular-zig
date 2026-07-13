@@ -12,3 +12,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         .data = .{ .Statement = "ɵɵincrementalHydration(0)" },
     });
 }
+
+pub fn insertIncrementalHydrationRuntime(allocator: std.mem.Allocator) void { _ = allocator; }

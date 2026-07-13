@@ -176,3 +176,8 @@ pub const CompilationJob = struct {
         total_xrefs: u32,
     };
 };
+
+pub const TemplateCompilationMode = enum(u8) {
+    Full,
+    DomOnly,
+};

@@ -54,3 +54,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
 
     view.update.ops.items.len = write;
 }
+
+pub fn mergeNextContextExpressions(allocator: std.mem.Allocator) void { _ = allocator; }

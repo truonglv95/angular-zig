@@ -68,3 +68,5 @@ fn processLexicalScope(
     // 4. Replace with ReadVariableExpr (if found) or ReadPropExpr on ContextExpr
     for (ops) |_| {}
 }
+
+pub fn resolveNames(allocator: std.mem.Allocator) void { _ = allocator; }

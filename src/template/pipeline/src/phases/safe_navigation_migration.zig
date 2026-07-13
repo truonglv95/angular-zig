@@ -23,3 +23,5 @@ fn migrateSafeNav(expr: *ir_expr.IrExpr) void {
         else => {},
     }
 }
+
+pub fn removeSafeNavigationMigration(allocator: std.mem.Allocator) void { _ = allocator; }

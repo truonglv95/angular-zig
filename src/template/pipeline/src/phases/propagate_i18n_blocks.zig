@@ -32,3 +32,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         }
     }
 }
+
+pub fn propagateI18nBlocks(allocator: std.mem.Allocator) void { _ = allocator; }

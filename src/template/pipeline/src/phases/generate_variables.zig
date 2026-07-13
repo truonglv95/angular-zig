@@ -14,3 +14,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         view.vars = var_count + store_let_count;
     }
 }
+
+pub fn generateVariables(allocator: std.mem.Allocator) void { _ = allocator; }

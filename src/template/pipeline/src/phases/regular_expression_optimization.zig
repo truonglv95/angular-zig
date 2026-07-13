@@ -8,3 +8,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job; _ = view;
     // No-op: Zig uses comptime string parsing, not runtime regex
 }
+
+pub fn optimizeRegularExpressions(allocator: std.mem.Allocator) void { _ = allocator; }

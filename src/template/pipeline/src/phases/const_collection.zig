@@ -59,3 +59,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
+
+pub fn collectElementConsts(allocator: std.mem.Allocator) void { _ = allocator; }

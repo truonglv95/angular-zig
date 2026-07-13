@@ -30,3 +30,5 @@ fn transformDollarEvent(expr: *ir_expr.IrExpr) void {
         else => {},
     }
 }
+
+pub fn resolveDollarEvent(allocator: std.mem.Allocator) void { _ = allocator; }

@@ -45,3 +45,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // They should match — if not, the mismatch will be caught by
     // finalValidation. This phase is a structural checkpoint.
 }
+
+pub fn generateConditionalExpressions(allocator: std.mem.Allocator) void { _ = allocator; }

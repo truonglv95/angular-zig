@@ -195,3 +195,49 @@ test "namespace string" {
     try std.testing.expectEqualStrings("html", namespaceStr(.HTML));
     try std.testing.expectEqualStrings("svg", namespaceStr(.SVG));
 }
+
+pub const I18nParamResolutionTime = enum(u8) {
+    Creation,
+    Postproccessing,
+};
+
+pub const I18nExpressionFor = enum(u8) {
+    I18nText,
+    I18nAttribute,
+};
+
+pub const I18nParamValueFlags = enum(u8) {
+    None,
+    ElementTag,
+    TemplateTag,
+    OpenTag,
+    CloseTag,
+    ExpressionIndex,
+};
+
+pub const I18nContextKind = enum(u8) {
+    RootI18n,
+    Icu,
+    Attr,
+};
+
+pub const AnimationKind = enum(u8) {
+    ENTER,
+    LEAVE,
+};
+
+pub const AnimationBindingKind = enum(u8) {
+    STRING,
+    VALUE,
+};
+
+pub const DeferOpModifierKind = enum(u8) {
+    NONE,
+    PREFETCH,
+    HYDRATE,
+};
+
+pub const TDeferDetailsFlags = enum(u8) {
+    Default,
+    HasHydrateTriggers,
+};

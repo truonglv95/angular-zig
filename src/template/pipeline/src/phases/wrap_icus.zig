@@ -14,3 +14,5 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // The actual wrapping is applied during reify when emitting instructions
     
 }
+
+pub fn wrapI18nIcus(allocator: std.mem.Allocator) void { _ = allocator; }

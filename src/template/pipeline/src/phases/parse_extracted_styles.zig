@@ -36,3 +36,5 @@ pub fn hyphenate(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
     }
     return result.toOwnedSlice();
 }
+
+pub fn parseExtractedStyles(allocator: std.mem.Allocator) void { _ = allocator; }

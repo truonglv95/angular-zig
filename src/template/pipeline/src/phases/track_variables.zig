@@ -27,3 +27,5 @@ fn collectUsedVariables(expr: *const @import("../../ir/expression.zig").IrExpr) 
         else => 0,
     };
 }
+
+pub fn generateTrackVariables(allocator: std.mem.Allocator) void { _ = allocator; }

@@ -61,3 +61,5 @@ fn stripParensRecursive(expr: *IrExpr) void {
     // this function should replace it with its inner expression.
     _ = expr;
 }
+
+pub fn stripNonrequiredParentheses(allocator: std.mem.Allocator) void { _ = allocator; }

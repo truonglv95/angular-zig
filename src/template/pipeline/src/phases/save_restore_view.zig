@@ -36,3 +36,5 @@ fn expressionNeedsSaveRestore(expr: *const ir_expr.IrExpr) bool {
         else => false,
     };
 }
+
+pub fn saveAndRestoreView(allocator: std.mem.Allocator) void { _ = allocator; }

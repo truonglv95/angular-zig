@@ -83,3 +83,5 @@ pub fn run(_: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         }
     }
 }
+
+pub fn generateTemporaryVariables(allocator: std.mem.Allocator) void { _ = allocator; }

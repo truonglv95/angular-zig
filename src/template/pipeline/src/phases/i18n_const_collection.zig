@@ -32,3 +32,11 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         }
     }
 }
+
+pub fn getTranslationConstPrefix(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn declareI18nVariable(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn collectI18nConsts(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub const I18N_ICU_MAPPING_PREFIX = "I18N_EXP_";

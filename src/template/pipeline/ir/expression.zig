@@ -473,3 +473,11 @@ pub fn transformExpressionsInOp(expr: *IrExpr, transform_fn: anytype) void {
         else => {},
     }
 }
+
+pub fn transformExpressionsInExpression(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn transformExpressionsInStatement(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub fn isStringLiteral(allocator: std.mem.Allocator) void { _ = allocator; }
+
+pub const ExpressionTransform = *const fn([]const u8) []const u8;
