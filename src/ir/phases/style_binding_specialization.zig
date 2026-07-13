@@ -66,3 +66,44 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
+
+
+// ─── Merged from class_binding_specialization.zig (1:1 structure consolidation) ──
+pub fn normalizeClassMapExpressions(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    const allocator = view.update.allocator;
+    var result = std.array_list.Managed(IrOp).init(allocator);
+    errdefer result.deinit();
+
+    const items = view.update.ops.items;
+    var i: usize = 0;
+    while (i < items.len) {
+        const op = items[i];
+        if (op.kind == .ClassProp) {
+            const group_xref = op.xref;
+            const class_props_start = i;
+            while (i < items.len and items[i].kind == .ClassProp and items[i].xref == group_xref) {
+                i += 1;
+            }
+            const count = i - class_props_start;
+
+            if (count >= 2) {
+                // Emit a single ClassMap op
+                try result.append(.{
+                    .kind = .ClassMap,
+                    .xref = group_xref,
+                    .source_span = items[class_props_start].source_span,
+                    .data = .{ .ClassMap = .{ .expression = items[class_props_start].data.ClassProp.expression } },
+                });
+            } else {
+                try result.append(op);
+            }
+        } else {
+            try result.append(op);
+            i += 1;
+        }
+    }
+
+    view.update.ops.deinit();
+    view.update.ops = result;
+}

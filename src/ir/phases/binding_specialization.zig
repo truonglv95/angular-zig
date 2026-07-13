@@ -52,3 +52,41 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         items[j] = key;
     }
 }
+
+
+// ─── Merged from convert_attribute_to_property.zig (1:1 structure consolidation) ──
+pub fn convertAttributeToProperty(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    const items = view.update.ops.items;
+
+    // Known DOM properties that should use Property instead of Binding
+    const dom_properties = [_][]const u8{
+        "id",       "value",    "checked",   "disabled",
+        "readonly", "required", "multiple",  "selected",
+        "hidden",   "tabIndex", "className",
+    };
+
+    for (items) |*op| {
+        if (op.kind != .Binding) continue;
+        const binding_name = op.data.Binding.name;
+
+        // Check if this binding targets a known DOM property
+        for (dom_properties) |prop| {
+            if (std.mem.eql(u8, binding_name, prop)) {
+                // Convert Binding → Property
+                const old_binding = op.data.Binding;
+                op.* = .{
+                    .kind = .Property,
+                    .xref = op.xref,
+                    .source_span = op.source_span,
+                    .data = .{ .Property = .{
+                        .name = old_binding.name,
+                        .expression = old_binding.expression,
+                        .security_context = null,
+                    } },
+                };
+                break;
+            }
+        }
+    }
+}

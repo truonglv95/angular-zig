@@ -45,3 +45,36 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // decls = max_slot + 1 (number of declaration slots needed)
     view.decls = max_slot + 1;
 }
+
+
+// ─── Merged from allocate_interpolation_slots.zig (1:1 structure consolidation) ──
+pub fn allocateInterpolationSlots(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+
+    // Collect all Text creation op xrefs
+    var text_xrefs: [4096]bool = undefined;
+    @memset(&text_xrefs, false);
+    var last_text_xref: u32 = 0;
+
+    const create_items = view.create.ops.items;
+    for (create_items) |op| {
+        if (op.kind == .Text) {
+            if (op.xref < 4096) text_xrefs[op.xref] = true;
+            last_text_xref = op.xref;
+        }
+    }
+
+    // Validate/fix InterpolateText ops
+    const update_items = view.update.ops.items;
+    for (update_items) |*op| {
+        if (op.kind == .InterpolateText) {
+            if (op.xref < 4096) {
+                if (!text_xrefs[op.xref]) {
+                    // xref doesn't correspond to a Text creation op.
+                    // Fall back to the last known Text xref.
+                    op.xref = last_text_xref;
+                }
+            }
+        }
+    }
+}

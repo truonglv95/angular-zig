@@ -33,18 +33,12 @@ pub const phases = struct {
     pub const generate_advance = @import("generate_advance.zig");
     pub const empty_elements = @import("empty_elements.zig");
     pub const attribute_extraction = @import("attribute_extraction.zig");
-    pub const validate_nesting = @import("validate_nesting.zig");
-    pub const merge_adjacent_text = @import("merge_adjacent_text.zig");
-    pub const remove_empty_icu_blocks = @import("remove_empty_icu_blocks.zig");
 
     // ── Both phases ──
     pub const attach_source_locations = @import("attach_source_locations.zig");
     pub const resolve_sanitizers = @import("resolve_sanitizers.zig");
-    pub const mark_security_contexts = @import("mark_security_contexts.zig");
-    pub const declare_namespaces = @import("declare_namespaces.zig");
 
     // ── Update phases ──
-    pub const order_update_ops = @import("order_update_ops.zig");
     pub const remove_empty_bindings = @import("remove_empty_bindings.zig");
     pub const collapse_singleton_interpolations = @import("collapse_singleton_interpolations.zig");
     pub const resolve_contexts = @import("resolve_contexts.zig");
@@ -57,34 +51,19 @@ pub const phases = struct {
     pub const store_let_optimization = @import("store_let_optimization.zig");
     pub const binding_specialization = @import("binding_specialization.zig");
     pub const next_context_merging = @import("next_context_merging.zig");
-    pub const allocate_interpolation_slots = @import("allocate_interpolation_slots.zig");
     pub const pure_function_extraction = @import("pure_function_extraction.zig");
     pub const style_binding_specialization = @import("style_binding_specialization.zig");
-    pub const class_binding_specialization = @import("class_binding_specialization.zig");
     pub const pure_literal_structures = @import("pure_literal_structures.zig");
     pub const has_const_expression_collection = @import("has_const_expression_collection.zig");
-    pub const deduplicate_pipes = @import("deduplicate_pipes.zig");
-    pub const inline_simple_variables = @import("inline_simple_variables.zig");
-    pub const convert_attribute_to_property = @import("convert_attribute_to_property.zig");
     pub const host_style_property_parsing = @import("host_style_property_parsing.zig");
     pub const track_fn_optimization = @import("track_fn_optimization.zig");
     pub const conditionals = @import("conditionals.zig");
-    pub const remove_unused_store_lets = @import("remove_unused_store_lets.zig");
-    pub const normalize_two_way_binding_pairs = @import("normalize_two_way_binding_pairs.zig");
     pub const const_collection = @import("const_collection.zig");
     pub const generate_projection_def = @import("generate_projection_def.zig");
 
     // ── Post phases ──
     pub const slot_allocation = @import("slot_allocation.zig");
     pub const var_counting = @import("var_counting.zig");
-    pub const validate_xrefs = @import("validate_xrefs.zig");
-    pub const remove_noop_ops = @import("remove_noop_ops.zig");
-    pub const compact_xrefs = @import("compact_xrefs.zig");
-    pub const final_validation = @import("final_validation.zig");
-    pub const generate_view_id = @import("generate_view_id.zig");
-    pub const validate_op_consistency = @import("validate_op_consistency.zig");
-    pub const optimize_template_size = @import("optimize_template_size.zig");
-    pub const generate_directive_metadata = @import("generate_directive_metadata.zig");
 
     // ── Phase 3: New phases ported from Angular ──
     pub const any_cast = @import("any_cast.zig");

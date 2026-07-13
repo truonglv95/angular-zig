@@ -28,6 +28,7 @@ const schema = @import("../../schema/registry.zig");
 // ─── Shared helpers ──
 const isJavascriptUrl = helpers.isJavascriptUrl;
 const helpers = @import("helpers.zig");
+const injectSecurityContexts = run;
 const SecurityContext = schema.SecurityContext;
 
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -91,4 +92,10 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
             }
         }
     }
+}
+
+
+// ─── Merged from mark_security_contexts.zig (1:1 structure consolidation) ──
+pub fn markSecurityContexts(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    return injectSecurityContexts(job, view);
 }

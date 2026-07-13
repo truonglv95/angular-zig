@@ -42,3 +42,32 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         }
     }
 }
+
+
+// ─── Merged from deduplicate_pipes.zig (1:1 structure consolidation) ──
+pub fn deduplicatePipes(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    var write: usize = 0;
+    const items = view.update.ops.items;
+    // Track (xref, name) pairs seen so far
+    var seen_xref: [4096]?[]const u8 = @splat(null);
+
+    for (items) |op| {
+        if (op.kind == .Pipe) {
+            const clean_xref = op.xref & 0x7FFFFFFF;
+            const pipe_name = op.data.Pipe.name;
+            if (clean_xref < 4096) {
+                if (seen_xref[clean_xref]) |prev_name| {
+                    if (std.mem.eql(u8, prev_name, pipe_name)) {
+                        // Duplicate pipe — skip
+                        continue;
+                    }
+                }
+                seen_xref[clean_xref] = pipe_name;
+            }
+        }
+        items[write] = op;
+        write += 1;
+    }
+    view.update.ops.items.len = write;
+}

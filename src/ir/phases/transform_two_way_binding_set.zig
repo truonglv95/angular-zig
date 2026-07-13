@@ -53,3 +53,54 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
+
+
+// ─── Merged from normalize_two_way_binding_pairs.zig (1:1 structure consolidation) ──
+pub fn normalizeTwoWayBindingPairs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    const items = view.update.ops.items;
+    const n = items.len;
+
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        if (items[i].kind != .TwoWayProperty) continue;
+
+        // Look ahead for matching TwoWayListener
+        const prop_name = items[i].data.TwoWayProperty.name;
+        const prop_xref = items[i].xref;
+        var found: ?usize = null;
+
+        var j = i + 1;
+        while (j < n) : (j += 1) {
+            if (items[j].kind == .TwoWayListener and
+                items[j].xref == prop_xref and
+                std.mem.eql(u8, items[j].data.TwoWayListener.name, prop_name))
+            {
+                found = j;
+                break;
+            }
+            // Stop searching past the next binding on a different xref
+            if (items[j].xref != prop_xref and
+                (items[j].kind == .Binding or
+                    items[j].kind == .Property or
+                    items[j].kind == .TwoWayProperty))
+            {
+                break;
+            }
+        }
+
+        if (found) |listener_idx| {
+            if (listener_idx > i + 1) {
+                // Swap TwoWayListener to position i+1
+                const listener = items[listener_idx];
+                // Shift items i+1..listener_idx-1 right by one
+                var k = listener_idx;
+                while (k > i + 1) : (k -= 1) {
+                    items[k] = items[k - 1];
+                }
+                items[i + 1] = listener;
+                i += 1; // skip past the listener we just placed
+            }
+        }
+    }
+}
