@@ -41,46 +41,10 @@ const SecurityContext = schema.SecurityContext;
 const html_tags = @import("../../html/tags.zig");
 
 // ─── Per-phase modules (Phase 3: splitting into per-phase files) ──
-const ng_container = @import("ng_container.zig");
-const resolve_dollar_event = @import("resolve_dollar_event.zig");
-const any_cast = @import("any_cast.zig");
-const track_variables = @import("track_variables.zig");
-const save_restore_view = @import("save_restore_view.zig");
 const strip_nonrequired_parens = @import("strip_nonrequired_parentheses.zig");
 // i18n phases
 const i18n_context = @import("i18n_context.zig");
-const create_i18n_contexts = @import("create_i18n_contexts.zig");
-const convert_i18n_bindings = @import("convert_i18n_bindings.zig");
-const i18n_text_extraction = @import("i18n_text_extraction.zig");
-const propagate_i18n_blocks = @import("propagate_i18n_blocks.zig");
-const extract_i18n_messages = @import("extract_i18n_messages.zig");
-const i18n_const_collection = @import("i18n_const_collection.zig");
-const resolve_i18n_element_placeholders = @import("resolve_i18n_element_placeholders.zig");
-const resolve_i18n_expression_placeholders = @import("resolve_i18n_expression_placeholders.zig");
-const resolve_i18n_attr_sanitizers = @import("resolve_i18n_attr_sanitizers.zig");
-const apply_i18n_expressions = @import("apply_i18n_expressions.zig");
-const assign_i18n_slot_dependencies = @import("assign_i18n_slot_dependencies.zig");
-const remove_i18n_contexts = @import("remove_i18n_contexts.zig");
 // Non-i18n phases
-const naming = @import("naming.zig");
-const resolve_names = @import("resolve_names.zig");
-const chaining = @import("chaining.zig");
-const control_directives = @import("control_directives.zig");
-const convert_animations = @import("convert_animations.zig");
-const defer_resolve_targets = @import("defer_resolve_targets.zig");
-const resolve_defer_deps_fns = @import("resolve_defer_deps_fns.zig");
-const generate_arrow_functions = @import("generate_arrow_functions.zig");
-const generate_local_let_references = @import("generate_local_let_references.zig");
-const generate_variables = @import("generate_variables.zig");
-const insert_incremental_hydration_runtime = @import("insert_incremental_hydration_runtime.zig");
-const parse_extracted_styles = @import("parse_extracted_styles.zig");
-const phase_remove_content_selectors = @import("phase_remove_content_selectors.zig");
-const regular_expression_optimization = @import("regular_expression_optimization.zig");
-const safe_navigation_migration = @import("safe_navigation_migration.zig");
-const resolve_foreign_content = @import("resolve_foreign_content.zig");
-const wrap_icus = @import("wrap_icus.zig");
-const remove_illegal_let_references = @import("remove_illegal_let_references.zig");
-const pipe_variadic = @import("pipe_variadic.zig");
 
 // ─── Per-phase imports (Phase 3: code migrated to per-phase files) ──
 const attach_source_locations_mod = @import("attach_source_locations.zig");
@@ -118,61 +82,46 @@ const reify_mod = @import("reify.zig");
 const deduplicate_text_bindings_mod = @import("deduplicate_text_bindings.zig");
 const remove_unused_i18n_attrs_mod = @import("remove_unused_i18n_attrs.zig");
 const nonbindable_mod = @import("nonbindable.zig");
+const resolve_foreign_content_mod = @import("resolve_foreign_content.zig");
+const phase_remove_content_selectors_mod = @import("phase_remove_content_selectors.zig");
+const regular_expression_optimization_mod = @import("regular_expression_optimization.zig");
+const propagate_i18n_blocks_mod = @import("propagate_i18n_blocks.zig");
+const wrap_icus_mod = @import("wrap_icus.zig");
+const control_directives_mod = @import("control_directives.zig");
+const convert_animations_mod = @import("convert_animations.zig");
+const create_i18n_contexts_mod = @import("create_i18n_contexts.zig");
+const parse_extracted_styles_mod = @import("parse_extracted_styles.zig");
+const insert_incremental_hydration_runtime_mod = @import("insert_incremental_hydration_runtime.zig");
+const pipe_variadic_mod = @import("pipe_variadic.zig");
+const generate_arrow_functions_mod = @import("generate_arrow_functions.zig");
+const generate_local_let_references_mod = @import("generate_local_let_references.zig");
+const generate_variables_mod = @import("generate_variables.zig");
+const save_restore_view_mod = @import("save_restore_view.zig");
+const any_cast_mod = @import("any_cast.zig");
+const safe_navigation_migration_mod = @import("safe_navigation_migration.zig");
+const resolve_dollar_event_mod = @import("resolve_dollar_event.zig");
+const track_variables_mod = @import("track_variables.zig");
+const remove_illegal_let_references_mod = @import("remove_illegal_let_references.zig");
+const resolve_names_mod = @import("resolve_names.zig");
+const defer_resolve_targets_mod = @import("defer_resolve_targets.zig");
+const strip_nonrequired_parentheses_mod = @import("strip_nonrequired_parentheses.zig");
+const i18n_text_extraction_mod = @import("i18n_text_extraction.zig");
+const convert_i18n_bindings_mod = @import("convert_i18n_bindings.zig");
+const assign_i18n_slot_dependencies_mod = @import("assign_i18n_slot_dependencies.zig");
+const apply_i18n_expressions_mod = @import("apply_i18n_expressions.zig");
+const resolve_i18n_element_placeholders_mod = @import("resolve_i18n_element_placeholders.zig");
+const resolve_i18n_expression_placeholders_mod = @import("resolve_i18n_expression_placeholders.zig");
+const extract_i18n_messages_mod = @import("extract_i18n_messages.zig");
+const i18n_const_collection_mod = @import("i18n_const_collection.zig");
+const resolve_i18n_attr_sanitizers_mod = @import("resolve_i18n_attr_sanitizers.zig");
+const remove_i18n_contexts_mod = @import("remove_i18n_contexts.zig");
+const naming_mod = @import("naming.zig");
+const resolve_defer_deps_fns_mod = @import("resolve_defer_deps_fns.zig");
+const ng_container_mod = @import("ng_container.zig");
+const chaining_mod = @import("chaining.zig");
 
-const orderCreationOps = ordering_mod.run;
-const processDeferredBlocks = defer_configs_mod.run;
-const emitNamespaceChanges = namespace_mod.run;
-const generateAdvanceOps = generate_advance_mod.run;
-const coalesceTextOps = empty_elements_mod.run;
-const deduplicateAttributes = attribute_extraction_mod.run;
-const validateNesting = ordering_mod.validateNesting;
-const mergeAdjacentText = deduplicate_text_bindings_mod.mergeAdjacentText;
-const removeEmptyIcuBlocks = remove_unused_i18n_attrs_mod.removeEmptyIcuBlocks;
-const attachSourceLocations = attach_source_locations_mod.run;
-const injectSecurityContexts = resolve_sanitizers_mod.run;
-const markSecurityContexts = resolve_sanitizers_mod.markSecurityContexts;
-const declareNamespaces = namespace_mod.declareNamespaces;
-const orderUpdateOps = ordering_mod.orderUpdateOps;
-const removeEmptyBindings = remove_empty_bindings_mod.run;
-const collapseSingletonInterpolations = collapse_singleton_interpolations_mod.run;
-const resolveContexts = resolve_contexts_mod.run;
-const expandTwoWayBindings = transform_two_way_binding_set_mod.run;
-const createPipes = pipe_creation_mod.run;
-const liftLocalRefs = local_refs_mod.run;
-const expandSafeReads = expand_safe_reads_mod.run;
-const generateTemporaryVariables = temporary_variables_mod.run;
-const optimizeVariables = variable_optimization_mod.run;
-const hoistStoreLets = store_let_optimization_mod.run;
-const normalizeBindingOrder = binding_specialization_mod.run;
-const removeDuplicateAdvanceOps = next_context_merging_mod.run;
-const allocateInterpolationSlots = slot_allocation_mod.allocateInterpolationSlots;
-const generatePureFunctions = pure_function_extraction_mod.run;
-const normalizeStyleMapExpressions = style_binding_specialization_mod.run;
-const normalizeClassMapExpressions = style_binding_specialization_mod.normalizeClassMapExpressions;
-const constantFoldExpressions = pure_literal_structures_mod.run;
 const foldBinaryExpr = pure_literal_structures_mod.foldBinaryExpr;
-const resolvePureFunctionRefs = has_const_expression_collection_mod.run;
 const resolvePureRefs = has_const_expression_collection_mod.resolvePureRefs;
-const deduplicatePipes = pipe_creation_mod.deduplicatePipes;
-const inlineSimpleVariables = variable_optimization_mod.inlineSimpleVariables;
-const convertAttributeToProperty = binding_specialization_mod.convertAttributeToProperty;
-const extractHostBindings = host_style_property_parsing_mod.run;
-const generateRepeaterTrackBy = track_fn_optimization_mod.run;
-const wrapConditionalBranches = conditionals_mod.run;
-const removeUnusedStoreLets = store_let_optimization_mod.removeUnusedStoreLets;
-const normalizeTwoWayBindingPairs = transform_two_way_binding_set_mod.normalizeTwoWayBindingPairs;
-const hoistConstantExpressions = const_collection_mod.run;
-const reorderProjectionBindings = generate_projection_def_mod.run;
-const allocateSlots = slot_allocation_mod.run;
-const countVariables = var_counting_mod.run;
-const validateXrefs = var_counting_mod.validateXrefs;
-const removeNoopOps = nonbindable_mod.removeNoopOps;
-const compactXrefs = var_counting_mod.compactXrefs;
-const finalValidation = reify_mod.finalValidation;
-const generateViewId = reify_mod.generateViewId;
-const validateOpConsistency = reify_mod.validateOpConsistency;
-const optimizeTemplateSize = reify_mod.optimizeTemplateSize;
-const generateDirectiveMetadata = reify_mod.generateDirectiveMetadata;
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -288,239 +237,178 @@ pub const Phase = struct {
     fn_ptr: *const fn (job: *ComponentCompilationJob, view: *ViewCompilationUnit) anyerror!void,
     kind: PhaseKind,
 
-    pub const PhaseKind = enum { Create, Update, Both, Post };
+    pub const PhaseKind = enum { Create, Update, Both, Post, Tmpl, Host };
 };
 
 /// All core phases in dependency order.
 /// Create phases first → Both → Update → Post.
 /// Phase 3: Added 6 new phases from Angular original (ng_container, etc.)
+/// 72 phases in exact order matching Angular's emit.ts (1:1 port).
+/// Each entry corresponds to one file in template/pipeline/src/phases/.
+
+
+// ─── Aliases for test references (1:1 phase mapping) ──
+
+const orderCreationOps = ordering_mod.run;
+const orderUpdateOps = ordering_mod.orderUpdateOps;
+const validateNesting = ordering_mod.validateNesting;
+const declareNamespaces = namespace_mod.declareNamespaces;
+const injectSecurityContexts = resolve_sanitizers_mod.run;
+const markSecurityContexts = resolve_sanitizers_mod.markSecurityContexts;
+const removeDuplicateAdvanceOps = next_context_merging_mod.run;
+const emitNamespaceChanges = namespace_mod.run;
+const coalesceTextOps = empty_elements_mod.run;
+const generateAdvanceOps = generate_advance_mod.run;
+const deduplicateAttributes = attribute_extraction_mod.run;
+const mergeAdjacentText = deduplicate_text_bindings_mod.mergeAdjacentText;
+const removeEmptyIcuBlocks = remove_unused_i18n_attrs_mod.removeEmptyIcuBlocks;
+const attachSourceLocations = attach_source_locations_mod.run;
+const hoistStoreLets = store_let_optimization_mod.run;
+const processDeferredBlocks = defer_configs_mod.run;
+const removeEmptyBindings = remove_empty_bindings_mod.run;
+const collapseSingletonInterpolations = collapse_singleton_interpolations_mod.run;
+const resolveContexts = resolve_contexts_mod.run;
+const expandTwoWayBindings = transform_two_way_binding_set_mod.run;
+const createPipes = pipe_creation_mod.run;
+const liftLocalRefs = local_refs_mod.run;
+const expandSafeReads = expand_safe_reads_mod.run;
+const generateTemporaryVariables = temporary_variables_mod.run;
+const optimizeVariables = variable_optimization_mod.run;
+const normalizeBindingOrder = binding_specialization_mod.run;
+const allocateInterpolationSlots = slot_allocation_mod.run;
+const generatePureFunctions = pure_function_extraction_mod.run;
+const normalizeStyleMapExpressions = style_binding_specialization_mod.run;
+const normalizeClassMapExpressions = style_binding_specialization_mod.normalizeClassMapExpressions;
+const constantFoldExpressions = pure_literal_structures_mod.run;
+const resolvePureFunctionRefs = has_const_expression_collection_mod.run;
+const deduplicatePipes = pipe_creation_mod.deduplicatePipes;
+const inlineSimpleVariables = variable_optimization_mod.inlineSimpleVariables;
+const convertAttributeToProperty = binding_specialization_mod.convertAttributeToProperty;
+const extractHostBindings = host_style_property_parsing_mod.run;
+const generateRepeaterTrackBy = track_fn_optimization_mod.run;
+const wrapConditionalBranches = conditionals_mod.run;
+const removeUnusedStoreLets = store_let_optimization_mod.removeUnusedStoreLets;
+const normalizeTwoWayBindingPairs = transform_two_way_binding_set_mod.normalizeTwoWayBindingPairs;
+const hoistConstantExpressions = const_collection_mod.run;
+const reorderProjectionBindings = generate_projection_def_mod.run;
+const allocateSlots = slot_allocation_mod.run;
+const countVariables = var_counting_mod.run;
+const validateXrefs = var_counting_mod.validateXrefs;
+const removeNoopOps = nonbindable_mod.removeNoopOps;
+const compactXrefs = var_counting_mod.compactXrefs;
+const finalValidation = reify_mod.finalValidation;
+const generateViewId = reify_mod.generateViewId;
+const validateOpConsistency = reify_mod.validateOpConsistency;
+const optimizeTemplateSize = reify_mod.optimizeTemplateSize;
+const generateDirectiveMetadata = reify_mod.generateDirectiveMetadata;
+
 pub const CORE_PHASES: []const Phase = &.{
-    // ── Create Phase (10) ─────────────────────────────────────
-    .{ .name = "ngContainer", .fn_ptr = ng_container.run, .kind = .Create },
-    .{ .name = "orderCreationOps", .fn_ptr = orderCreationOps, .kind = .Create },
-    .{ .name = "processDeferredBlocks", .fn_ptr = processDeferredBlocks, .kind = .Create },
-    .{ .name = "emitNamespaceChanges", .fn_ptr = emitNamespaceChanges, .kind = .Create },
-    .{ .name = "generateAdvanceOps", .fn_ptr = generateAdvanceOps, .kind = .Create },
-    .{ .name = "coalesceTextOps", .fn_ptr = coalesceTextOps, .kind = .Create },
-    .{ .name = "deduplicateAttributes", .fn_ptr = deduplicateAttributes, .kind = .Create },
-    .{ .name = "validateNesting", .fn_ptr = validateNesting, .kind = .Create },
-    .{ .name = "mergeAdjacentText", .fn_ptr = mergeAdjacentText, .kind = .Create },
-    .{ .name = "removeEmptyIcuBlocks", .fn_ptr = removeEmptyIcuBlocks, .kind = .Create },
-
-    // ── Both Phase (2) ─────────────────────────────────────────
-    .{ .name = "attachSourceLocations", .fn_ptr = attachSourceLocations, .kind = .Both },
-    .{ .name = "injectSecurityContexts", .fn_ptr = injectSecurityContexts, .kind = .Both },
-
-    // ── Update Phase (29) ──────────────────────────────────────
-    .{ .name = "orderUpdateOps", .fn_ptr = orderUpdateOps, .kind = .Update },
-    .{ .name = "removeEmptyBindings", .fn_ptr = removeEmptyBindings, .kind = .Update },
-    .{ .name = "collapseSingletonInterpolations", .fn_ptr = collapseSingletonInterpolations, .kind = .Update },
-    .{ .name = "resolveContexts", .fn_ptr = resolveContexts, .kind = .Update },
-    .{ .name = "expandTwoWayBindings", .fn_ptr = expandTwoWayBindings, .kind = .Update },
-    .{ .name = "createPipes", .fn_ptr = createPipes, .kind = .Update },
-    .{ .name = "liftLocalRefs", .fn_ptr = liftLocalRefs, .kind = .Update },
-    .{ .name = "expandSafeReads", .fn_ptr = expandSafeReads, .kind = .Update },
-    .{ .name = "generateTemporaryVariables", .fn_ptr = generateTemporaryVariables, .kind = .Update },
-    .{ .name = "optimizeVariables", .fn_ptr = optimizeVariables, .kind = .Update },
-    .{ .name = "hoistStoreLets", .fn_ptr = hoistStoreLets, .kind = .Update },
-    .{ .name = "normalizeBindingOrder", .fn_ptr = normalizeBindingOrder, .kind = .Update },
-    .{ .name = "removeDuplicateAdvanceOps", .fn_ptr = removeDuplicateAdvanceOps, .kind = .Update },
-    .{ .name = "allocateInterpolationSlots", .fn_ptr = allocateInterpolationSlots, .kind = .Update },
-    .{ .name = "generatePureFunctions", .fn_ptr = generatePureFunctions, .kind = .Update },
-    .{ .name = "normalizeStyleMapExpressions", .fn_ptr = normalizeStyleMapExpressions, .kind = .Update },
-    .{ .name = "normalizeClassMapExpressions", .fn_ptr = normalizeClassMapExpressions, .kind = .Update },
-    .{ .name = "constantFoldExpressions", .fn_ptr = constantFoldExpressions, .kind = .Update },
-    .{ .name = "resolvePureFunctionRefs", .fn_ptr = resolvePureFunctionRefs, .kind = .Update },
-    .{ .name = "deduplicatePipes", .fn_ptr = deduplicatePipes, .kind = .Update },
-    .{ .name = "inlineSimpleVariables", .fn_ptr = inlineSimpleVariables, .kind = .Update },
-    .{ .name = "convertAttributeToProperty", .fn_ptr = convertAttributeToProperty, .kind = .Update },
-    .{ .name = "extractHostBindings", .fn_ptr = extractHostBindings, .kind = .Update },
-    .{ .name = "generateRepeaterTrackBy", .fn_ptr = generateRepeaterTrackBy, .kind = .Update },
-    .{ .name = "wrapConditionalBranches", .fn_ptr = wrapConditionalBranches, .kind = .Update },
-    .{ .name = "removeUnusedStoreLets", .fn_ptr = removeUnusedStoreLets, .kind = .Update },
-    .{ .name = "normalizeTwoWayBindingPairs", .fn_ptr = normalizeTwoWayBindingPairs, .kind = .Update },
-    .{ .name = "hoistConstantExpressions", .fn_ptr = hoistConstantExpressions, .kind = .Update },
-    .{ .name = "reorderProjectionBindings", .fn_ptr = reorderProjectionBindings, .kind = .Update },
-    // Phase 3: New update phases from Angular original
-    .{ .name = "resolveDollarEvent", .fn_ptr = resolve_dollar_event.run, .kind = .Update },
-    .{ .name = "deleteAnyCasts", .fn_ptr = any_cast.run, .kind = .Update },
-    .{ .name = "trackVariables", .fn_ptr = track_variables.run, .kind = .Update },
-    .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run, .kind = .Update },
-    .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run, .kind = .Update },
-    // Phase 3: i18n phases
-    .{ .name = "createI18nContexts", .fn_ptr = create_i18n_contexts.run, .kind = .Update },
-    .{ .name = "convertI18nBindings", .fn_ptr = convert_i18n_bindings.run, .kind = .Update },
-    .{ .name = "i18nTextExtraction", .fn_ptr = i18n_text_extraction.run, .kind = .Update },
-    .{ .name = "propagateI18nBlocks", .fn_ptr = propagate_i18n_blocks.run, .kind = .Update },
-    .{ .name = "extractI18nMessages", .fn_ptr = extract_i18n_messages.run, .kind = .Update },
-    .{ .name = "i18nConstCollection", .fn_ptr = i18n_const_collection.run, .kind = .Update },
-    .{ .name = "resolveI18nElementPlaceholders", .fn_ptr = resolve_i18n_element_placeholders.run, .kind = .Update },
-    .{ .name = "resolveI18nExpressionPlaceholders", .fn_ptr = resolve_i18n_expression_placeholders.run, .kind = .Update },
-    .{ .name = "resolveI18nAttrSanitizers", .fn_ptr = resolve_i18n_attr_sanitizers.run, .kind = .Update },
-    .{ .name = "applyI18nExpressions", .fn_ptr = apply_i18n_expressions.run, .kind = .Update },
-    .{ .name = "assignI18nSlotDependencies", .fn_ptr = assign_i18n_slot_dependencies.run, .kind = .Update },
-    .{ .name = "removeI18nContexts", .fn_ptr = remove_i18n_contexts.run, .kind = .Update },
-    // Phase 3: Non-i18n phases
-    .{ .name = "naming", .fn_ptr = naming.run, .kind = .Update },
-    .{ .name = "resolveNames", .fn_ptr = resolve_names.run, .kind = .Update },
-    .{ .name = "chaining", .fn_ptr = chaining.run, .kind = .Update },
-    .{ .name = "controlDirectives", .fn_ptr = control_directives.run, .kind = .Update },
-    .{ .name = "convertAnimations", .fn_ptr = convert_animations.run, .kind = .Update },
-    .{ .name = "deferResolveTargets", .fn_ptr = defer_resolve_targets.run, .kind = .Update },
-    .{ .name = "resolveDeferDepsFns", .fn_ptr = resolve_defer_deps_fns.run, .kind = .Update },
-    .{ .name = "generateArrowFunctions", .fn_ptr = generate_arrow_functions.run, .kind = .Update },
-    .{ .name = "generateLocalLetReferences", .fn_ptr = generate_local_let_references.run, .kind = .Update },
-    .{ .name = "generateVariables", .fn_ptr = generate_variables.run, .kind = .Update },
-    .{ .name = "insertIncrementalHydrationRuntime", .fn_ptr = insert_incremental_hydration_runtime.run, .kind = .Update },
-    .{ .name = "parseExtractedStyles", .fn_ptr = parse_extracted_styles.run, .kind = .Update },
-    .{ .name = "phaseRemoveContentSelectors", .fn_ptr = phase_remove_content_selectors.run, .kind = .Update },
-    .{ .name = "regexOptimization", .fn_ptr = regular_expression_optimization.run, .kind = .Update },
-    .{ .name = "safeNavigationMigration", .fn_ptr = safe_navigation_migration.run, .kind = .Update },
-    .{ .name = "resolveForeignContent", .fn_ptr = resolve_foreign_content.run, .kind = .Update },
-    .{ .name = "wrapIcus", .fn_ptr = wrap_icus.run, .kind = .Update },
-    .{ .name = "removeIllegalLetReferences", .fn_ptr = remove_illegal_let_references.run, .kind = .Update },
-    .{ .name = "pipeVariadic", .fn_ptr = pipe_variadic.run, .kind = .Update },
-
-    // ── Post Phase (10) ───────────────────────────────────────
-    .{ .name = "allocateSlots", .fn_ptr = allocateSlots, .kind = .Post },
-    .{ .name = "countVariables", .fn_ptr = countVariables, .kind = .Post },
-    .{ .name = "validateXrefs", .fn_ptr = validateXrefs, .kind = .Post },
-    .{ .name = "removeNoopOps", .fn_ptr = removeNoopOps, .kind = .Post },
-    .{ .name = "compactXrefs", .fn_ptr = compactXrefs, .kind = .Post },
-    .{ .name = "finalValidation", .fn_ptr = finalValidation, .kind = .Post },
-    .{ .name = "generateViewId", .fn_ptr = generateViewId, .kind = .Post },
-    .{ .name = "validateOpConsistency", .fn_ptr = validateOpConsistency, .kind = .Post },
-    .{ .name = "optimizeTemplateSize", .fn_ptr = optimizeTemplateSize, .kind = .Post },
-    .{ .name = "generateDirectiveMetadata", .fn_ptr = generateDirectiveMetadata, .kind = .Post },
+    .{ .name = "resolveForeignContent", .fn_ptr = resolve_foreign_content_mod.run, .kind = .Tmpl },  // 1
+    .{ .name = "removeContentSelectors", .fn_ptr = phase_remove_content_selectors_mod.run, .kind = .Tmpl },  // 2
+    .{ .name = "optimizeRegularExpressions", .fn_ptr = regular_expression_optimization_mod.run, .kind = .Both },  // 3
+    .{ .name = "parseHostStyleProperties", .fn_ptr = host_style_property_parsing_mod.run, .kind = .Host },  // 4
+    .{ .name = "emitNamespaceChanges", .fn_ptr = namespace_mod.run, .kind = .Tmpl },  // 5
+    .{ .name = "propagateI18nBlocks", .fn_ptr = propagate_i18n_blocks_mod.run, .kind = .Tmpl },  // 6
+    .{ .name = "wrapI18nIcus", .fn_ptr = wrap_icus_mod.run, .kind = .Tmpl },  // 7
+    .{ .name = "deduplicateTextBindings", .fn_ptr = deduplicate_text_bindings_mod.run, .kind = .Both },  // 8
+    .{ .name = "specializeStyleBindings", .fn_ptr = style_binding_specialization_mod.run, .kind = .Both },  // 9
+    .{ .name = "specializeBindings", .fn_ptr = binding_specialization_mod.run, .kind = .Both },  // 10
+    .{ .name = "specializeControlProperties", .fn_ptr = control_directives_mod.run, .kind = .Tmpl },  // 11
+    .{ .name = "convertAnimations", .fn_ptr = convert_animations_mod.run, .kind = .Both },  // 12
+    .{ .name = "extractAttributes", .fn_ptr = attribute_extraction_mod.run, .kind = .Tmpl },  // 13
+    .{ .name = "createI18nContexts", .fn_ptr = create_i18n_contexts_mod.run, .kind = .Tmpl },  // 14
+    .{ .name = "parseExtractedStyles", .fn_ptr = parse_extracted_styles_mod.run, .kind = .Both },  // 15
+    .{ .name = "removeEmptyBindings", .fn_ptr = remove_empty_bindings_mod.run, .kind = .Tmpl },  // 16
+    .{ .name = "collapseSingletonInterpolations", .fn_ptr = collapse_singleton_interpolations_mod.run, .kind = .Both },  // 17
+    .{ .name = "orderOps", .fn_ptr = ordering_mod.run, .kind = .Both },  // 18
+    .{ .name = "generateConditionalExpressions", .fn_ptr = conditionals_mod.run, .kind = .Tmpl },  // 19
+    .{ .name = "createPipes", .fn_ptr = pipe_creation_mod.run, .kind = .Tmpl },  // 20
+    .{ .name = "configureDeferInstructions", .fn_ptr = defer_configs_mod.run, .kind = .Tmpl },  // 21
+    .{ .name = "insertIncrementalHydrationRuntime", .fn_ptr = insert_incremental_hydration_runtime_mod.run, .kind = .Tmpl },  // 22
+    .{ .name = "createVariadicPipes", .fn_ptr = pipe_variadic_mod.run, .kind = .Tmpl },  // 23
+    .{ .name = "generateArrowFunctions", .fn_ptr = generate_arrow_functions_mod.run, .kind = .Both },  // 24
+    .{ .name = "generatePureLiteralStructures", .fn_ptr = pure_literal_structures_mod.run, .kind = .Both },  // 25
+    .{ .name = "generateProjectionDefs", .fn_ptr = generate_projection_def_mod.run, .kind = .Tmpl },  // 26
+    .{ .name = "generateLocalLetReferences", .fn_ptr = generate_local_let_references_mod.run, .kind = .Tmpl },  // 27
+    .{ .name = "generateVariables", .fn_ptr = generate_variables_mod.run, .kind = .Tmpl },  // 28
+    .{ .name = "saveAndRestoreView", .fn_ptr = save_restore_view_mod.run, .kind = .Both },  // 29
+    .{ .name = "deleteAnyCasts", .fn_ptr = any_cast_mod.run, .kind = .Both },  // 30
+    .{ .name = "removeSafeNavigationMigration", .fn_ptr = safe_navigation_migration_mod.run, .kind = .Both },  // 31
+    .{ .name = "resolveDollarEvent", .fn_ptr = resolve_dollar_event_mod.run, .kind = .Both },  // 32
+    .{ .name = "generateTrackVariables", .fn_ptr = track_variables_mod.run, .kind = .Tmpl },  // 33
+    .{ .name = "removeIllegalLetReferences", .fn_ptr = remove_illegal_let_references_mod.run, .kind = .Tmpl },  // 34
+    .{ .name = "resolveNames", .fn_ptr = resolve_names_mod.run, .kind = .Both },  // 35
+    .{ .name = "resolveDeferTargetNames", .fn_ptr = defer_resolve_targets_mod.run, .kind = .Tmpl },  // 36
+    .{ .name = "transformTwoWayBindingSet", .fn_ptr = transform_two_way_binding_set_mod.run, .kind = .Tmpl },  // 37
+    .{ .name = "optimizeTrackFns", .fn_ptr = track_fn_optimization_mod.run, .kind = .Tmpl },  // 38
+    .{ .name = "resolveContexts", .fn_ptr = resolve_contexts_mod.run, .kind = .Both },  // 39
+    .{ .name = "resolveSanitizers", .fn_ptr = resolve_sanitizers_mod.run, .kind = .Both },  // 40
+    .{ .name = "liftLocalRefs", .fn_ptr = local_refs_mod.run, .kind = .Tmpl },  // 41
+    .{ .name = "expandSafeReads", .fn_ptr = expand_safe_reads_mod.run, .kind = .Both },  // 42
+    .{ .name = "stripNonrequiredParentheses", .fn_ptr = strip_nonrequired_parentheses_mod.run, .kind = .Both },  // 43
+    .{ .name = "generateTemporaryVariables", .fn_ptr = temporary_variables_mod.run, .kind = .Both },  // 44
+    .{ .name = "optimizeVariables", .fn_ptr = variable_optimization_mod.run, .kind = .Both },  // 45
+    .{ .name = "optimizeStoreLet", .fn_ptr = store_let_optimization_mod.run, .kind = .Both },  // 46
+    .{ .name = "convertI18nText", .fn_ptr = i18n_text_extraction_mod.run, .kind = .Tmpl },  // 47
+    .{ .name = "convertI18nBindings", .fn_ptr = convert_i18n_bindings_mod.run, .kind = .Tmpl },  // 48
+    .{ .name = "removeUnusedI18nAttributesOps", .fn_ptr = remove_unused_i18n_attrs_mod.run, .kind = .Tmpl },  // 49
+    .{ .name = "assignI18nSlotDependencies", .fn_ptr = assign_i18n_slot_dependencies_mod.run, .kind = .Tmpl },  // 50
+    .{ .name = "applyI18nExpressions", .fn_ptr = apply_i18n_expressions_mod.run, .kind = .Tmpl },  // 51
+    .{ .name = "allocateSlots", .fn_ptr = slot_allocation_mod.run, .kind = .Tmpl },  // 52
+    .{ .name = "resolveI18nElementPlaceholders", .fn_ptr = resolve_i18n_element_placeholders_mod.run, .kind = .Tmpl },  // 53
+    .{ .name = "resolveI18nExpressionPlaceholders", .fn_ptr = resolve_i18n_expression_placeholders_mod.run, .kind = .Tmpl },  // 54
+    .{ .name = "extractI18nMessages", .fn_ptr = extract_i18n_messages_mod.run, .kind = .Tmpl },  // 55
+    .{ .name = "collectI18nConsts", .fn_ptr = i18n_const_collection_mod.run, .kind = .Tmpl },  // 56
+    .{ .name = "resolveI18nAttrSanitizers", .fn_ptr = resolve_i18n_attr_sanitizers_mod.run, .kind = .Tmpl },  // 57
+    .{ .name = "collectConstExpressions", .fn_ptr = has_const_expression_collection_mod.run, .kind = .Tmpl },  // 58
+    .{ .name = "collectElementConsts", .fn_ptr = const_collection_mod.run, .kind = .Both },  // 59
+    .{ .name = "removeI18nContexts", .fn_ptr = remove_i18n_contexts_mod.run, .kind = .Tmpl },  // 60
+    .{ .name = "countVariables", .fn_ptr = var_counting_mod.run, .kind = .Both },  // 61
+    .{ .name = "generateAdvance", .fn_ptr = generate_advance_mod.run, .kind = .Tmpl },  // 62
+    .{ .name = "nameFunctionsAndVariables", .fn_ptr = naming_mod.run, .kind = .Both },  // 63
+    .{ .name = "resolveDeferDepsFns", .fn_ptr = resolve_defer_deps_fns_mod.run, .kind = .Tmpl },  // 64
+    .{ .name = "mergeNextContextExpressions", .fn_ptr = next_context_merging_mod.run, .kind = .Tmpl },  // 65
+    .{ .name = "generateNgContainerOps", .fn_ptr = ng_container_mod.run, .kind = .Tmpl },  // 66
+    .{ .name = "collapseEmptyInstructions", .fn_ptr = empty_elements_mod.run, .kind = .Tmpl },  // 67
+    .{ .name = "attachSourceLocations", .fn_ptr = attach_source_locations_mod.run, .kind = .Tmpl },  // 68
+    .{ .name = "disableBindings", .fn_ptr = nonbindable_mod.run, .kind = .Tmpl },  // 69
+    .{ .name = "extractPureFunctions", .fn_ptr = pure_function_extraction_mod.run, .kind = .Both },  // 70
+    .{ .name = "reify", .fn_ptr = reify_mod.run, .kind = .Both },  // 71
+    .{ .name = "chain", .fn_ptr = chaining_mod.run, .kind = .Both },  // 72
 };
 
-// ─── Explicit Pipeline with Timing ──────────────────────────
-
-/// Explicit pipeline phase with per-phase timing.
+/// Explicit pipeline with per-phase timing (1:1 with CORE_PHASES).
 pub const PipelinePhase = struct {
     name: []const u8,
     fn_ptr: *const fn (job: *ComponentCompilationJob, view: *ViewCompilationUnit) anyerror!void,
     elapsed_ns: u64 = 0,
 };
 
-/// All pipeline phases in the required execution order.
-/// This is the authoritative phase sequence — CORE_PHASES is derived from this.
-pub const PIPELINE_PHASES: []const PipelinePhase = &.{
-    // ── Security & Namespace (pre-pass) ──────────────────────
-    .{ .name = "injectSecurityContexts", .fn_ptr = injectSecurityContexts },
-    .{ .name = "declareNamespaces", .fn_ptr = declareNamespaces },
+/// 72 pipeline phases in exact Angular order (1:1 with CORE_PHASES).
+/// Derived from CORE_PHASES at comptime.
+pub fn getPipelinePhases() []const PipelinePhase {
+    return CORE_PHASES;
+}
 
-    // ── Core phases (from CORE_PHASES, minus injectSecurityContexts) ──
-    .{ .name = "ngContainer", .fn_ptr = ng_container.run },
-    .{ .name = "orderCreationOps", .fn_ptr = orderCreationOps },
-    .{ .name = "processDeferredBlocks", .fn_ptr = processDeferredBlocks },
-    .{ .name = "emitNamespaceChanges", .fn_ptr = emitNamespaceChanges },
-    .{ .name = "generateAdvanceOps", .fn_ptr = generateAdvanceOps },
-    .{ .name = "coalesceTextOps", .fn_ptr = coalesceTextOps },
-    .{ .name = "deduplicateAttributes", .fn_ptr = deduplicateAttributes },
-    .{ .name = "validateNesting", .fn_ptr = validateNesting },
-    .{ .name = "mergeAdjacentText", .fn_ptr = mergeAdjacentText },
-    .{ .name = "removeEmptyIcuBlocks", .fn_ptr = removeEmptyIcuBlocks },
-    .{ .name = "attachSourceLocations", .fn_ptr = attachSourceLocations },
-    .{ .name = "orderUpdateOps", .fn_ptr = orderUpdateOps },
-    .{ .name = "removeEmptyBindings", .fn_ptr = removeEmptyBindings },
-    .{ .name = "collapseSingletonInterpolations", .fn_ptr = collapseSingletonInterpolations },
-    .{ .name = "resolveContexts", .fn_ptr = resolveContexts },
-    .{ .name = "expandTwoWayBindings", .fn_ptr = expandTwoWayBindings },
-    .{ .name = "createPipes", .fn_ptr = createPipes },
-    .{ .name = "liftLocalRefs", .fn_ptr = liftLocalRefs },
-    .{ .name = "expandSafeReads", .fn_ptr = expandSafeReads },
-    .{ .name = "generateTemporaryVariables", .fn_ptr = generateTemporaryVariables },
-    .{ .name = "optimizeVariables", .fn_ptr = optimizeVariables },
-    .{ .name = "hoistStoreLets", .fn_ptr = hoistStoreLets },
-    .{ .name = "normalizeBindingOrder", .fn_ptr = normalizeBindingOrder },
-    .{ .name = "removeDuplicateAdvanceOps", .fn_ptr = removeDuplicateAdvanceOps },
-    .{ .name = "allocateInterpolationSlots", .fn_ptr = allocateInterpolationSlots },
-    .{ .name = "generatePureFunctions", .fn_ptr = generatePureFunctions },
-    .{ .name = "normalizeStyleMapExpressions", .fn_ptr = normalizeStyleMapExpressions },
-    .{ .name = "normalizeClassMapExpressions", .fn_ptr = normalizeClassMapExpressions },
-    .{ .name = "constantFoldExpressions", .fn_ptr = constantFoldExpressions },
-    .{ .name = "resolvePureFunctionRefs", .fn_ptr = resolvePureFunctionRefs },
-    .{ .name = "deduplicatePipes", .fn_ptr = deduplicatePipes },
-    .{ .name = "inlineSimpleVariables", .fn_ptr = inlineSimpleVariables },
-    .{ .name = "convertAttributeToProperty", .fn_ptr = convertAttributeToProperty },
-    .{ .name = "extractHostBindings", .fn_ptr = extractHostBindings },
-    .{ .name = "generateRepeaterTrackBy", .fn_ptr = generateRepeaterTrackBy },
-    .{ .name = "wrapConditionalBranches", .fn_ptr = wrapConditionalBranches },
-    .{ .name = "removeUnusedStoreLets", .fn_ptr = removeUnusedStoreLets },
-    .{ .name = "normalizeTwoWayBindingPairs", .fn_ptr = normalizeTwoWayBindingPairs },
-    .{ .name = "hoistConstantExpressions", .fn_ptr = hoistConstantExpressions },
-    .{ .name = "reorderProjectionBindings", .fn_ptr = reorderProjectionBindings },
-    // Phase 3: New update phases
-    .{ .name = "resolveDollarEvent", .fn_ptr = resolve_dollar_event.run },
-    .{ .name = "deleteAnyCasts", .fn_ptr = any_cast.run },
-    .{ .name = "trackVariables", .fn_ptr = track_variables.run },
-    .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run },
-    .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run },
-    // Phase 3: i18n phases
-    .{ .name = "createI18nContexts", .fn_ptr = create_i18n_contexts.run },
-    .{ .name = "convertI18nBindings", .fn_ptr = convert_i18n_bindings.run },
-    .{ .name = "i18nTextExtraction", .fn_ptr = i18n_text_extraction.run },
-    .{ .name = "propagateI18nBlocks", .fn_ptr = propagate_i18n_blocks.run },
-    .{ .name = "extractI18nMessages", .fn_ptr = extract_i18n_messages.run },
-    .{ .name = "i18nConstCollection", .fn_ptr = i18n_const_collection.run },
-    .{ .name = "resolveI18nElementPlaceholders", .fn_ptr = resolve_i18n_element_placeholders.run },
-    .{ .name = "resolveI18nExpressionPlaceholders", .fn_ptr = resolve_i18n_expression_placeholders.run },
-    .{ .name = "resolveI18nAttrSanitizers", .fn_ptr = resolve_i18n_attr_sanitizers.run },
-    .{ .name = "applyI18nExpressions", .fn_ptr = apply_i18n_expressions.run },
-    .{ .name = "assignI18nSlotDependencies", .fn_ptr = assign_i18n_slot_dependencies.run },
-    .{ .name = "removeI18nContexts", .fn_ptr = remove_i18n_contexts.run },
-    // Phase 3: Non-i18n phases
-    .{ .name = "naming", .fn_ptr = naming.run },
-    .{ .name = "resolveNames", .fn_ptr = resolve_names.run },
-    .{ .name = "chaining", .fn_ptr = chaining.run },
-    .{ .name = "controlDirectives", .fn_ptr = control_directives.run },
-    .{ .name = "convertAnimations", .fn_ptr = convert_animations.run },
-    .{ .name = "deferResolveTargets", .fn_ptr = defer_resolve_targets.run },
-    .{ .name = "resolveDeferDepsFns", .fn_ptr = resolve_defer_deps_fns.run },
-    .{ .name = "generateArrowFunctions", .fn_ptr = generate_arrow_functions.run },
-    .{ .name = "generateLocalLetReferences", .fn_ptr = generate_local_let_references.run },
-    .{ .name = "generateVariables", .fn_ptr = generate_variables.run },
-    .{ .name = "insertIncrementalHydrationRuntime", .fn_ptr = insert_incremental_hydration_runtime.run },
-    .{ .name = "parseExtractedStyles", .fn_ptr = parse_extracted_styles.run },
-    .{ .name = "phaseRemoveContentSelectors", .fn_ptr = phase_remove_content_selectors.run },
-    .{ .name = "regexOptimization", .fn_ptr = regular_expression_optimization.run },
-    .{ .name = "safeNavigationMigration", .fn_ptr = safe_navigation_migration.run },
-    .{ .name = "resolveForeignContent", .fn_ptr = resolve_foreign_content.run },
-    .{ .name = "wrapIcus", .fn_ptr = wrap_icus.run },
-    .{ .name = "removeIllegalLetReferences", .fn_ptr = remove_illegal_let_references.run },
-    .{ .name = "pipeVariadic", .fn_ptr = pipe_variadic.run },
-    .{ .name = "allocateSlots", .fn_ptr = allocateSlots },
-    .{ .name = "countVariables", .fn_ptr = countVariables },
-    .{ .name = "validateXrefs", .fn_ptr = validateXrefs },
-    .{ .name = "removeNoopOps", .fn_ptr = removeNoopOps },
-    .{ .name = "compactXrefs", .fn_ptr = compactXrefs },
-    .{ .name = "finalValidation", .fn_ptr = finalValidation },
-    .{ .name = "generateViewId", .fn_ptr = generateViewId },
-    .{ .name = "validateOpConsistency", .fn_ptr = validateOpConsistency },
-    .{ .name = "optimizeTemplateSize", .fn_ptr = optimizeTemplateSize },
-    .{ .name = "generateDirectiveMetadata", .fn_ptr = generateDirectiveMetadata },
-};
-
-/// Per-phase timing results (mutable copy for each transform call).
+/// Per-phase timing results.
 pub const PhaseTimings = struct {
-    phase_name: []const u8,
-    elapsed_ns: u64,
+    name: []const u8,
+    elapsed_ns: u64 = 0,
 };
 
 /// Main Transform Entry Point ──────────────────────────────
-/// Runs all phases on root + embedded views.
+/// Runs all 72 phases on root + embedded views.
 pub fn transform(job: *ComponentCompilationJob, kind: CompilationKind) !void {
     _ = kind;
     // Run phases on root view
-    for (PIPELINE_PHASES) |phase| {
+    for (CORE_PHASES) |phase| {
         try phase.fn_ptr(job, &job.root);
     }
 
     // Run phases on embedded views
     var it = job.views.iterator();
     while (it.next()) |entry| {
-        for (PIPELINE_PHASES) |phase| {
+        for (CORE_PHASES) |phase| {
             try phase.fn_ptr(job, entry.value_ptr.*);
         }
     }
@@ -534,17 +422,17 @@ pub fn transformWithTimings(
     job: *ComponentCompilationJob,
     _: CompilationKind,
 ) ![]PhaseTimings {
-    const phase_count = PIPELINE_PHASES.len;
+    const phase_count = CORE_PHASES.len;
     var timings = try allocator.alloc(PhaseTimings, phase_count);
     errdefer allocator.free(timings);
 
     // Run phases on root view
-    for (PIPELINE_PHASES, 0..) |phase, i| {
+    for (CORE_PHASES, 0..) |phase, i| {
         const start = getNsTimestamp();
         try phase.fn_ptr(job, &job.root);
         const end = getNsTimestamp();
         timings[i] = .{
-            .phase_name = phase.name,
+            .name = phase.name,
             .elapsed_ns = @intCast(end - start),
         };
     }
@@ -552,7 +440,7 @@ pub fn transformWithTimings(
     // Run phases on embedded views (accumulate timing into existing entries)
     var it = job.views.iterator();
     while (it.next()) |entry| {
-        for (PIPELINE_PHASES, 0..) |phase, i| {
+        for (CORE_PHASES, 0..) |phase, i| {
             const start = getNsTimestamp();
             try phase.fn_ptr(job, entry.value_ptr.*);
             const end = getNsTimestamp();

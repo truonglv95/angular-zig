@@ -17,7 +17,7 @@ pub const PhaseKind = impl.Phase.PhaseKind;
 pub const PhaseTimings = impl.PhaseTimings;
 pub const PipelinePhase = impl.PipelinePhase;
 pub const CORE_PHASES = impl.CORE_PHASES;
-pub const PIPELINE_PHASES = impl.PIPELINE_PHASES;
+pub const PIPELINE_PHASES = impl.CORE_PHASES;
 pub const transform = impl.transform;
 pub const transformWithTimings = impl.transformWithTimings;
 
