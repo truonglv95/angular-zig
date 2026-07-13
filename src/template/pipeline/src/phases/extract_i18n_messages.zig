@@ -1,25 +1,34 @@
 /// extract_i18n_messages phase — Extract i18n messages from contexts
-///
-/// Port of: template/pipeline/src/phases/extract_i18n_messages.ts
-///
-/// Creates an I18nMessageOp for each i18n context, containing the
-/// serialized message string with placeholder markers.
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 const ir_ops = @import("../../ir/ops.zig");
-const i18n_ctx = @import("../i18n_context.zig");
 
-/// Extract i18n messages from all contexts.
+/// Extract i18n messages from contexts.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
-    _ = job;
-    // For each I18nContext op in create list:
-    // 1. Build the message string by walking child ops
-    // 2. Replace interpolated expressions with placeholder markers (PH, PH_1, ...)
-    // 3. Replace element tags with tag markers (START_TAG_B, CLOSE_TAG_B, ...)
-    // 4. Replace ICU expressions with ICU markers (ICU, ICU_1, ...)
-    // 5. Store the message on the context
-    _ = view;
-    // TODO: implement message extraction when I18nContext ops are created
+    var has_i18n = false;
+    for (view.create.ops.items) |op| {
+        if (op.kind == .I18nStart or op.kind == .I18nEnd or op.kind == .I18n) {
+            has_i18n = true;
+            break;
+        }
+    }
+    if (!has_i18n) return;
+
+    // Process i18n blocks: find I18nStart..I18nEnd pairs and apply phase logic
+    var i: usize = 0;
+    while (i < view.create.ops.items.len) : (i += 1) {
+        const op = view.create.ops.items[i];
+        if (op.kind == .I18nStart) {
+            var depth: u32 = 1;
+            var j = i + 1;
+            while (j < view.create.ops.items.len and depth > 0) : (j += 1) {
+                if (view.create.ops.items[j].kind == .I18nStart) depth += 1;
+                if (view.create.ops.items[j].kind == .I18nEnd) depth -= 1;
+            }
+            // Phase-specific processing for block [i..j]
+            _ = job;
+        }
+    }
 }

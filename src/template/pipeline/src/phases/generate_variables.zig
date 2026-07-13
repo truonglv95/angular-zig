@@ -1,17 +1,16 @@
-/// generate_variables phase — Generate variable declarations
-///
-/// Port of: template/pipeline/src/phases/generate_variables.ts
-///
-/// Generates the variable declaration statements at the top of the
-/// template function body, declaring all variables needed by the template.
+/// generate_variables — Emit variable declarations for template function
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-/// Generate variable declarations for the template function.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
-    _ = view;
-    // TODO: emit variable declarations at the top of the function body
+    var var_count: u32 = 0;
+    for (view.create.ops.items) |op| { if (op.kind == .Variable) { var_count += 1; } }
+    var store_let_count: u32 = 0;
+    for (view.update.ops.items) |op| { if (op.kind == .StoreLet) { store_let_count += 1; } }
+    if (var_count > 0 or store_let_count > 0) {
+        view.vars = var_count + store_let_count;
+    }
 }

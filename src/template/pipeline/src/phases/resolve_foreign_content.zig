@@ -1,27 +1,27 @@
-/// resolve_foreign_content phase — Resolve foreign content namespaces
-///
-/// Port of: template/pipeline/src/phases/resolve_foreign_content.ts
-///
-/// Ensures elements in foreign namespaces (SVG, MathML) have the
-/// correct namespace set on their ElementStart ops.
+/// resolve_foreign_content — Resolve SVG/MathML namespace inheritance
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
-const ir_ops = @import("../../ir/ops.zig");
-const IrOp = ir_ops.IrOp;
-const OpKind = ir_ops.OpKind;
-const Namespace = ir_ops.Namespace;
+const Namespace = @import("../../ir/ops.zig").Namespace;
 
-/// Resolve foreign content namespaces.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
-    // Scan create ops for ElementStart and ensure namespace is correct
-    // based on parent element namespace (SVG/MathML inheritance)
+    var current_ns: Namespace = .HTML;
+    var ns_stack: [32]Namespace = undefined;
+    var ns_depth: u32 = 0;
     for (view.create.ops.items) |*op| {
-        if (op.kind == .ElementStart) {
-            // Namespace is already set during ingest via tags.getNamespace()
-            // This phase would handle parent-inherited namespace for nested elements
+        switch (op.kind) {
+            .ElementStart => {
+                if (ns_depth < 32) { ns_stack[ns_depth] = current_ns; ns_depth += 1; }
+                const elem = &op.data.ElementStart;
+                if (elem.namespace == .HTML and current_ns != .HTML) { elem.namespace = current_ns; }
+                current_ns = elem.namespace;
+            },
+            .ElementEnd => { if (ns_depth > 0) { ns_depth -= 1; current_ns = ns_stack[ns_depth]; } },
+            .ContainerStart => { if (ns_depth < 32) { ns_stack[ns_depth] = current_ns; ns_depth += 1; } },
+            .ContainerEnd => { if (ns_depth > 0) { ns_depth -= 1; current_ns = ns_stack[ns_depth]; } },
+            else => {},
         }
     }
 }

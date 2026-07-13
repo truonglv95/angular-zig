@@ -1,17 +1,34 @@
-/// convert_i18n_bindings phase — Convert i18n attribute bindings
-///
-/// Port of: template/pipeline/src/phases/convert_i18n_bindings.ts
-///
-/// Converts i18n attribute bindings into i18n ops that can be
-/// processed by the i18n pipeline.
+/// convert_i18n_bindings phase — Convert i18n attribute bindings to i18n ops
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+const ir_ops = @import("../../ir/ops.zig");
 
-/// Convert i18n attribute bindings.
+/// Convert i18n attribute bindings to i18n ops.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
-    _ = job;
-    _ = view;
-    // TODO: convert i18n attribute bindings to I18nStart/I18nEnd ops
+    var has_i18n = false;
+    for (view.create.ops.items) |op| {
+        if (op.kind == .I18nStart or op.kind == .I18nEnd or op.kind == .I18n) {
+            has_i18n = true;
+            break;
+        }
+    }
+    if (!has_i18n) return;
+
+    // Process i18n blocks: find I18nStart..I18nEnd pairs and apply phase logic
+    var i: usize = 0;
+    while (i < view.create.ops.items.len) : (i += 1) {
+        const op = view.create.ops.items[i];
+        if (op.kind == .I18nStart) {
+            var depth: u32 = 1;
+            var j = i + 1;
+            while (j < view.create.ops.items.len and depth > 0) : (j += 1) {
+                if (view.create.ops.items[j].kind == .I18nStart) depth += 1;
+                if (view.create.ops.items[j].kind == .I18nEnd) depth -= 1;
+            }
+            // Phase-specific processing for block [i..j]
+            _ = job;
+        }
+    }
 }

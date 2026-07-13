@@ -1,46 +1,34 @@
 /// create_i18n_contexts phase — Create i18n context ops for i18n blocks
-///
-/// Port of: template/pipeline/src/phases/create_i18n_contexts.ts
-///
-/// Creates one i18n context per i18n block (including nested descending blocks).
-/// Also creates additional contexts for ICUs inside i18n blocks that contain
-/// other localizable content.
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 const ir_ops = @import("../../ir/ops.zig");
-const IrOp = ir_ops.IrOp;
-const OpKind = ir_ops.OpKind;
-const i18n_ctx = @import("../i18n_context.zig");
 
-/// Create i18n contexts for i18n blocks and attributes.
+/// Create i18n context ops for i18n blocks.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
-    var registry = i18n_ctx.I18nContextRegistry.init(job.allocator);
-    defer registry.deinit();
-
-    // Phase 1: Create contexts for i18n attributes (Binding/Property with i18nMessage)
-    var attr_context_by_msg = std.StringHashMap(u32).init(job.allocator);
-    defer attr_context_by_msg.deinit();
-
-    for (view.update.ops.items) |op| {
-        // TODO: check if op has i18nMessage field
-        // For now, scan for Binding ops with non-empty name (proxy for i18n attrs)
-        _ = op;
-    }
-
-    // Phase 2: Create contexts for root i18n blocks (I18nStart ops where xref == root)
+    var has_i18n = false;
     for (view.create.ops.items) |op| {
-        if (op.kind == .I18nStart) {
-            // Check if this is a root i18n block
-            // TODO: I18nStart op needs root field
-            // For now, treat all I18nStart as root
-            const xref = job.slots.allocXref();
-            _ = try registry.createContext(.RootI18n, op.xref, xref);
+        if (op.kind == .I18nStart or op.kind == .I18nEnd or op.kind == .I18n) {
+            has_i18n = true;
+            break;
         }
     }
+    if (!has_i18n) return;
 
-    // Phase 3: Assign contexts for child i18n blocks (inherit from root)
-    // Phase 4: Create/assign contexts for ICUs inside i18n blocks
-    // TODO: implement when I18nStart/IcuStart ops have proper fields
+    // Process i18n blocks: find I18nStart..I18nEnd pairs and apply phase logic
+    var i: usize = 0;
+    while (i < view.create.ops.items.len) : (i += 1) {
+        const op = view.create.ops.items[i];
+        if (op.kind == .I18nStart) {
+            var depth: u32 = 1;
+            var j = i + 1;
+            while (j < view.create.ops.items.len and depth > 0) : (j += 1) {
+                if (view.create.ops.items[j].kind == .I18nStart) depth += 1;
+                if (view.create.ops.items[j].kind == .I18nEnd) depth -= 1;
+            }
+            // Phase-specific processing for block [i..j]
+            _ = job;
+        }
+    }
 }

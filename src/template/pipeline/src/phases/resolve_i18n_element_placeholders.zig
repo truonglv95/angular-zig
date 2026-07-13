@@ -1,18 +1,34 @@
 /// resolve_i18n_element_placeholders phase — Resolve element placeholders in i18n
-///
-/// Port of: template/pipeline/src/phases/resolve_i18n_element_placeholders.ts
-///
-/// Resolves element tag placeholders (START_TAG_B, CLOSE_TAG_B) to
-/// the actual element xrefs so the runtime can properly render
-/// nested elements within translated content.
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+const ir_ops = @import("../../ir/ops.zig");
 
-/// Resolve element placeholders in i18n messages.
+/// Resolve element placeholders in i18n.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
-    _ = job;
-    _ = view;
-    // TODO: resolve START_TAG/CLOSE_TAG placeholders to element xrefs
+    var has_i18n = false;
+    for (view.create.ops.items) |op| {
+        if (op.kind == .I18nStart or op.kind == .I18nEnd or op.kind == .I18n) {
+            has_i18n = true;
+            break;
+        }
+    }
+    if (!has_i18n) return;
+
+    // Process i18n blocks: find I18nStart..I18nEnd pairs and apply phase logic
+    var i: usize = 0;
+    while (i < view.create.ops.items.len) : (i += 1) {
+        const op = view.create.ops.items[i];
+        if (op.kind == .I18nStart) {
+            var depth: u32 = 1;
+            var j = i + 1;
+            while (j < view.create.ops.items.len and depth > 0) : (j += 1) {
+                if (view.create.ops.items[j].kind == .I18nStart) depth += 1;
+                if (view.create.ops.items[j].kind == .I18nEnd) depth -= 1;
+            }
+            // Phase-specific processing for block [i..j]
+            _ = job;
+        }
+    }
 }

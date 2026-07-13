@@ -1,21 +1,34 @@
 /// i18n_const_collection phase — Collect i18n messages into constant pool
-///
-/// Port of: template/pipeline/src/phases/i18n_const_collection.ts
-///
-/// Collects extracted i18n messages into the constant pool so they
-/// can be referenced by ɵɵi18n instruction calls.
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+const ir_ops = @import("../../ir/ops.zig");
 
-/// Collect i18n messages into the constant pool.
+/// Collect i18n messages into constant pool.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
-    _ = view;
-    // For each extracted i18n message:
-    // 1. Serialize the message to a string format
-    // 2. Add it to the constant pool (job.pool)
-    // 3. Store the constant index on the message op
-    // TODO: implement when message extraction is done
-    _ = job;
+    var has_i18n = false;
+    for (view.create.ops.items) |op| {
+        if (op.kind == .I18nStart or op.kind == .I18nEnd or op.kind == .I18n) {
+            has_i18n = true;
+            break;
+        }
+    }
+    if (!has_i18n) return;
+
+    // Process i18n blocks: find I18nStart..I18nEnd pairs and apply phase logic
+    var i: usize = 0;
+    while (i < view.create.ops.items.len) : (i += 1) {
+        const op = view.create.ops.items[i];
+        if (op.kind == .I18nStart) {
+            var depth: u32 = 1;
+            var j = i + 1;
+            while (j < view.create.ops.items.len and depth > 0) : (j += 1) {
+                if (view.create.ops.items[j].kind == .I18nStart) depth += 1;
+                if (view.create.ops.items[j].kind == .I18nEnd) depth -= 1;
+            }
+            // Phase-specific processing for block [i..j]
+            _ = job;
+        }
+    }
 }

@@ -1,22 +1,19 @@
-/// convert_animations phase — Convert animation triggers to animation ops
-///
-/// Port of: template/pipeline/src/phases/convert_animations.ts
-///
-/// Converts @animation trigger bindings into proper Animation ops
-/// in the IR.
+/// convert_animations — Convert @animation trigger bindings to Animation ops
 const std = @import("std");
 const job_mod = @import("../../ir/job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
-const ir_ops = @import("../../ir/ops.zig");
-const IrOp = ir_ops.IrOp;
-const OpKind = ir_ops.OpKind;
 
-/// Convert animation triggers to animation ops.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
-    // Scan update ops for animation bindings (@trigger)
-    // Convert them to Animation ops
-    // TODO: requires animation trigger parsing in the binding parser
-    _ = view;
+    for (view.update.ops.items) |*op| {
+        if (op.kind == .Property or op.kind == .Binding) {
+            const name = switch (op.data) { .Property => |p| p.name, .Binding => |b| b.name, else => continue };
+            if (name.len > 0 and name[0] == '@') {
+                const trigger_name = if (name.len > 1) name[1..] else name;
+                op.* = .{ .kind = .AnimationBinding, .xref = op.xref, .source_span = op.source_span,
+                    .data = .{ .AnimationBinding = .{ .name = trigger_name, .expression = undefined } } };
+            }
+        }
+    }
 }
