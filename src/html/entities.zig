@@ -25,21 +25,103 @@ pub fn decodeEntities(allocator: std.mem.Allocator, input: []const u8) ![]const 
 
 /// Named entity resolution — writes directly into buf, returns true if resolved.
 fn resolveEntityInto(buf: *std.array_list.Managed(u8), entity: []const u8) bool {
+    // Common HTML5 named entities (expanded from 13 to ~80).
+    // Full HTML5 spec has ~2000+ entities — see Phase 4 of port plan.
     const entities = .{
+        // ── Basic ──
         .{ "&amp;", "&" },
         .{ "&lt;", "<" },
         .{ "&gt;", ">" },
         .{ "&quot;", "\"" },
         .{ "&apos;", "'" },
         .{ "&nbsp;", "\xc2\xa0" },
+        // ── Numeric ──
         .{ "&#39;", "'" },
-        .{ "&copy;", "\xc2\xa9" },
-        .{ "&reg;", "\xc2\xae" },
+        // ── Quotes ──
+        .{ "&lsquo;", "\xe2\x80\x98" },
+        .{ "&rsquo;", "\xe2\x80\x99" },
+        .{ "&sbquo;", "\xe2\x80\x9a" },
+        .{ "&ldquo;", "\xe2\x80\x9c" },
+        .{ "&rdquo;", "\xe2\x80\x9d" },
+        .{ "&bdquo;", "\xe2\x80\x9e" },
+        // ── Dashes ──
         .{ "&mdash;", "\xe2\x80\x94" },
         .{ "&ndash;", "\xe2\x80\x93" },
+        .{ "&hellip;", "\xe2\x80\xa6" },
+        // ── Copyright/trademark ──
+        .{ "&copy;", "\xc2\xa9" },
+        .{ "&reg;", "\xc2\xae" },
+        .{ "&trade;", "\xe2\x84\xa2" },
+        // ── Arrows ──
+        .{ "&larr;", "\xe2\x86\x90" },
+        .{ "&uarr;", "\xe2\x86\x91" },
+        .{ "&rarr;", "\xe2\x86\x92" },
+        .{ "&darr;", "\xe2\x86\x93" },
+        .{ "&harr;", "\xe2\x86\x94" },
+        .{ "&lArr;", "\xe2\x87\x90" },
+        .{ "&uArr;", "\xe2\x87\x91" },
+        .{ "&rArr;", "\xe2\x87\x92" },
+        .{ "&dArr;", "\xe2\x87\x93" },
+        .{ "&hArr;", "\xe2\x87\x94" },
+        // ── Math ──
+        .{ "&plusmn;", "\xc2\xb1" },
+        .{ "&times;", "\xc3\x97" },
+        .{ "&divide;", "\xc3\xb7" },
+        .{ "&minus;", "\xe2\x88\x92" },
+        .{ "&lowast;", "\xe2\x88\x97" },
+        .{ "&le;", "\xe2\x89\xa4" },
+        .{ "&ge;", "\xe2\x89\xa5" },
+        .{ "&ne;", "\xe2\x89\xa0" },
+        .{ "&equiv;", "\xe2\x89\xa1" },
+        .{ "&infin;", "\xe2\x88\x9e" },
+        .{ "&radic;", "\xe2\x88\x9a" },
+        .{ "&sum;", "\xe2\x88\x91" },
+        .{ "&prod;", "\xe2\x88\x8f" },
+        .{ "&int;", "\xe2\x88\xab" },
+        .{ "&part;", "\xe2\x88\x82" },
+        .{ "&forall;", "\xe2\x88\x80" },
+        .{ "&exist;", "\xe2\x88\x83" },
+        .{ "&empty;", "\xe2\x88\x85" },
+        .{ "&nabla;", "\xe2\x88\x87" },
+        .{ "&isin;", "\xe2\x88\x88" },
+        .{ "&notin;", "\xe2\x88\x89" },
+        .{ "&ni;", "\xe2\x88\x8b" },
+        .{ "&cap;", "\xe2\x88\xa9" },
+        .{ "&cup;", "\xe2\x88\xaa" },
+        .{ "&sub;", "\xe2\x8a\x82" },
+        .{ "&sup;", "\xe2\x8a\x83" },
+        .{ "&there4;", "\xe2\x88\xb4" },
+        .{ "&because;", "\xe2\x88\xb5" },
+        .{ "&asymp;", "\xe2\x89\x88" },
+        .{ "&cong;", "\xe2\x89\x85" },
+        // ── Currency ──
+        .{ "&cent;", "\xc2\xa2" },
+        .{ "&pound;", "\xc2\xa3" },
+        .{ "&yen;", "\xc2\xa5" },
+        .{ "&euro;", "\xe2\x82\xac" },
+        .{ "&sect;", "\xc2\xa7" },
+        .{ "&para;", "\xc2\xb6" },
+        .{ "&middot;", "\xc2\xb7" },
+        // ── Guillemets ──
         .{ "&laquo;", "\xc2\xab" },
         .{ "&raquo;", "\xc2\xbb" },
-        .{ "&hellip;", "\xe2\x80\xa6" },
+        // ── Spaces ──
+        .{ "&ensp;", "\xe2\x80\x82" },
+        .{ "&emsp;", "\xe2\x80\x83" },
+        .{ "&thinsp;", "\xe2\x80\x89" },
+        .{ "&zwnj;", "\xe2\x80\x8c" },
+        .{ "&zwj;", "\xe2\x80\x8d" },
+        // ── Misc punctuation ──
+        .{ "&bull;", "\xe2\x80\xa2" },
+        .{ "&dagger;", "\xe2\x80\xa0" },
+        .{ "&Dagger;", "\xe2\x80\xa1" },
+        .{ "&permil;", "\xe2\x80\xb0" },
+        .{ "&prime;", "\xe2\x80\xb2" },
+        .{ "&Prime;", "\xe2\x80\xb3" },
+        .{ "&spades;", "\xe2\x99\xa0" },
+        .{ "&clubs;", "\xe2\x99\xa3" },
+        .{ "&hearts;", "\xe2\x99\xa5" },
+        .{ "&diams;", "\xe2\x99\xa6" },
     };
 
     inline for (entities) |e| {
