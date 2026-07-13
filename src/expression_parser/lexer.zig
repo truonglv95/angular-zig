@@ -612,3 +612,94 @@ pub const Scanner = struct {
         return newRegExpBodyToken(@intCast(start), @intCast(self.index), body_text);
     }
 };
+
+
+// ─── Missing Token helper methods from Angular lexer.ts ─────
+
+pub fn isCharacter(token: Token, code: u8) bool {
+    return token.type == .Character and @as(u8, @intFromFloat(token.num_value)) == code;
+}
+
+pub fn isNumber(token: Token) bool {
+    return token.type == .Number;
+}
+
+pub fn isString(token: Token) bool {
+    return token.type == .String;
+}
+
+pub fn isOperator(token: Token, op_text: []const u8) bool {
+    return token.type == .Operator and std.mem.eql(u8, token.str_value, op_text);
+}
+
+pub fn isIdentifier(token: Token) bool {
+    return token.type == .Identifier;
+}
+
+pub fn isPrivateIdentifier(token: Token) bool {
+    return token.type == .PrivateIdentifier;
+}
+
+pub fn isKeyword(token: Token, kw: []const u8) bool {
+    return token.type == .Keyword and std.mem.eql(u8, token.str_value, kw);
+}
+
+pub fn isKeywordTrue(token: Token) bool { return isKeyword(token, "true"); }
+pub fn isKeywordFalse(token: Token) bool { return isKeyword(token, "false"); }
+pub fn isKeywordNull(token: Token) bool { return isKeyword(token, "null"); }
+pub fn isKeywordUndefined(token: Token) bool { return isKeyword(token, "undefined"); }
+pub fn isKeywordThis(token: Token) bool { return isKeyword(token, "this"); }
+pub fn isKeywordTypeof(token: Token) bool { return isKeyword(token, "typeof"); }
+pub fn isKeywordVoid(token: Token) bool { return isKeyword(token, "void"); }
+pub fn isKeywordIn(token: Token) bool { return isKeyword(token, "in"); }
+pub fn isKeywordInstanceOf(token: Token) bool { return isKeyword(token, "instanceof"); }
+pub fn isKeywordAs(token: Token) bool { return isKeyword(token, "as"); }
+pub fn isKeywordLet(token: Token) bool { return isKeyword(token, "let"); }
+pub fn isKeywordNew(token: Token) bool { return isKeyword(token, "new"); }
+pub fn isKeywordDelete(token: Token) bool { return isKeyword(token, "delete"); }
+
+pub fn isError(token: Token) bool {
+    return token.type == .Error;
+}
+
+pub fn isRegExpBody(token: Token) bool {
+    return token.type == .RegExpBody;
+}
+
+pub fn isRegExpFlags(token: Token) bool {
+    return token.type == .RegExpFlags;
+}
+
+pub fn isExponentStart(code: u8) bool {
+    return code == 'e' or code == 'E';
+}
+
+pub fn isExponentSign(code: u8) bool {
+    return code == '+' or code == '-';
+}
+
+/// Advance the scanner by one character.
+pub fn advance(scanner: *Scanner) u8 {
+    if (scanner.index >= scanner.length) return 0;
+    const ch = scanner.input[scanner.index];
+    scanner.index += 1;
+    return ch;
+}
+
+/// Peek at the current character without advancing.
+pub fn peek(scanner: *const Scanner) u8 {
+    if (scanner.index >= scanner.length) return 0;
+    return scanner.input[scanner.index];
+}
+
+/// Peek at the next character (offset + 1).
+pub fn peekNext(scanner: *const Scanner) u8 {
+    if (scanner.index + 1 >= scanner.length) return 0;
+    return scanner.input[scanner.index + 1];
+}
+
+/// Check if the scanner is at end of input.
+pub fn atEnd(scanner: *const Scanner) bool {
+    return scanner.index >= scanner.length;
+}
+

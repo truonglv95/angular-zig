@@ -1279,3 +1279,179 @@ pub fn reportErrorForPrivateIdentifier(allocator: std.mem.Allocator, token_text:
         try std.fmt.allocPrint(allocator, "Private identifier '{s}' is not allowed", .{token_text});
     return .{ .msg = msg, .span = .{ .start = 0, .end = 0 } };
 }
+
+
+// ─── Missing parse helper methods from Angular parser.ts ────
+
+/// Consume an optional character. Returns true if consumed.
+pub fn consumeOptionalCharacter(parser: *Parser, code: u8) bool {
+    if (parser.pos < parser.tokens.len) {
+        const tok = parser.tokens[parser.pos];
+        if (tok.type == .Character and @as(u8, @intFromFloat(tok.num_value)) == code) {
+            parser.pos += 1;
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Consume an optional operator. Returns true if consumed.
+pub fn consumeOptionalOperator(parser: *Parser, op: []const u8) bool {
+    if (parser.pos < parser.tokens.len) {
+        const tok = parser.tokens[parser.pos];
+        if (tok.type == .Operator and std.mem.eql(u8, tok.str_value, op)) {
+            parser.pos += 1;
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Expect a specific character or report an error.
+pub fn expectCharacter(parser: *Parser, code: u8) !void {
+    if (!consumeOptionalCharacter(parser, code)) {
+        try parser.errors.append(.{
+            .msg = "Expected character",
+            .span = .{ .start = 0, .end = 0 },
+        });
+    }
+}
+
+/// Expect an identifier or keyword.
+pub fn expectIdentifierOrKeyword(parser: *Parser) ![]const u8 {
+    if (parser.pos < parser.tokens.len) {
+        const tok = parser.tokens[parser.pos];
+        if (tok.type == .Identifier or tok.type == .Keyword) {
+            parser.pos += 1;
+            return tok.slice(parser.source);
+        }
+    }
+    try parser.errors.append(.{
+        .msg = "Expected identifier or keyword",
+        .span = .{ .start = 0, .end = 0 },
+    });
+    return "";
+}
+
+/// Expect an operator.
+pub fn expectOperator(parser: *Parser, op: []const u8) !void {
+    if (!consumeOptionalOperator(parser, op)) {
+        try parser.errors.append(.{
+            .msg = "Expected operator",
+            .span = .{ .start = 0, .end = 0 },
+        });
+    }
+}
+
+/// Consume a statement terminator (semicolon or EOF).
+pub fn consumeStatementTerminator(parser: *Parser) void {
+    _ = consumeOptionalCharacter(parser, ';');
+}
+
+/// Check if at end of input.
+pub fn atEOF(parser: *const Parser) bool {
+    return parser.pos >= parser.tokens.len or parser.tokens[parser.pos].type == .EOF;
+}
+
+/// Get the current absolute offset.
+pub fn currentAbsoluteOffset(parser: *const Parser) u32 {
+    if (parser.pos < parser.tokens.len) {
+        return parser.tokens[parser.pos].index;
+    }
+    return 0;
+}
+
+/// Get the current end index.
+pub fn currentEndIndex(parser: *const Parser) u32 {
+    if (parser.pos < parser.tokens.len) {
+        return parser.tokens[parser.pos].end;
+    }
+    return 0;
+}
+
+/// Advance to the next token.
+pub fn advanceToken(parser: *Parser) void {
+    if (parser.pos < parser.tokens.len) parser.pos += 1;
+}
+
+/// Peek at the current token.
+pub fn peekToken(parser: *const Parser) Token {
+    if (parser.pos < parser.tokens.len) return parser.tokens[parser.pos];
+    return .{ .type = .EOF, .index = 0, .end = 0, .num_value = 0, .str_value = "" };
+}
+
+/// Strip comments from an expression string.
+pub fn stripComments(allocator: std.mem.Allocator, input: []const u8) ![]const u8 {
+    var result = std.ArrayList(u8).init(allocator);
+    var i: usize = 0;
+    var in_string = false;
+    var string_char: u8 = 0;
+    while (i < input.len) : (i += 1) {
+        if (in_string) {
+            try result.append(input[i]);
+            if (input[i] == '\\' and i + 1 < input.len) {
+                i += 1;
+                try result.append(input[i]);
+                continue;
+            }
+            if (input[i] == string_char) in_string = false;
+        } else if (input[i] == '"' or input[i] == '\'' or input[i] == '`') {
+            in_string = true;
+            string_char = input[i];
+            try result.append(input[i]);
+        } else if (i + 1 < input.len and input[i] == '/' and input[i + 1] == '/') {
+            // Line comment — skip to end of line
+            while (i < input.len and input[i] != '\n') i += 1;
+        } else if (i + 1 < input.len and input[i] == '/' and input[i + 1] == '*') {
+            // Block comment — skip to */
+            i += 2;
+            while (i + 1 < input.len and !(input[i] == '*' and input[i + 1] == '/')) i += 1;
+            if (i + 1 < input.len) i += 1;
+        } else {
+            try result.append(input[i]);
+        }
+    }
+    return result.toOwnedSlice();
+}
+
+/// Find the end index of an interpolation within a string.
+pub fn getInterpolationEndIndex(input: []const u8, start: usize) ?usize {
+    var i = start;
+    while (i + 1 < input.len) : (i += 1) {
+        if (input[i] == '}' and input[i + 1] == '}') return i;
+    }
+    return null;
+}
+
+/// Iterate over each unquoted character in a string.
+pub fn forEachUnquotedChar(input: []const u8, callback: anytype) void {
+    var i: usize = 0;
+    var in_string = false;
+    var string_char: u8 = 0;
+    while (i < input.len) : (i += 1) {
+        if (in_string) {
+            if (input[i] == '\\' and i + 1 < input.len) { i += 1; continue; }
+            if (input[i] == string_char) in_string = false;
+        } else if (input[i] == '"' or input[i] == '\'' or input[i] == '`') {
+            in_string = true;
+            string_char = input[i];
+        } else {
+            callback(input[i], i);
+        }
+    }
+}
+
+/// Create an interpolation AST node from strings and expressions.
+pub fn createInterpolationAst(allocator: std.mem.Allocator, strings: []const []const u8, expressions: []const *const Ast, span: ParseSpan, abs: AbsoluteSourceSpan) !*Ast {
+    const node = try allocator.create(Ast);
+    node.* = .{
+        .kind = .Interpolation,
+        .span = span,
+        .abs_span = abs,
+        .data = .{ .Interpolation = .{
+            .strings = strings,
+            .expressions = expressions,
+        } },
+    };
+    return node;
+}

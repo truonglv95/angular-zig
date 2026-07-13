@@ -721,3 +721,100 @@ pub const BoundElementProperty = struct {
     key_span: AbsoluteSourceSpan,
     value_span: ?AbsoluteSourceSpan = null,
 };
+
+
+// ─── Missing methods and types from Angular ast.ts ──────────
+
+/// EmptyExpr — represents an empty expression.
+pub const EmptyExpr = struct { base: Ast };
+
+/// Check if an operation is an assignment operation.
+pub fn isAssignmentOperation(op: BinaryOp) bool {
+    return switch (op) {
+        .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign,
+        .DivideAssign, .ModuloAssign, .BitwiseAndAssign,
+        .BitwiseOrAssign, .BitwiseXorAssign, .LeftShiftAssign,
+        .RightShiftAssign, .UnsignedRightShiftAssign,
+        .NullishCoalescingAssign, .LogicalAndAssign, .LogicalOrAssign => true,
+        else => false,
+    };
+}
+
+/// Convert an AST node to a string representation.
+pub fn astToString(allocator: std.mem.Allocator, ast_node: *const Ast) ![]const u8 {
+    return switch (ast_node.data) {
+        .Empty => allocator.dupe(u8, "EMPTY"),
+        .ImplicitReceiver => allocator.dupe(u8, "$implicit"),
+        .ThisReceiver => allocator.dupe(u8, "this"),
+        .LiteralPrimitive => |v| switch (v) {
+            .String => |s| std.fmt.allocPrint(allocator, "\"{s}\"", .{s}),
+            .Number => |n| std.fmt.allocPrint(allocator, "{d}", .{n}),
+            .Boolean => |b| allocator.dupe(u8, if (b) "true" else "false"),
+            .Null => allocator.dupe(u8, "null"),
+            .Undefined => allocator.dupe(u8, "undefined"),
+        },
+        .PropertyRead => |pr| std.fmt.allocPrint(allocator, ".{s}", .{pr.name}),
+        .SafePropertyRead => |spr| std.fmt.allocPrint(allocator, "?.{s}", .{spr.name}),
+        .Binary => |b| std.fmt.allocPrint(allocator, "Binary({s})", .{@tagName(b.op)}),
+        .Conditional => allocator.dupe(u8, "Conditional"),
+        .Call => allocator.dupe(u8, "Call"),
+        .SafeCall => allocator.dupe(u8, "SafeCall"),
+        .BindingPipe => |bp| std.fmt.allocPrint(allocator, "|{s}", .{bp.name}),
+        .LiteralArray => allocator.dupe(u8, "Array"),
+        .LiteralMap => allocator.dupe(u8, "Map"),
+        .Interpolation => allocator.dupe(u8, "Interpolation"),
+        .PrefixNot => allocator.dupe(u8, "!"),
+        .Unary => |u| std.fmt.allocPrint(allocator, "{c}", .{u.operator}),
+        .NonNullAssert => allocator.dupe(u8, "!"),
+        .Chain => allocator.dupe(u8, "Chain"),
+        .KeyedRead => allocator.dupe(u8, "KeyedRead"),
+        .SafeKeyedRead => allocator.dupe(u8, "SafeKeyedRead"),
+        .ArrowFunction => allocator.dupe(u8, "ArrowFunction"),
+        .Parenthesized => allocator.dupe(u8, "Parenthesized"),
+        .TypeofExpr => allocator.dupe(u8, "typeof"),
+        .VoidExpr => allocator.dupe(u8, "void"),
+        .SpreadElement => allocator.dupe(u8, "..."),
+        .Assignment => allocator.dupe(u8, "Assignment"),
+        .EmptyExpr => allocator.dupe(u8, ""),
+    };
+}
+
+/// Visit all child AST nodes recursively.
+pub fn visitAll(ast_node: *const Ast, visitor: anytype) void {
+    ast_node.visit(visitor, {});
+    switch (ast_node.data) {
+        .Binary => |b| { visitAll(b.left, visitor); visitAll(b.right, visitor); },
+        .Conditional => |c| { visitAll(c.condition, visitor); visitAll(c.true_expr, visitor); visitAll(c.false_expr, visitor); },
+        .PropertyRead => |pr| visitAll(pr.receiver, visitor),
+        .SafePropertyRead => |spr| visitAll(spr.receiver, visitor),
+        .KeyedRead => |kr| { visitAll(kr.receiver, visitor); visitAll(kr.key, visitor); },
+        .SafeKeyedRead => |skr| { visitAll(skr.receiver, visitor); visitAll(skr.key, visitor); },
+        .Call => |call| { visitAll(call.receiver, visitor); for (call.args) |a| { visitAll(a, visitor); } },
+        .SafeCall => |call| { visitAll(call.receiver, visitor); for (call.args) |a| { visitAll(a, visitor); } },
+        .BindingPipe => |bp| { visitAll(bp.exp, visitor); for (bp.args) |a| { visitAll(a, visitor); } },
+        .LiteralArray => |la| { for (la.expressions) |e| { visitAll(e, visitor); } },
+        .LiteralMap => |lm| { for (lm.entries) |e| { visitAll(e.value, visitor); } },
+        .Interpolation => |i| { for (i.expressions) |e| { visitAll(e, visitor); } },
+        .PrefixNot => |pn| visitAll(pn.expression, visitor),
+        .Unary => |u| visitAll(u.expr, visitor),
+        .NonNullAssert => |nna| visitAll(nna.expression, visitor),
+        .Chain => |c| { for (c.expressions) |e| { visitAll(e, visitor); } },
+        .ArrowFunction => |af| visitAll(af.body, visitor),
+        .Parenthesized => |p| visitAll(p.expression, visitor),
+        .TypeofExpr => |t| visitAll(t.expression, visitor),
+        .VoidExpr => |v| visitAll(v.expression, visitor),
+        .SpreadElement => |s| visitAll(s.expression, visitor),
+        .Assignment => |a| { visitAll(a.target, visitor); visitAll(a.value, visitor); },
+        else => {},
+    }
+}
+
+/// Create a unary minus operator.
+pub fn createMinus(span: ParseSpan, abs: AbsoluteSourceSpan, expr: *const Ast) Ast {
+    return .{ .kind = .Unary, .span = span, .abs_span = abs, .data = .{ .Unary = .{ .operator = '-', .expr = expr } } };
+}
+
+/// Create a unary plus operator.
+pub fn createPlus(span: ParseSpan, abs: AbsoluteSourceSpan, expr: *const Ast) Ast {
+    return .{ .kind = .Unary, .span = span, .abs_span = abs, .data = .{ .Unary = .{ .operator = '+', .expr = expr } } };
+}

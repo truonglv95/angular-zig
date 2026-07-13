@@ -307,3 +307,284 @@ test "serialize unary" {
     try std.testing.expectEqualStrings("-5.0", result);
     allocator.free(result);
 }
+
+
+// ─── Missing visitor methods from Angular serializer.ts ─────
+
+/// Visit and serialize an ASTWithSource.
+pub fn visitASTWithSource(writer: anytype, ast: *const Ast) !void {
+    switch (ast.data) {
+        .Interpolation => |i| {
+            for (i.strings, 0..) |s, idx| {
+                try writer.writeAll(s);
+                if (idx < i.expressions.len) {
+                    try writer.writeAll("{{ ");
+                    try serializeNode(writer, i.expressions[idx]);
+                    try writer.writeAll(" }}");
+                }
+            }
+        },
+        else => try serializeNode(writer, ast),
+    }
+}
+
+/// Visit and serialize an arrow function.
+pub fn visitArrowFunction(writer: anytype, ast: *const Ast) !void {
+    const af = ast.data.ArrowFunction;
+    try writer.writeAll("(");
+    for (af.params, 0..) |param, i| {
+        if (i > 0) try writer.writeAll(", ");
+        try writer.writeAll(param.name);
+    }
+    try writer.writeAll(") => ");
+    try serializeNode(writer, af.body);
+}
+
+/// Visit and serialize a binary expression.
+pub fn visitBinary(writer: anytype, ast: *const Ast) !void {
+    const b = ast.data.Binary;
+    try serializeNode(writer, b.left);
+    try writer.writeAll(" ");
+    try writer.writeAll(binaryOpToString(b.op));
+    try writer.writeAll(" ");
+    try serializeNode(writer, b.right);
+}
+
+/// Visit and serialize a call expression.
+pub fn visitCall(writer: anytype, ast: *const Ast) !void {
+    const call = ast.data.Call;
+    try serializeNode(writer, call.receiver);
+    try writer.writeAll("(");
+    for (call.args, 0..) |arg, i| {
+        if (i > 0) try writer.writeAll(", ");
+        try serializeNode(writer, arg);
+    }
+    try writer.writeAll(")");
+}
+
+/// Visit and serialize a safe call.
+pub fn visitSafeCall(writer: anytype, ast: *const Ast) !void {
+    const call = ast.data.SafeCall;
+    try serializeNode(writer, call.receiver);
+    try writer.writeAll("?.(");
+    for (call.args, 0..) |arg, i| {
+        if (i > 0) try writer.writeAll(", ");
+        try serializeNode(writer, arg);
+    }
+    try writer.writeAll(")");
+}
+
+/// Visit and serialize a chain expression.
+pub fn visitChain(writer: anytype, ast: *const Ast) !void {
+    const c = ast.data.Chain;
+    for (c.expressions, 0..) |expr, i| {
+        if (i > 0) try writer.writeAll("; ");
+        try serializeNode(writer, expr);
+    }
+}
+
+/// Visit and serialize a conditional.
+pub fn visitConditional(writer: anytype, ast: *const Ast) !void {
+    const c = ast.data.Conditional;
+    try serializeNode(writer, c.condition);
+    try writer.writeAll(" ? ");
+    try serializeNode(writer, c.true_expr);
+    try writer.writeAll(" : ");
+    try serializeNode(writer, c.false_expr);
+}
+
+/// Visit and serialize an implicit receiver.
+pub fn visitImplicitReceiver(writer: anytype, ast: *const Ast) !void {
+    _ = ast;
+    _ = writer;
+}
+
+/// Visit and serialize an interpolation.
+pub fn visitInterpolation(writer: anytype, ast: *const Ast) !void {
+    const i = ast.data.Interpolation;
+    for (i.strings, 0..) |s, idx| {
+        try writer.writeAll(s);
+        if (idx < i.expressions.len) {
+            try writer.writeAll("{{ ");
+            try serializeNode(writer, i.expressions[idx]);
+            try writer.writeAll(" }}");
+        }
+    }
+}
+
+/// Visit and serialize a keyed read.
+pub fn visitKeyedRead(writer: anytype, ast: *const Ast) !void {
+    const kr = ast.data.KeyedRead;
+    try serializeNode(writer, kr.receiver);
+    try writer.writeAll("[");
+    try serializeNode(writer, kr.key);
+    try writer.writeAll("]");
+}
+
+/// Visit and serialize a safe keyed read.
+pub fn visitSafeKeyedRead(writer: anytype, ast: *const Ast) !void {
+    const skr = ast.data.SafeKeyedRead;
+    try serializeNode(writer, skr.receiver);
+    try writer.writeAll("?.[");
+    try serializeNode(writer, skr.key);
+    try writer.writeAll("]");
+}
+
+/// Visit and serialize a literal array.
+pub fn visitLiteralArray(writer: anytype, ast: *const Ast) !void {
+    const la = ast.data.LiteralArray;
+    try writer.writeAll("[");
+    for (la.expressions, 0..) |e, i| {
+        if (i > 0) try writer.writeAll(", ");
+        try serializeNode(writer, e);
+    }
+    try writer.writeAll("]");
+}
+
+/// Visit and serialize a literal map.
+pub fn visitLiteralMap(writer: anytype, ast: *const Ast) !void {
+    const lm = ast.data.LiteralMap;
+    try writer.writeAll("{");
+    for (lm.entries, 0..) |e, i| {
+        if (i > 0) try writer.writeAll(", ");
+        if (e.quoted) try writer.writeAll("\"");
+        try writer.writeAll(e.key);
+        if (e.quoted) try writer.writeAll("\"");
+        try writer.writeAll(": ");
+        try serializeNode(writer, e.value);
+    }
+    try writer.writeAll("}");
+}
+
+/// Visit and serialize a literal primitive.
+pub fn visitLiteralPrimitive(writer: anytype, ast: *const Ast) !void {
+    const v = ast.data.LiteralPrimitive;
+    switch (v) {
+        .String => |s| { try writer.writeAll("\""); try writer.writeAll(s); try writer.writeAll("\""); },
+        .Number => |n| try writer.print("{d}", .{n}),
+        .Boolean => |b| try writer.writeAll(if (b) "true" else "false"),
+        .Null => try writer.writeAll("null"),
+        .Undefined => try writer.writeAll("undefined"),
+    }
+}
+
+/// Visit and serialize a non-null assert.
+pub fn visitNonNullAssert(writer: anytype, ast: *const Ast) !void {
+    const nna = ast.data.NonNullAssert;
+    try serializeNode(writer, nna.expression);
+    try writer.writeAll("!");
+}
+
+/// Visit and serialize a parenthesized expression.
+pub fn visitParenthesized(writer: anytype, ast: *const Ast) !void {
+    const p = ast.data.Parenthesized;
+    try writer.writeAll("(");
+    try serializeNode(writer, p.expression);
+    try writer.writeAll(")");
+}
+
+/// Visit and serialize a pipe.
+pub fn visitPipe(writer: anytype, ast: *const Ast) !void {
+    const bp = ast.data.BindingPipe;
+    try serializeNode(writer, bp.exp);
+    try writer.writeAll(" | ");
+    try writer.writeAll(bp.name);
+    for (bp.args) |arg| {
+        try writer.writeAll(":");
+        try serializeNode(writer, arg);
+    }
+}
+
+/// Visit and serialize a prefix not.
+pub fn visitPrefixNot(writer: anytype, ast: *const Ast) !void {
+    const pn = ast.data.PrefixNot;
+    try writer.writeAll("!");
+    try serializeNode(writer, pn.expression);
+}
+
+/// Visit and serialize a property read.
+pub fn visitPropertyRead(writer: anytype, ast: *const Ast) !void {
+    const pr = ast.data.PropertyRead;
+    try serializeNode(writer, pr.receiver);
+    try writer.writeAll(".");
+    try writer.writeAll(pr.name);
+}
+
+/// Visit and serialize a safe property read.
+pub fn visitSafePropertyRead(writer: anytype, ast: *const Ast) !void {
+    const spr = ast.data.SafePropertyRead;
+    try serializeNode(writer, spr.receiver);
+    try writer.writeAll("?.");
+    try writer.writeAll(spr.name);
+}
+
+/// Visit and serialize a this receiver.
+pub fn visitThisReceiver(writer: anytype, ast: *const Ast) !void {
+    _ = ast;
+    try writer.writeAll("this");
+}
+
+/// Visit and serialize a unary expression.
+pub fn visitUnary(writer: anytype, ast: *const Ast) !void {
+    const u = ast.data.Unary;
+    try writer.writeByte(u.operator);
+    try serializeNode(writer, u.expr);
+}
+
+/// Visit and serialize a typeof expression.
+pub fn visitTypeofExpression(writer: anytype, ast: *const Ast) !void {
+    const t = ast.data.TypeofExpr;
+    try writer.writeAll("typeof ");
+    try serializeNode(writer, t.expression);
+}
+
+/// Visit and serialize a void expression.
+pub fn visitVoidExpression(writer: anytype, ast: *const Ast) !void {
+    const v = ast.data.VoidExpr;
+    try writer.writeAll("void ");
+    try serializeNode(writer, v.expression);
+}
+
+/// Visit and serialize a regular expression literal.
+pub fn visitRegularExpressionLiteral(writer: anytype, ast: *const Ast) !void {
+    _ = ast;
+    _ = writer;
+}
+
+/// Visit and serialize a tagged template literal.
+pub fn visitTaggedTemplateLiteral(writer: anytype, ast: *const Ast) !void {
+    _ = ast;
+    _ = writer;
+}
+
+/// Visit and serialize a template literal element.
+pub fn visitTemplateLiteralElement(writer: anytype, ast: *const Ast) !void {
+    _ = ast;
+    _ = writer;
+}
+
+/// Visit and serialize a spread element.
+pub fn visitSpreadElement(writer: anytype, ast: *const Ast) !void {
+    const s = ast.data.SpreadElement;
+    try writer.writeAll("...");
+    try serializeNode(writer, s.expression);
+}
+
+/// Convert a BinaryOp to its string representation.
+pub fn binaryOpToString(op: BinaryOp) []const u8 {
+    return switch (op) {
+        .Plus => "+", .Minus => "-", .Multiply => "*", .Divide => "/", .Percent => "%",
+        .Equals => "==", .NotEquals => "!=", .Identical => "===", .NotIdentical => "!==",
+        .Less => "<", .Greater => ">", .LessEquals => "<=", .GreaterEquals => ">=",
+        .And => "&&", .Or => "||", .Nullish => "??",
+        .BitwiseAnd => "&", .BitwiseOr => "|", .BitwiseXor => "^",
+        .LeftShift => "<<", .RightShift => ">>", .UnsignedRightShift => ">>>",
+        .Comma => ",",
+        .Assign => "=", .AddAssign => "+=", .SubtractAssign => "-=",
+        .MultiplyAssign => "*=", .DivideAssign => "/=", .ModuloAssign => "%=",
+        .BitwiseAndAssign => "&=", .BitwiseOrAssign => "|=", .BitwiseXorAssign => "^=",
+        .LeftShiftAssign => "<<=", .RightShiftAssign => ">>=",
+        .UnsignedRightShiftAssign => ">>>=",
+        .NullishCoalescingAssign => "??=", .LogicalAndAssign => "&&=", .LogicalOrAssign => "||=",
+    };
+}
