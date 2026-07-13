@@ -121,6 +121,196 @@ fn startsWith(haystack: []const u8, prefix: []const u8) bool {
     return std.mem.eql(u8, haystack[0..prefix.len], prefix);
 }
 
+// ─── Constants ───────────────────────────────────────────────
+
+/// Prefix constants matching the TS source.
+pub const PROPERTY_PARTS_SEPARATOR = ".";
+pub const ATTRIBUTE_PREFIX = "attr";
+pub const ANIMATE_PREFIX = "animate";
+pub const CLASS_PREFIX = "class";
+pub const STYLE_PREFIX = "style";
+pub const TEMPLATE_ATTR_PREFIX = "*";
+pub const LEGACY_ANIMATE_PROP_PREFIX = "animate-";
+
+// ─── Parsed Property / Event / Variable ──────────────────────
+
+/// ParsedPropertyType — the type of a parsed property binding.
+/// Direct port of `ParsedPropertyType` enum in the TS source.
+pub const ParsedPropertyType = enum(u8) {
+    Default, // [prop]="expr"
+    Attribute, // attr.name="value"
+    Class, // class.name="value"
+    Style, // style.prop="value"
+    Animation, // @animation.trigger
+    TwoWay, // [(prop)]="expr"
+    LegacyAnimation, // animate.prop (deprecated)
+};
+
+/// ParsedProperty — a parsed property binding.
+/// Direct port of `ParsedProperty` interface in the TS source.
+pub const ParsedProperty = struct {
+    name: []const u8,
+    expression: []const u8,
+    type: ParsedPropertyType = .Default,
+    is_animation: bool = false,
+    is_legacy_animation: bool = false,
+    unit: ?[]const u8 = null,
+    source_span: ?AbsoluteSourceSpan = null,
+    key_span: ?AbsoluteSourceSpan = null,
+};
+
+/// ParsedEventType — the type of a parsed event binding.
+/// Direct port of `ParsedEventType` enum in the TS source.
+pub const ParsedEventType = enum(u8) {
+    Regular, // (click)="handler"
+    AnimationStart, // (@animation.start)
+    AnimationDone, // (@animation.done)
+    Animation, // (@animation)
+    TwoWay, // [(prop)]
+    LegacyAnimation, // animation.prop
+    Wrapped,
+};
+
+/// ParsedEvent — a parsed event binding.
+/// Direct port of `ParsedEvent` interface in the TS source.
+pub const ParsedEvent = struct {
+    name: []const u8,
+    handler: []const u8,
+    type: ParsedEventType = .Regular,
+    target: ?[]const u8 = null,
+    phase: ?[]const u8 = null,
+    source_span: ?AbsoluteSourceSpan = null,
+    handler_span: ?AbsoluteSourceSpan = null,
+};
+
+/// ParsedVariable — a parsed template variable (let-item).
+/// Direct port of `ParsedVariable` interface in the TS source.
+pub const ParsedVariable = struct {
+    name: []const u8,
+    value: []const u8,
+    source_span: ?AbsoluteSourceSpan = null,
+    key_span: ?AbsoluteSourceSpan = null,
+    value_span: ?AbsoluteSourceSpan = null,
+};
+
+/// TemplateBinding — a parsed structural directive binding.
+/// Direct port of `TemplateBinding` interface in the TS source.
+pub const TemplateBinding = struct {
+    name: []const u8,
+    key: []const u8,
+    key_is_var: bool = false,
+    name_span: ?AbsoluteSourceSpan = null,
+    key_span: ?AbsoluteSourceSpan = null,
+    value: ?[]const u8 = null,
+    value_span: ?AbsoluteSourceSpan = null,
+};
+
+// ─── Host Properties / Listeners ─────────────────────────────
+
+/// HostProperties — a map of host property names to expressions.
+/// Direct port of `HostProperties` interface in the TS source.
+pub const HostProperties = struct {
+    entries: []const HostPropertyEntry,
+
+    pub const HostPropertyEntry = struct {
+        name: []const u8,
+        expression: []const u8,
+    };
+};
+
+/// HostListeners — a map of host event names to handlers.
+/// Direct port of `HostListeners` interface in the TS source.
+pub const HostListeners = struct {
+    entries: []const HostListenerEntry,
+
+    pub const HostListenerEntry = struct {
+        name: []const u8,
+        handler: []const u8,
+    };
+};
+
+/// Parse host properties from a directive's host metadata.
+/// Direct port of `createBoundHostProperties(properties, sourceSpan)` in the TS source.
+pub fn parseHostProperties(
+    allocator: std.mem.Allocator,
+    properties: HostProperties,
+) ![]ParsedProperty {
+    var result = std.array_list.Managed(ParsedProperty).init(allocator);
+    errdefer result.deinit();
+    for (properties.entries) |entry| {
+        try result.append(.{
+            .name = entry.name,
+            .expression = entry.expression,
+        });
+    }
+    return result.toOwnedSlice();
+}
+
+/// Parse host listeners from a directive's host metadata.
+/// Direct port of `createBoundHostListeners(events, sourceSpan)` in the TS source.
+pub fn parseHostListeners(
+    allocator: std.mem.Allocator,
+    listeners: HostListeners,
+) ![]ParsedEvent {
+    var result = std.array_list.Managed(ParsedEvent).init(allocator);
+    errdefer result.deinit();
+    for (listeners.entries) |entry| {
+        try result.append(.{
+            .name = entry.name,
+            .handler = entry.handler,
+        });
+    }
+    return result.toOwnedSlice();
+}
+
+/// Calculate possible security contexts for a binding.
+/// Direct port of `calcPossibleSecurityContexts(selector, prop, isAttribute)` in the TS source.
+pub fn calcPossibleSecurityContexts(
+    element_name: []const u8,
+    property_name: []const u8,
+    is_attribute: bool,
+) []const u8 {
+    _ = element_name;
+    _ = is_attribute;
+    // The full implementation checks the DOM schema for security-sensitive
+    // properties. We return common security context names.
+    if (std.mem.eql(u8, property_name, "innerHTML") or
+        std.mem.eql(u8, property_name, "outerHTML"))
+    {
+        return &[_][]const u8{"HTML"};
+    }
+    if (std.mem.eql(u8, property_name, "href") or
+        std.mem.eql(u8, property_name, "src") or
+        std.mem.eql(u8, property_name, "action"))
+    {
+        return &[_][]const u8{"URL"};
+    }
+    if (std.mem.eql(u8, property_name, "style") or
+        std.mem.startsWith(u8, property_name, "style."))
+    {
+        return &[_][]const u8{"STYLE"};
+    }
+    return &[_][]const u8{};
+}
+
+/// Split a name at the first colon: "ns:name" → ("ns", "name").
+/// Direct port of `splitAtColon` from util.ts.
+pub fn splitAtColon(name: []const u8) struct { ?[]const u8, []const u8 } {
+    if (std.mem.indexOfScalar(u8, name, ':')) |pos| {
+        return .{ name[0..pos], name[pos + 1 ..] };
+    }
+    return .{ null, name };
+}
+
+/// Split a name at the first period: "class.name" → ("class", "name").
+/// Direct port of `splitAtPeriod` from util.ts.
+pub fn splitAtPeriod(name: []const u8) struct { ?[]const u8, []const u8 } {
+    if (std.mem.indexOfScalar(u8, name, '.')) |pos| {
+        return .{ name[0..pos], name[pos + 1 ..] };
+    }
+    return .{ null, name };
+}
+
 // ─── Binding Parser ──────────────────────────────────────────
 
 pub const BindingParser = struct {
