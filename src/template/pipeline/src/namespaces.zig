@@ -1,8 +1,17 @@
+/// Namespace constants
+///
 /// Port of: template/pipeline/src/namespaces.ts (10 LoC)
-/// DOD + Arena Memory
+///
+/// DOD: plain string constants — zero allocation, zero indirection.
 const std = @import("std");
 
-pub const SVG_NAMESPACE = struct {};
-pub const MATH_ML_NAMESPACE = struct {};
+/// Tag name prefix for SVG namespace elements (e.g., `svg:rect`).
+pub const SVG_NAMESPACE = "svg";
 
-test "module loads" { std.testing.expect(true); }
+/// Tag name prefix for MathML namespace elements (e.g., `math:msup`).
+pub const MATH_ML_NAMESPACE = "mathml";
+
+test "namespace constants" {
+    try std.testing.expectEqualStrings("svg", SVG_NAMESPACE);
+    try std.testing.expectEqualStrings("mathml", MATH_ML_NAMESPACE);
+}

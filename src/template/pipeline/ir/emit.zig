@@ -295,6 +295,11 @@ fn emitCreateOp(allocator: Allocator, op: IrOp) !?Stmt {
         .EnableBindings => emitEnableBindings(allocator),
         .SourceLocation => |span| emitSourceLocation(span),
         .ListEnd, .Content => null,
+        .Template => |d| emitTemplate(allocator, op.xref, d.tag, d.namespace),
+        .ConditionalBranchCreate, .ForeignComponent, .I18nAttributes,
+        .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder,
+        .ExtractedAttribute, .ControlCreate, .Control,
+        .EnableIncrementalHydrationRuntime => null,
         // Update-only ops: no create-phase emission
         .InterpolateText, .Binding, .Property, .StyleProp, .ClassProp, .StyleMap, .ClassMap, .DomProperty, .TwoWayProperty, .TwoWayListener, .Pipe, .StoreLet, .Advance, .Conditional, .Repeater, .Variable, .I18nExpression, .AnimationBinding, .AnimationString => null,
     };
@@ -380,6 +385,14 @@ fn emitRepeaterCreate(allocator: Allocator, slot: u32) !?Stmt {
 
 fn emitConditionalCreate(allocator: Allocator, slot: u32) !?Stmt {
     return callRuntimeStmt(allocator, RUNTIME.conditionalCreate, try allocArgs(allocator, &[_]Expr{
+        Expr.literalNum(@floatFromInt(slot)),
+    }));
+}
+
+fn emitTemplate(allocator: Allocator, slot: u32, tag: ?[]const u8, ns: Namespace) !?Stmt {
+    _ = ns;
+    _ = tag;
+    return callRuntimeStmt(allocator, RUNTIME.template, try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(@floatFromInt(slot)),
     }));
 }

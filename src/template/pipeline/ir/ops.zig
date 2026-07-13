@@ -95,6 +95,37 @@ pub const OpData = union(OpKind) {
     DisableBindings: void,
     EnableBindings: void,
     ControlFlowBlock: void,
+    Template: struct {
+        tag: ?[]const u8,
+        namespace: @import("enums.zig").Namespace,
+    },
+    ConditionalBranchCreate: void,
+    ForeignComponent: struct {
+        const_index: u32,
+    },
+    I18nAttributes: struct {
+        target: u32,
+    },
+    I18nContext: struct {
+        context_kind: u8,
+        root: u32,
+        message: ?[]const u8,
+    },
+    IcuStart: struct {
+        message: ?[]const u8,
+    },
+    IcuEnd: void,
+    IcuPlaceholder: struct {
+        name: []const u8,
+    },
+    ExtractedAttribute: struct {
+        name: []const u8,
+        value: []const u8,
+        binding_kind: @import("enums.zig").BindingKind,
+    },
+    ControlCreate: void,
+    Control: void,
+    EnableIncrementalHydrationRuntime: void,
 
     // ── Update Ops ───────────────────────────────────────────
     InterpolateText: struct {

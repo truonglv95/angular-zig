@@ -161,6 +161,11 @@ pub fn opKindToReified(kind: OpKind) ReifiedKind {
         .I18nExpression => .I18nExpression,
         .AnimationBinding => .AnimationBinding,
         .AnimationString => .AnimationString,
+        // New ops added for 1:1 fidelity — map to Statement as fallback.
+        .Template, .ConditionalBranchCreate, .ForeignComponent,
+        .I18nAttributes, .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder,
+        .ExtractedAttribute, .ControlCreate, .Control,
+        .EnableIncrementalHydrationRuntime => .Statement,
     };
 }
 

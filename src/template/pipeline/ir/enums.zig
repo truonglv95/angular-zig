@@ -36,6 +36,18 @@ pub const OpKind = enum(u16) {
     DisableBindings = 24,
     EnableBindings = 25,
     ControlFlowBlock = 26,
+    Template = 27,
+    ConditionalBranchCreate = 28,
+    ForeignComponent = 29,
+    I18nAttributes = 30,
+    I18nContext = 31,
+    IcuStart = 32,
+    IcuEnd = 33,
+    IcuPlaceholder = 34,
+    ExtractedAttribute = 35,
+    ControlCreate = 36,
+    Control = 37,
+    EnableIncrementalHydrationRuntime = 38,
 
     // ── Update Phase ──────────────────────────────────────────
     InterpolateText = 100,
