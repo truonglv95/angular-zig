@@ -1,10 +1,47 @@
-/// slot_allocation phase — re-exported from impl.zig
+/// slot_allocation phase
 ///
 /// Port of: template/pipeline/src/phases/slot_allocation.ts
 ///
-/// This file is a thin wrapper that re-exports the phase implementation
-/// from impl.zig. The actual logic lives there for now; it will be
-/// gradually migrated into this file as the port progresses.
-const impl = @import("impl.zig");
+/// Post phase — migrated from impl.zig
+const std = @import("std");
 
-pub const run = impl.allocateSlots;
+const job_mod = @import("../job.zig");
+const ComponentCompilationJob = job_mod.ComponentCompilationJob;
+const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+
+const ir_ops = @import("../ops.zig");
+const IrOp = ir_ops.IrOp;
+const OpKind = ir_ops.OpKind;
+const OpData = ir_ops.OpData;
+
+const ir_enums = @import("../enums.zig");
+const CompilationKind = ir_enums.CompilationKind;
+
+const ir_expr = @import("../expression.zig");
+const IrExpr = ir_expr.IrExpr;
+
+const source_span = @import("../../source_span.zig");
+const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
+
+
+pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    var max_slot: u32 = 0;
+
+    // Scan creation ops for max xref
+    const create_items = view.create.ops.items;
+    for (create_items) |op| {
+        if (op.xref > max_slot) max_slot = op.xref;
+    }
+
+    // Also scan update ops for any xrefs that might exceed creation ops
+    const update_items = view.update.ops.items;
+    for (update_items) |op| {
+        // Strip the context-needed flag (bit 31) before comparing
+        const clean_xref = op.xref & 0x7FFFFFFF;
+        if (clean_xref > max_slot) max_slot = clean_xref;
+    }
+
+    // decls = max_slot + 1 (number of declaration slots needed)
+    view.decls = max_slot + 1;
+}

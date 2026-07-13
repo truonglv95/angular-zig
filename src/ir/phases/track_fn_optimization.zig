@@ -1,10 +1,46 @@
-/// track_fn_optimization phase — re-exported from impl.zig
+/// track_fn_optimization phase
 ///
 /// Port of: template/pipeline/src/phases/track_fn_optimization.ts
 ///
-/// This file is a thin wrapper that re-exports the phase implementation
-/// from impl.zig. The actual logic lives there for now; it will be
-/// gradually migrated into this file as the port progresses.
-const impl = @import("impl.zig");
+/// Update phase — migrated from impl.zig
+const std = @import("std");
 
-pub const run = impl.generateRepeaterTrackBy;
+const job_mod = @import("../job.zig");
+const ComponentCompilationJob = job_mod.ComponentCompilationJob;
+const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+
+const ir_ops = @import("../ops.zig");
+const IrOp = ir_ops.IrOp;
+const OpKind = ir_ops.OpKind;
+const OpData = ir_ops.OpData;
+
+const ir_enums = @import("../enums.zig");
+const CompilationKind = ir_enums.CompilationKind;
+
+const ir_expr = @import("../expression.zig");
+const IrExpr = ir_expr.IrExpr;
+
+const source_span = @import("../../source_span.zig");
+const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
+
+
+pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
+    _ = job;
+    const allocator = view.update.allocator;
+    const items = view.update.ops.items;
+
+    for (items) |*op| {
+        if (op.kind != .Repeater) continue;
+        const repeater = &op.data.Repeater;
+        if (repeater.track_by_fn != null) continue;
+
+        // Generate default trackBy: uses $index identity
+        const track_expr = try allocator.create(IrExpr);
+        track_expr.* = .{
+            .kind = .ReadVariable,
+            .span = .empty(),
+            .data = .{ .ReadVariable = .{ .name = "$index", .xref = 0 } },
+        };
+        repeater.track_by_fn = track_expr;
+    }
+}
