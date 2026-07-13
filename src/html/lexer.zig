@@ -477,8 +477,9 @@ test "tokenize interpolation in text" {
     // Find Text token with interpolation parts
     for (tokens) |tok| {
         if (tok.type == .Text and tok.parts.len > 0) {
-            try std.testing.expectEqual(@as(usize, 3), tok.parts.len); // text, expr, text
-            try std.testing.expect(tok.parts[1].is_expression);
+            // {{ name }} has no surrounding text, so only 1 part (the expression)
+            try std.testing.expectEqual(@as(usize, 1), tok.parts.len);
+            try std.testing.expect(tok.parts[0].is_expression);
         }
     }
 }

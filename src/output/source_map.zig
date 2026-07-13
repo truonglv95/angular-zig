@@ -353,14 +353,16 @@ test "vlqEncode — multi-digit 16" {
 
 test "vlqEncode — large positive 1000" {
     const allocator = std.testing.allocator;
-    // Value 1000: 1000 << 1 = 2000 = 0b11111010000
-    // Group 0: 10000 = 16, remaining 31 → continuation
+    // Value 1000: 1000 << 1 = 2000 = 0b011111010000
+    // Group 0: 10000 = 16, remaining 62 → continuation
     // digit = 16 | 32 = 48 → BASE64_CHARS[48] = 'w'
-    // Group 1: 11111 = 31, remaining 0 → no continuation
-    // BASE64_CHARS[31] = 'f'
+    // Group 1: 11110 = 30, remaining 1 → continuation
+    // digit = 30 | 32 = 62 → BASE64_CHARS[62] = '+'
+    // Group 2: 00001 = 1, remaining 0 → no continuation
+    // BASE64_CHARS[1] = 'B'
     const r = try vlqEncodeAlloc(allocator, 1000);
     defer allocator.free(r);
-    try std.testing.expectEqualStrings("wf", r);
+    try std.testing.expectEqualStrings("w+B", r);
 }
 
 test "SourceMap addMapping and encodeMappings" {

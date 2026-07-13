@@ -808,7 +808,9 @@ pub const Parser = struct {
                     .In => "in",
                     .Instanceof => "instanceof",
                     .BitwiseAnd => "&",
-                    .BitwiseOr => "|",
+                    // BitwiseOr "|" is handled by parsePipe as the pipe operator,
+                    // NOT as a binary operator. Angular templates don't support bitwise OR.
+                    .BitwiseOr => "\x00BITWISE_OR_DISABLED",
                     .BitwiseXor => "^",
                     .LeftShift => "<<",
                     .RightShift => ">>",

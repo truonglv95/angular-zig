@@ -438,7 +438,12 @@ test "tokenize property access chain" {
 
     try std.testing.expectEqual(TokenType.Identifier, tokens[0].type);
     try std.testing.expectEqualStrings("user", tokens[0].slice("user.address?.street"));
-    try std.testing.expectEqualStrings(".address?.street", tokens[1].slice("user.address?.street"));
+    // The lexer correctly splits property access into separate tokens:
+    // ".", "address", "?.", "street"
+    try std.testing.expectEqual(TokenType.Operator, tokens[1].type);
+    try std.testing.expectEqualStrings(".", tokens[1].slice("user.address?.street"));
+    try std.testing.expectEqual(TokenType.Identifier, tokens[2].type);
+    try std.testing.expectEqualStrings("address", tokens[2].slice("user.address?.street"));
 }
 
 test "tokenize keywords" {

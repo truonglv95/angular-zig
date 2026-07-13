@@ -54,14 +54,15 @@ pub fn classifyAttribute(name: []const u8) ClassifiedAttr {
         return .{ .class = .Reference, .name = name[1..], .original = name };
     }
 
-    // [prop]
+    // [prop] or [(twoWay)]
     if (name[0] == '[') {
+        // [(twoWay)] — check FIRST before [prop] since [(...)] also ends with ]
+        if (name.len > 3 and name[1] == '(' and name[name.len - 2] == ')' and name[name.len - 1] == ']') {
+            return .{ .class = .TwoWay, .name = name[2 .. name.len - 2], .original = name };
+        }
+        // [prop]
         if (name.len > 1 and name[name.len - 1] == ']') {
             return .{ .class = .Property, .name = name[1 .. name.len - 1], .original = name };
-        }
-        // [(twoWay)]
-        if (name.len > 2 and name[1] == '(' and name[name.len - 2] == ')') {
-            return .{ .class = .TwoWay, .name = name[2 .. name.len - 2], .original = name };
         }
     }
 
