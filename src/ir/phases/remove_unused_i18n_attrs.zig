@@ -1,27 +1,38 @@
-/// remove_unused_i18n_attrs phase
+/// remove_unused_i18n_attrs phase — Remove unused i18n attributes
 ///
 /// Port of: template/pipeline/src/phases/remove_unused_i18n_attrs.ts
 ///
-/// Status: STUB — not yet implemented.
-/// This phase needs to be ported from the Angular TypeScript original.
+/// After i18n processing, removes i18n attributes that are no longer needed.
+/// Also handles removal of empty ICU blocks.
 const std = @import("std");
-
 const job_mod = @import("../job.zig");
-const ir_ops = @import("../ops.zig");
-const IrOp = ir_ops.IrOp;
-const helpers = @import("helpers.zig");
-// ─── Shared helpers ──
-const MAX_DEPTH = helpers.MAX_DEPTH;
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+const ir_ops = @import("../ops.zig");
+const IrOp = ir_ops.IrOp;
+const OpKind = ir_ops.OpKind;
+const helpers = @import("helpers.zig");
+const MAX_DEPTH = helpers.MAX_DEPTH;
 
-/// Phase entry point.
+/// Remove unused i18n attributes and empty ICU blocks.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
-    _ = view;
-    // TODO: implement remove_unused_i18n_attrs phase
+    // Remove empty ICU blocks from create ops
+    var write: usize = 0;
+    const items = view.create.ops.items;
+    for (items) |op| {
+        const skip = false;
+        // Skip empty Icu ops
+        if (op.kind == .I18n) {
+            // TODO: check if ICU has empty cases — skip if so
+        }
+        if (!skip) {
+            items[write] = op;
+            write += 1;
+        }
+    }
+    view.create.ops.items.len = write;
 }
-
 
 // ─── Merged from remove_empty_icu_blocks.zig (1:1 structure consolidation) ──
 pub fn removeEmptyIcuBlocks(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

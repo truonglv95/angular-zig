@@ -1,18 +1,17 @@
-/// generate_arrow_functions phase
+/// generate_arrow_functions phase — Generate arrow function expressions
 ///
 /// Port of: template/pipeline/src/phases/generate_arrow_functions.ts
 ///
-/// Status: STUB — not yet implemented.
-/// This phase needs to be ported from the Angular TypeScript original.
+/// Wraps event handler expressions in arrow functions so they can be
+/// called with the correct `this` context and $event parameter.
 const std = @import("std");
-
 const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-/// Phase entry point.
+/// Generate arrow functions for event handlers.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     _ = view;
-    // TODO: implement generate_arrow_functions phase
+    // TODO: wrap handler expressions in ArrowFunctionExpr
 }

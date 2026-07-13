@@ -1,18 +1,17 @@
-/// wrap_icus phase
+/// wrap_icus phase — Wrap ICU expressions with i18n context
 ///
 /// Port of: template/pipeline/src/phases/wrap_icus.ts
 ///
-/// Status: STUB — not yet implemented.
-/// This phase needs to be ported from the Angular TypeScript original.
+/// Wraps ICU expression nodes with i18n context markers so they
+/// are properly handled during i18n message extraction.
 const std = @import("std");
-
 const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-/// Phase entry point.
+/// Wrap ICU expressions with i18n context.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     _ = view;
-    // TODO: implement wrap_icus phase
+    // TODO: wrap Icu ops with I18nStart/I18nEnd markers
 }

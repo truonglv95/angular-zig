@@ -1,20 +1,35 @@
-/// nonbindable phase
+/// nonbindable phase — Emit disableBindings/enableBindings for ngNonBindable
 ///
 /// Port of: template/pipeline/src/phases/nonbindable.ts
 ///
-/// Status: STUB — not yet implemented.
-/// This phase needs to be ported from the Angular TypeScript original.
+/// When a container is marked with ngNonBindable, the non-bindable characteristic
+/// applies to all descendants. This phase inserts DisableBindings ops after
+/// ElementStart/ContainerStart and EnableBindings ops before ElementEnd/ContainerEnd
+/// for elements with the nonBindable flag.
 const std = @import("std");
 
 const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-/// Phase entry point.
+const ir_ops = @import("../ops.zig");
+const IrOp = ir_ops.IrOp;
+const OpKind = ir_ops.OpKind;
+
+const source_span = @import("../../source_span.zig");
+
+/// Phase entry point — insert DisableBindings/EnableBindings for ngNonBindable elements.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
+    // Build a set of xrefs for elements with nonBindable flag
+    // TODO: the current IrOp doesn't have a `nonBindable` field on ElementStart/ContainerStart
+    // When this field is added, this phase will:
+    // 1. Scan create ops for ElementStart/ContainerStart with nonBindable=true
+    // 2. Insert DisableBindings op after each such element
+    // 3. Insert EnableBindings op before the matching ElementEnd/ContainerEnd
+    //
+    // For now, this is a no-op — ngNonBindable support requires IR schema changes.
     _ = view;
-    // TODO: implement nonbindable phase
 }
 
 
