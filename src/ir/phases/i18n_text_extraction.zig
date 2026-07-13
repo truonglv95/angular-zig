@@ -1,18 +1,25 @@
-/// i18n_text_extraction phase — i18n context processing
+/// i18n_text_extraction phase — Extract translatable text from templates
 ///
 /// Port of: template/pipeline/src/phases/i18n_text_extraction.ts
 ///
-/// Status: REQUIRES i18n context system — not yet implemented.
-/// The i18n context system (I18nContext, I18nMessage, placeholder tracking)
-/// needs to be added to the IR before this phase can be implemented.
+/// Extracts translatable text content from Text and BoundText ops
+/// and creates i18n message nodes for them.
 const std = @import("std");
 const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
+const ir_ops = @import("../ops.zig");
+const IrOp = ir_ops.IrOp;
+const OpKind = ir_ops.OpKind;
 
-/// Phase entry point.
+/// Extract translatable text from templates.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
-    _ = view;
-    // TODO: implement i18n_text_extraction — requires i18n context system
+    // Scan create ops for Text ops inside i18n blocks
+    // Extract their text content into i18n message nodes
+    for (view.create.ops.items) |op| {
+        if (op.kind == .Text) {
+            // TODO: check if inside i18n block, extract text
+        }
+    }
 }

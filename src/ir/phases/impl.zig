@@ -47,6 +47,40 @@ const any_cast = @import("any_cast.zig");
 const track_variables = @import("track_variables.zig");
 const save_restore_view = @import("save_restore_view.zig");
 const strip_nonrequired_parens = @import("strip_nonrequired_parentheses.zig");
+// i18n phases
+const i18n_context = @import("i18n_context.zig");
+const create_i18n_contexts = @import("create_i18n_contexts.zig");
+const convert_i18n_bindings = @import("convert_i18n_bindings.zig");
+const i18n_text_extraction = @import("i18n_text_extraction.zig");
+const propagate_i18n_blocks = @import("propagate_i18n_blocks.zig");
+const extract_i18n_messages = @import("extract_i18n_messages.zig");
+const i18n_const_collection = @import("i18n_const_collection.zig");
+const resolve_i18n_element_placeholders = @import("resolve_i18n_element_placeholders.zig");
+const resolve_i18n_expression_placeholders = @import("resolve_i18n_expression_placeholders.zig");
+const resolve_i18n_attr_sanitizers = @import("resolve_i18n_attr_sanitizers.zig");
+const apply_i18n_expressions = @import("apply_i18n_expressions.zig");
+const assign_i18n_slot_dependencies = @import("assign_i18n_slot_dependencies.zig");
+const remove_i18n_contexts = @import("remove_i18n_contexts.zig");
+// Non-i18n phases
+const naming = @import("naming.zig");
+const resolve_names = @import("resolve_names.zig");
+const chaining = @import("chaining.zig");
+const control_directives = @import("control_directives.zig");
+const convert_animations = @import("convert_animations.zig");
+const defer_resolve_targets = @import("defer_resolve_targets.zig");
+const resolve_defer_deps_fns = @import("resolve_defer_deps_fns.zig");
+const generate_arrow_functions = @import("generate_arrow_functions.zig");
+const generate_local_let_references = @import("generate_local_let_references.zig");
+const generate_variables = @import("generate_variables.zig");
+const insert_incremental_hydration_runtime = @import("insert_incremental_hydration_runtime.zig");
+const parse_extracted_styles = @import("parse_extracted_styles.zig");
+const phase_remove_content_selectors = @import("phase_remove_content_selectors.zig");
+const regular_expression_optimization = @import("regular_expression_optimization.zig");
+const safe_navigation_migration = @import("safe_navigation_migration.zig");
+const resolve_foreign_content = @import("resolve_foreign_content.zig");
+const wrap_icus = @import("wrap_icus.zig");
+const remove_illegal_let_references = @import("remove_illegal_let_references.zig");
+const pipe_variadic = @import("pipe_variadic.zig");
 
 // ─── Per-phase imports (Phase 3: code migrated to per-phase files) ──
 const attach_source_locations_mod = @import("attach_source_locations.zig");
@@ -313,6 +347,39 @@ pub const CORE_PHASES: []const Phase = &.{
     .{ .name = "trackVariables", .fn_ptr = track_variables.run, .kind = .Update },
     .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run, .kind = .Update },
     .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run, .kind = .Update },
+    // Phase 3: i18n phases
+    .{ .name = "createI18nContexts", .fn_ptr = create_i18n_contexts.run, .kind = .Update },
+    .{ .name = "convertI18nBindings", .fn_ptr = convert_i18n_bindings.run, .kind = .Update },
+    .{ .name = "i18nTextExtraction", .fn_ptr = i18n_text_extraction.run, .kind = .Update },
+    .{ .name = "propagateI18nBlocks", .fn_ptr = propagate_i18n_blocks.run, .kind = .Update },
+    .{ .name = "extractI18nMessages", .fn_ptr = extract_i18n_messages.run, .kind = .Update },
+    .{ .name = "i18nConstCollection", .fn_ptr = i18n_const_collection.run, .kind = .Update },
+    .{ .name = "resolveI18nElementPlaceholders", .fn_ptr = resolve_i18n_element_placeholders.run, .kind = .Update },
+    .{ .name = "resolveI18nExpressionPlaceholders", .fn_ptr = resolve_i18n_expression_placeholders.run, .kind = .Update },
+    .{ .name = "resolveI18nAttrSanitizers", .fn_ptr = resolve_i18n_attr_sanitizers.run, .kind = .Update },
+    .{ .name = "applyI18nExpressions", .fn_ptr = apply_i18n_expressions.run, .kind = .Update },
+    .{ .name = "assignI18nSlotDependencies", .fn_ptr = assign_i18n_slot_dependencies.run, .kind = .Update },
+    .{ .name = "removeI18nContexts", .fn_ptr = remove_i18n_contexts.run, .kind = .Update },
+    // Phase 3: Non-i18n phases
+    .{ .name = "naming", .fn_ptr = naming.run, .kind = .Update },
+    .{ .name = "resolveNames", .fn_ptr = resolve_names.run, .kind = .Update },
+    .{ .name = "chaining", .fn_ptr = chaining.run, .kind = .Update },
+    .{ .name = "controlDirectives", .fn_ptr = control_directives.run, .kind = .Update },
+    .{ .name = "convertAnimations", .fn_ptr = convert_animations.run, .kind = .Update },
+    .{ .name = "deferResolveTargets", .fn_ptr = defer_resolve_targets.run, .kind = .Update },
+    .{ .name = "resolveDeferDepsFns", .fn_ptr = resolve_defer_deps_fns.run, .kind = .Update },
+    .{ .name = "generateArrowFunctions", .fn_ptr = generate_arrow_functions.run, .kind = .Update },
+    .{ .name = "generateLocalLetReferences", .fn_ptr = generate_local_let_references.run, .kind = .Update },
+    .{ .name = "generateVariables", .fn_ptr = generate_variables.run, .kind = .Update },
+    .{ .name = "insertIncrementalHydrationRuntime", .fn_ptr = insert_incremental_hydration_runtime.run, .kind = .Update },
+    .{ .name = "parseExtractedStyles", .fn_ptr = parse_extracted_styles.run, .kind = .Update },
+    .{ .name = "phaseRemoveContentSelectors", .fn_ptr = phase_remove_content_selectors.run, .kind = .Update },
+    .{ .name = "regexOptimization", .fn_ptr = regular_expression_optimization.run, .kind = .Update },
+    .{ .name = "safeNavigationMigration", .fn_ptr = safe_navigation_migration.run, .kind = .Update },
+    .{ .name = "resolveForeignContent", .fn_ptr = resolve_foreign_content.run, .kind = .Update },
+    .{ .name = "wrapIcus", .fn_ptr = wrap_icus.run, .kind = .Update },
+    .{ .name = "removeIllegalLetReferences", .fn_ptr = remove_illegal_let_references.run, .kind = .Update },
+    .{ .name = "pipeVariadic", .fn_ptr = pipe_variadic.run, .kind = .Update },
 
     // ── Post Phase (10) ───────────────────────────────────────
     .{ .name = "allocateSlots", .fn_ptr = allocateSlots, .kind = .Post },
@@ -390,6 +457,39 @@ pub const PIPELINE_PHASES: []const PipelinePhase = &.{
     .{ .name = "trackVariables", .fn_ptr = track_variables.run },
     .{ .name = "saveRestoreView", .fn_ptr = save_restore_view.run },
     .{ .name = "stripNonrequiredParens", .fn_ptr = strip_nonrequired_parens.run },
+    // Phase 3: i18n phases
+    .{ .name = "createI18nContexts", .fn_ptr = create_i18n_contexts.run },
+    .{ .name = "convertI18nBindings", .fn_ptr = convert_i18n_bindings.run },
+    .{ .name = "i18nTextExtraction", .fn_ptr = i18n_text_extraction.run },
+    .{ .name = "propagateI18nBlocks", .fn_ptr = propagate_i18n_blocks.run },
+    .{ .name = "extractI18nMessages", .fn_ptr = extract_i18n_messages.run },
+    .{ .name = "i18nConstCollection", .fn_ptr = i18n_const_collection.run },
+    .{ .name = "resolveI18nElementPlaceholders", .fn_ptr = resolve_i18n_element_placeholders.run },
+    .{ .name = "resolveI18nExpressionPlaceholders", .fn_ptr = resolve_i18n_expression_placeholders.run },
+    .{ .name = "resolveI18nAttrSanitizers", .fn_ptr = resolve_i18n_attr_sanitizers.run },
+    .{ .name = "applyI18nExpressions", .fn_ptr = apply_i18n_expressions.run },
+    .{ .name = "assignI18nSlotDependencies", .fn_ptr = assign_i18n_slot_dependencies.run },
+    .{ .name = "removeI18nContexts", .fn_ptr = remove_i18n_contexts.run },
+    // Phase 3: Non-i18n phases
+    .{ .name = "naming", .fn_ptr = naming.run },
+    .{ .name = "resolveNames", .fn_ptr = resolve_names.run },
+    .{ .name = "chaining", .fn_ptr = chaining.run },
+    .{ .name = "controlDirectives", .fn_ptr = control_directives.run },
+    .{ .name = "convertAnimations", .fn_ptr = convert_animations.run },
+    .{ .name = "deferResolveTargets", .fn_ptr = defer_resolve_targets.run },
+    .{ .name = "resolveDeferDepsFns", .fn_ptr = resolve_defer_deps_fns.run },
+    .{ .name = "generateArrowFunctions", .fn_ptr = generate_arrow_functions.run },
+    .{ .name = "generateLocalLetReferences", .fn_ptr = generate_local_let_references.run },
+    .{ .name = "generateVariables", .fn_ptr = generate_variables.run },
+    .{ .name = "insertIncrementalHydrationRuntime", .fn_ptr = insert_incremental_hydration_runtime.run },
+    .{ .name = "parseExtractedStyles", .fn_ptr = parse_extracted_styles.run },
+    .{ .name = "phaseRemoveContentSelectors", .fn_ptr = phase_remove_content_selectors.run },
+    .{ .name = "regexOptimization", .fn_ptr = regular_expression_optimization.run },
+    .{ .name = "safeNavigationMigration", .fn_ptr = safe_navigation_migration.run },
+    .{ .name = "resolveForeignContent", .fn_ptr = resolve_foreign_content.run },
+    .{ .name = "wrapIcus", .fn_ptr = wrap_icus.run },
+    .{ .name = "removeIllegalLetReferences", .fn_ptr = remove_illegal_let_references.run },
+    .{ .name = "pipeVariadic", .fn_ptr = pipe_variadic.run },
     .{ .name = "allocateSlots", .fn_ptr = allocateSlots },
     .{ .name = "countVariables", .fn_ptr = countVariables },
     .{ .name = "validateXrefs", .fn_ptr = validateXrefs },

@@ -6,7 +6,7 @@
 /// and sets up the dependency tracking for deferred loading.
 const std = @import("std");
 const job_mod = @import("../job.zig");
-const ComponentCompilationJob = job_mod.ComponentCompilationCompilationJob = job_mod.ComponentCompilationJob;
+const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
 /// Resolve @defer target directives.

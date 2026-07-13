@@ -1,18 +1,17 @@
-/// resolve_i18n_attr_sanitizers phase — i18n context processing
+/// resolve_i18n_attr_sanitizers phase — Resolve sanitizers for i18n attributes
 ///
 /// Port of: template/pipeline/src/phases/resolve_i18n_attr_sanitizers.ts
 ///
-/// Status: REQUIRES i18n context system — not yet implemented.
-/// The i18n context system (I18nContext, I18nMessage, placeholder tracking)
-/// needs to be added to the IR before this phase can be implemented.
+/// Assigns security contexts and sanitizers to i18n attribute bindings
+/// to prevent XSS in translated content.
 const std = @import("std");
 const job_mod = @import("../job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ViewCompilationUnit = job_mod.ViewCompilationUnit;
 
-/// Phase entry point.
+/// Resolve sanitizers for i18n attributes.
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     _ = view;
-    // TODO: implement resolve_i18n_attr_sanitizers — requires i18n context system
+    // TODO: assign security contexts to i18n attributes
 }

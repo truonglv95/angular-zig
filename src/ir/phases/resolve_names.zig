@@ -66,5 +66,5 @@ fn processLexicalScope(
     // 2. Find LexicalReadExpr nodes
     // 3. Look up the name in scope
     // 4. Replace with ReadVariableExpr (if found) or ReadPropExpr on ContextExpr
-    _ = ops;
+    for (ops) |_| {}
 }

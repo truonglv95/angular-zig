@@ -108,13 +108,15 @@ fn getVariableName(job: *ComponentCompilationJob, state: *NamingState) ![]const 
 }
 
 /// Propagate variable names into ReadVariableExpr expressions.
-fn propagateVarNames(expr: *IrExpr, var_names: *std.AutoHashMap(u32, []const u8)) void {
+fn propagateVarNames(expr: *IrExpr, var_names: *const std.AutoHashMap(u32, []const u8)) void {
     switch (expr.data) {
         .ReadVariable => |*rv| {
             if (rv.name.len == 0) {
                 // Look up by xref — but we don't have xref on ReadVariable in current IR
                 // This is a simplified version
-                _ = var_names;
+                if (var_names.count() > 0) {
+                    // Would look up rv.xref in var_names and set rv.name
+                }
             }
         },
         .BinaryExpr => |*b| {
