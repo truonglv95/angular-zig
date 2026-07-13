@@ -322,12 +322,7 @@ pub const Emitter = struct {
             },
             .DeclareVar => |dv| {
                 try self.emitIndent(writer);
-                const mod_str = switch (dv.modifier) {
-                    .Const => "const ",
-                    .Let => "let ",
-                    .Var => "var ",
-                };
-                try writer.writeAll(mod_str);
+                try writer.writeAll("const ");
                 try writer.writeAll(dv.name);
                 if (dv.value) |v| {
                     try writer.writeAll(" = ");
@@ -359,15 +354,15 @@ pub const Emitter = struct {
                 try self.emitExpr(writer, if_data.condition);
                 try writer.writeAll(") {\n");
                 self.indent_level += 1;
-                for (if_data.then_case) |s| {
+                for (if_data.true_case) |s| {
                     try self.emitStmt(writer, s);
                 }
                 self.indent_level -= 1;
-                if (if_data.else_case) |else_stmts| {
+                if (if_data.false_case.len > 0) {
                     try self.emitIndent(writer);
                     try writer.writeAll("} else {\n");
                     self.indent_level += 1;
-                    for (else_stmts) |s| {
+                    for (if_data.false_case) |s| {
                         try self.emitStmt(writer, s);
                     }
                     self.indent_level -= 1;
@@ -379,9 +374,30 @@ pub const Emitter = struct {
                 try self.emitIndent(writer);
                 try writer.writeAll("{\n");
                 self.indent_level += 1;
-                for (b.statements) |s| {
+                for (b.body) |s| {
                     try self.emitStmt(writer, s);
                 }
+                self.indent_level -= 1;
+                try self.emitIndent(writer);
+                try writer.writeAll("}\n");
+            },
+            .Throw => {},
+            .Comment => |text| {
+                try self.emitIndent(writer);
+                try writer.writeAll("// ");
+                try writer.writeAll(text);
+                try writer.writeAll("\n");
+            },
+            .TryCatch => |tc| {
+                try self.emitIndent(writer);
+                try writer.writeAll("try {\n");
+                self.indent_level += 1;
+                for (tc.body) |s| { try self.emitStmt(writer, s); }
+                self.indent_level -= 1;
+                try self.emitIndent(writer);
+                try writer.writeAll("} catch {\n");
+                self.indent_level += 1;
+                for (tc.catch_body) |s| { try self.emitStmt(writer, s); }
                 self.indent_level -= 1;
                 try self.emitIndent(writer);
                 try writer.writeAll("}\n");

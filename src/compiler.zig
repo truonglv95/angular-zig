@@ -664,12 +664,7 @@ fn emitStmtToString(buf: *std.array_list.Managed(u8), stmt: Stmt, indent: u32) !
             }
         },
         .DeclareVar => |dv| {
-            const mod_str = switch (dv.modifier) {
-                .Const => "const ",
-                .Let => "let ",
-                .Var => "var ",
-            };
-            try buf.appendSlice(mod_str);
+            try buf.appendSlice("const ");
             try buf.appendSlice(dv.name);
             if (dv.value) |v| {
                 try buf.appendSlice(" = ");

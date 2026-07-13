@@ -635,7 +635,7 @@ fn emitRepeater(allocator: Allocator, slot: u32, track_by_fn: ?*const IrExpr, co
 
 fn emitVariable(allocator: Allocator, name: []const u8, value: *const IrExpr) !?Stmt {
     const value_arg = irExprToOutputExpr(allocator, value.*);
-    return Stmt.declareVar(name, value_arg);
+    return Stmt.declareVar(name, value_arg, null);
 }
 
 fn emitAnimationBinding(allocator: Allocator, name: []const u8, expression: *const IrExpr) !?Stmt {
