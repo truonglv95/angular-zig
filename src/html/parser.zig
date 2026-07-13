@@ -35,6 +35,8 @@ pub const Parser = struct {
     tokens: []const HtmlToken,
     pos: u32 = 0,
     errors: std.array_list.Managed(ParseError),
+    /// Owned root_nodes slice (freed in deinit).
+    owned_root_nodes: ?[]const *const Node = null,
 
     pub fn init(allocator: Allocator, arena: *AstArena, source: []const u8, tokens: []const HtmlToken) Parser {
         return .{
@@ -47,12 +49,16 @@ pub const Parser = struct {
     }
 
     pub fn deinit(self: *Parser) void {
+        if (self.owned_root_nodes) |rn| {
+            self.allocator.free(rn);
+        }
         self.errors.deinit();
     }
 
     /// Parse the full template into an HTML AST
     pub fn parse(self: *Parser) !ParseTreeResult {
         var root_nodes = std.array_list.Managed(*const Node).init(self.allocator);
+        errdefer root_nodes.deinit();
 
         while (!self.at(.EOF)) {
             const node = try self.parseNode();
@@ -61,8 +67,10 @@ pub const Parser = struct {
             }
         }
 
+        const owned = try root_nodes.toOwnedSlice();
+        self.owned_root_nodes = owned;
         return .{
-            .root_nodes = root_nodes.toOwnedSlice() catch root_nodes.items,
+            .root_nodes = owned,
             .errors = self.errors.items,
         };
     }
@@ -250,18 +258,18 @@ pub const Parser = struct {
         const tok = self.expect(.Text) catch return null;
         const value = tok.slice(self.source);
 
-        var boundaries: []const InterpolationBoundary = &[_]InterpolationBoundary{};
+        var boundaries: []InterpolationBoundary = &[_]InterpolationBoundary{};
         if (tok.parts.len > 0) {
-            var b = std.array_list.Managed(InterpolationBoundary).init(self.allocator);
-            defer b.deinit();
-            for (tok.parts) |p| {
-                try b.append(.{
+            // Allocate in arena — boundaries outlive this function call.
+            const arena_alloc = self.arena.allocator();
+            boundaries = try arena_alloc.alloc(InterpolationBoundary, tok.parts.len);
+            for (tok.parts, 0..) |p, i| {
+                boundaries[i] = .{
                     .start = p.start,
                     .end = p.end,
                     .is_expression = p.is_expression,
-                });
+                };
             }
-            boundaries = b.items;
         }
 
         const node = try self.arena.create(Node);

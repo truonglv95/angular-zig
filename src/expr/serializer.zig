@@ -5,9 +5,9 @@ const BinaryOp = @import("ast.zig").BinaryOp;
 
 pub fn serialize(allocator: std.mem.Allocator, node: *const Ast) ![]const u8 {
     var aw = std.Io.Writer.Allocating.init(allocator);
-    defer aw.deinit();
     try serializeNode(&aw.writer, node);
     var list = aw.toArrayList();
+    // aw.deinit() would free the buffer — skip it since list owns it now.
     return list.toOwnedSlice(allocator);
 }
 
