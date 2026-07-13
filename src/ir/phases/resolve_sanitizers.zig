@@ -23,7 +23,7 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-const schema = @import("../../schema/registry.zig");
+const schema = @import("../../schema/dom_element_schema_registry.zig");
 
 // ─── Shared helpers ──
 const isJavascriptUrl = helpers.isJavascriptUrl;

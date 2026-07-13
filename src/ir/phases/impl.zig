@@ -35,7 +35,7 @@ const ExpressionKind = ir_enums.ExpressionKind;
 const source_span = @import("../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-const schema = @import("../../schema/registry.zig");
+const schema = @import("../../schema/dom_element_schema_registry.zig");
 const SecurityContext = schema.SecurityContext;
 
 const html_tags = @import("../../html/tags.zig");

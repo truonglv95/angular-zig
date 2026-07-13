@@ -80,7 +80,7 @@ pub const output = struct {
 };
 
 // ─── Schema (DOM element definitions) ─────────────────────────
-pub const schema = @import("schema/registry.zig");
+pub const schema = @import("schema/dom_element_schema_registry.zig");
 
 // ─── Type Checking ─────────────────────────────────────────────
 pub const type_checker = @import("type_checker.zig");
@@ -120,7 +120,7 @@ test {
     _ = @import("ir/phases/registry.zig");
     _ = @import("ir/emit.zig");
     _ = @import("ir/conversion.zig");
-    _ = @import("schema/registry.zig");
+    _ = @import("schema/dom_element_schema_registry.zig");
     _ = @import("html/entities.zig");
     _ = @import("expr/serializer.zig");
     _ = @import("type_checker.zig");

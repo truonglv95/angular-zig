@@ -42,7 +42,7 @@ const html_ast = @import("html/ast.zig");
 const template_transform = @import("template/transform.zig");
 const TransformContext = template_transform.TransformContext;
 
-const schema_registry = @import("schema/registry.zig");
+const schema_registry = @import("schema/dom_element_schema_registry.zig");
 const SchemaRegistry = schema_registry.SchemaRegistry;
 
 const r3_ast = @import("render3/r3_ast.zig");
