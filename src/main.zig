@@ -118,6 +118,7 @@ test {
     _ = @import("template_parser/template_preparser.zig");
     _ = @import("template/pipeline/ir/ingest.zig");
     _ = @import("template/pipeline/src/registry.zig");
+    _ = @import("template/pipeline/src/ingest.zig");
     _ = @import("template/pipeline/ir/emit.zig");
     _ = @import("template/pipeline/ir/conversion.zig");
     _ = @import("schema/dom_element_schema_registry.zig");

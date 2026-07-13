@@ -21,12 +21,17 @@ pub const BindingType = enum(u8) {
     Style, // style.prop
     Animation, // @animation.name
     TwoWay, // [(prop)] or bindon-prop
+    LegacyAnimation, // animation.prop (deprecated)
 };
 
 pub const ParsedEventType = enum(u8) {
     Regular,
     AnimationStart,
     AnimationDone,
+    Animation,
+    TwoWay,
+    LegacyAnimation,
+    Wrapped,
 };
 
 // ─── R3 Node Kinds ────────────────────────────────────────────

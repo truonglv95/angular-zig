@@ -267,6 +267,7 @@ fn ingestBoundAttribute(
         .Style => .StyleProperty,
         .TwoWay => .TwoWayProperty,
         .Animation => .Animation,
+        .LegacyAnimation => .LegacyAnimation,
     };
 
     const op_kind: OpKind = switch (bound_attr.type) {
@@ -276,6 +277,7 @@ fn ingestBoundAttribute(
         .Style => .StyleProp,
         .TwoWay => .TwoWayProperty,
         .Animation => .AnimationBinding,
+        .LegacyAnimation => .AnimationString,
     };
 
     const span = bound_attr.source_span;
@@ -345,6 +347,18 @@ fn ingestBoundAttribute(
         .Animation => {
             try view.update.append(.{
                 .kind = .AnimationBinding,
+                .xref = 0,
+                .source_span = span,
+                .data = .{ .AnimationBinding = .{
+                    .name = bound_attr.name,
+                    .expression = bound_ir_expr,
+                } },
+            });
+        },
+        .LegacyAnimation => {
+            // Legacy animation binding (animation.prop) — emit as AnimationString.
+            try view.update.append(.{
+                .kind = .AnimationString,
                 .xref = 0,
                 .source_span = span,
                 .data = .{ .AnimationBinding = .{

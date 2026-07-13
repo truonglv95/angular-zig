@@ -10,15 +10,15 @@
 const std = @import("std");
 const ir_enums = @import("../ir/enums.zig");
 const OpKind = ir_enums.OpKind;
-const CompilationJobKind = ir_enums.CompilationJobKind;
+const CompilationJobKind = ir_enums.CompilationKind;
 const CompilationMode = ir_enums.CompilationMode;
-const operations = @import("../ir/operations.zig");
-const XrefId = operations.XrefId;
-const OpList = operations.OpList;
+
+/// XrefId — cross-reference ID for linking ops across views.
+pub const XrefId = u32;
 
 /// ConstantPool — shared constant storage for compiled output.
 pub const ConstantPool = struct {
-    constants: std.ArrayList(ConstantEntry),
+    constants: std.array_list.Managed(ConstantEntry),
     allocator: std.mem.Allocator,
 
     pub const ConstantEntry = struct {
@@ -27,10 +27,15 @@ pub const ConstantPool = struct {
     };
 
     pub fn init(allocator: std.mem.Allocator) ConstantPool {
-        return .{ .constants = std.ArrayList(ConstantEntry).init(allocator), .allocator = allocator };
+        return .{
+            .constants = std.array_list.Managed(ConstantEntry).init(allocator),
+            .allocator = allocator,
+        };
     }
 
-    pub fn deinit(self: *ConstantPool) void { self.constants.deinit(); }
+    pub fn deinit(self: *ConstantPool) void {
+        self.constants.deinit();
+    }
 
     pub fn add(self: *ConstantPool, value: []const u8, kind: u8) !u32 {
         for (self.constants.items, 0..) |entry, i| {
@@ -41,7 +46,9 @@ pub const ConstantPool = struct {
         return idx;
     }
 
-    pub fn size(self: *const ConstantPool) usize { return self.constants.items.len; }
+    pub fn size(self: *const ConstantPool) usize {
+        return self.constants.items.len;
+    }
 };
 
 /// SlotAllocator — monotonic slot and xref allocation (O(1)).
@@ -62,13 +69,61 @@ pub const SlotAllocator = struct {
     }
 };
 
+/// OpList — a contiguous list of op-kind ordinals.
+/// DOD: Uses the managed ArrayList for contiguous memory layout.
+pub fn OpList(comptime T: type) type {
+    return struct {
+        items: std.array_list.Managed(T),
+        allocator: std.mem.Allocator,
+
+        const Self = @This();
+
+        pub fn init(allocator: std.mem.Allocator) Self {
+            return .{
+                .items = std.array_list.Managed(T).init(allocator),
+                .allocator = allocator,
+            };
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.items.deinit();
+        }
+
+        pub fn append(self: *Self, op: T) !void {
+            try self.items.append(op);
+        }
+
+        pub fn len(self: *const Self) usize {
+            return self.items.items.len;
+        }
+
+        pub fn isEmpty(self: *const Self) bool {
+            return self.items.items.len == 0;
+        }
+
+        pub fn first(self: *const Self) ?T {
+            if (self.items.items.len == 0) return null;
+            return self.items.items[0];
+        }
+
+        pub fn last(self: *const Self) ?T {
+            if (self.items.items.len == 0) return null;
+            return self.items.items[self.items.items.len - 1];
+        }
+
+        pub fn slice(self: *const Self) []const T {
+            return self.items.items;
+        }
+    };
+}
+
 /// ViewCompilationUnit — a single view (root or embedded).
 pub const ViewCompilationUnit = struct {
     xref: XrefId = 0,
     parent: ?XrefId = null,
-    create: OpList(u8), // DOD: would be OpList(IrOp) but using u8 for now
-    update: OpList(u8),
-    functions: std.ArrayList(FunctionEntry),
+    create: OpList(u16), // OpKind ordinals (u16 to match OpKind enum size)
+    update: OpList(u16),
+    functions: std.array_list.Managed(FunctionEntry),
     fn_name: ?[]const u8 = null,
     vars: ?u32 = null,
     decls: ?u32 = null,
@@ -76,16 +131,16 @@ pub const ViewCompilationUnit = struct {
 
     pub const FunctionEntry = struct {
         name: []const u8 = "",
-        ops: OpList(u8),
+        ops: OpList(u16),
     };
 
     pub fn init(allocator: std.mem.Allocator, xref: XrefId, parent: ?XrefId) ViewCompilationUnit {
         return .{
             .xref = xref,
             .parent = parent,
-            .create = OpList(u8).init(allocator),
-            .update = OpList(u8).init(allocator),
-            .functions = std.ArrayList(FunctionEntry).init(allocator),
+            .create = OpList(u16).init(allocator),
+            .update = OpList(u16).init(allocator),
+            .functions = std.array_list.Managed(FunctionEntry).init(allocator),
         };
     }
 
@@ -97,7 +152,7 @@ pub const ViewCompilationUnit = struct {
     }
 
     pub fn allocFunction(self: *ViewCompilationUnit) !*FunctionEntry {
-        try self.functions.append(.{ .ops = OpList(u8).init(self.create.allocator) });
+        try self.functions.append(.{ .ops = OpList(u16).init(self.create.allocator) });
         return &self.functions.items[self.functions.items.len - 1];
     }
 };

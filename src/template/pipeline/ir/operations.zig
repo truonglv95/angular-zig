@@ -20,7 +20,7 @@ pub const XrefId = u32;
 pub const Op = struct {
     kind: OpKind,
     xref: XrefId = 0,
-    source_span: ?@import("../../source_span.zig").AbsoluteSourceSpan = null,
+    source_span: ?@import("../../../source_span.zig").AbsoluteSourceSpan = null,
 };
 
 /// OpList — a list of operations.
@@ -143,7 +143,7 @@ pub fn StatementOp(comptime OpT: type) type {
         kind: OpKind = .Statement,
         xref: XrefId = 0,
         statement: []const u8 = "",
-        source_span: ?@import("../../source_span.zig").AbsoluteSourceSpan = null,
+        source_span: ?@import("../../../source_span.zig").AbsoluteSourceSpan = null,
         _phantom: ?*const OpT = null,
     };
 }
@@ -155,7 +155,7 @@ pub fn VariableOp(comptime OpT: type) type {
         xref: XrefId = 0,
         name: []const u8 = "",
         value: []const u8 = "",
-        source_span: ?@import("../../source_span.zig").AbsoluteSourceSpan = null,
+        source_span: ?@import("../../../source_span.zig").AbsoluteSourceSpan = null,
         _phantom: ?*const OpT = null,
     };
 }
