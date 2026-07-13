@@ -48,14 +48,14 @@ const SchemaRegistry = schema_registry.SchemaRegistry;
 const r3_ast = @import("render3/r3_ast.zig");
 const ParsedTemplate = r3_ast.ParsedTemplate;
 
-const ir_job = @import("ir/job.zig");
+const ir_job = @import("template/pipeline/ir/job.zig");
 const ComponentCompilationJob = ir_job.ComponentCompilationJob;
-const ir_enums = @import("ir/enums.zig");
+const ir_enums = @import("template/pipeline/ir/enums.zig");
 const CompilationMode = ir_enums.CompilationMode;
 
-const ir_ingest = @import("ir/ingest.zig");
-const ir_phases = @import("ir/phases/registry.zig");
-const ir_emit = @import("ir/emit.zig");
+const ir_ingest = @import("template/pipeline/ir/ingest.zig");
+const ir_phases = @import("template/pipeline/src/registry.zig");
+const ir_emit = @import("template/pipeline/ir/emit.zig");
 
 const output_ast = @import("output/ast.zig");
 const output_emitter = @import("output/emitter.zig");

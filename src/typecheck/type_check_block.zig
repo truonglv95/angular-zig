@@ -24,7 +24,7 @@ const r3_ast = @import("../render3/r3_ast.zig");
 const R3Node = r3_ast.R3Node;
 const BindingType = r3_ast.BindingType;
 
-const ir_expr = @import("../ir/expression.zig");
+const ir_expr = @import("../template/pipeline/ir/expression.zig");
 const IrExpr = ir_expr.IrExpr;
 
 // ─── Type Representation ────────────────────────────────────

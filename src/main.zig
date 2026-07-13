@@ -57,20 +57,20 @@ pub const r3_query = @import("render3/query.zig");
 
 // ─── IR (Intermediate Representation) ─────────────────────────
 pub const ir = struct {
-    pub const enums = @import("ir/enums.zig");
-    pub const expression = @import("ir/expression.zig");
-    pub const ops = @import("ir/ops.zig");
-    pub const job = @import("ir/job.zig");
-    pub const ingest = @import("ir/ingest.zig");
-    pub const conversion = @import("ir/conversion.zig");
-    pub const phases = @import("ir/phases/registry.zig");
-    pub const emit = @import("ir/emit.zig");
-    pub const reify = @import("ir/reify.zig");
+    pub const enums = @import("template/pipeline/ir/enums.zig");
+    pub const expression = @import("template/pipeline/ir/expression.zig");
+    pub const ops = @import("template/pipeline/ir/ops.zig");
+    pub const job = @import("template/pipeline/ir/job.zig");
+    pub const ingest = @import("template/pipeline/ir/ingest.zig");
+    pub const conversion = @import("template/pipeline/ir/conversion.zig");
+    pub const phases = @import("template/pipeline/src/registry.zig");
+    pub const emit = @import("template/pipeline/ir/emit.zig");
+    pub const reify = @import("template/pipeline/ir/reify.zig");
 };
 
 // ─── Directive Matching & T2 Binder ────────────────────────────
 pub const directive_matching = @import("directive_matching.zig");
-pub const t2_binder = @import("t2_binder.zig");
+pub const t2_binder = @import("render3/view/t2_binder.zig");
 
 // ─── Output / Code Generation ─────────────────────────────────
 pub const output = struct {
@@ -89,7 +89,7 @@ pub const type_checker = @import("typecheck/type_check_block.zig");
 pub const i18n = @import("i18n/index.zig");
 
 // ─── Pipe Compilation ───────────────────────────────────────────
-pub const pipe_compiler = @import("pipe_compiler.zig");
+pub const pipe_compiler = @import("render3/r3_pipe_compiler.zig");
 
 test {
     std.testing.refAllDecls(@This());
@@ -107,29 +107,29 @@ test {
     _ = @import("ml_parser/tags.zig");
     _ = @import("template_parser/binding_parser.zig");
     _ = @import("render3/r3_ast.zig");
-    _ = @import("ir/enums.zig");
-    _ = @import("ir/expression.zig");
-    _ = @import("ir/ops.zig");
-    _ = @import("ir/job.zig");
+    _ = @import("template/pipeline/ir/enums.zig");
+    _ = @import("template/pipeline/ir/expression.zig");
+    _ = @import("template/pipeline/ir/ops.zig");
+    _ = @import("template/pipeline/ir/job.zig");
     _ = @import("output/ast.zig");
     _ = @import("output/emitter.zig");
     _ = @import("output/source_map.zig");
     _ = @import("template/transform.zig");
     _ = @import("template_parser/template_preparser.zig");
-    _ = @import("ir/ingest.zig");
-    _ = @import("ir/phases/registry.zig");
-    _ = @import("ir/emit.zig");
-    _ = @import("ir/conversion.zig");
+    _ = @import("template/pipeline/ir/ingest.zig");
+    _ = @import("template/pipeline/src/registry.zig");
+    _ = @import("template/pipeline/ir/emit.zig");
+    _ = @import("template/pipeline/ir/conversion.zig");
     _ = @import("schema/dom_element_schema_registry.zig");
     _ = @import("ml_parser/entities.zig");
     _ = @import("expression_parser/serializer.zig");
     _ = @import("typecheck/type_check_block.zig");
     _ = @import("i18n/index.zig");
-    _ = @import("pipe_compiler.zig");
+    _ = @import("render3/r3_pipe_compiler.zig");
     _ = @import("compiler.zig");
     _ = @import("render3/identifiers.zig");
     _ = @import("render3/query.zig");
-    _ = @import("ir/reify.zig");
+    _ = @import("template/pipeline/ir/reify.zig");
     _ = @import("directive_matching.zig");
-    _ = @import("t2_binder.zig");
+    _ = @import("render3/view/t2_binder.zig");
 }
