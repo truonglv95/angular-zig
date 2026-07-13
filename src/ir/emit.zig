@@ -1152,6 +1152,9 @@ test "irExprToOutputExpr — ConstCollected produces ReadProp" {
     const out = irExprToOutputExpr(allocator, ir);
     try std.testing.expectEqual(ExprKind.ReadProp, out.kind);
     try std.testing.expectEqualStrings("5", out.data.ReadProp.name);
+    // Free allocations: idx_str (allocPrint) + recv_ptr (allocator.create)
+    allocator.free(out.data.ReadProp.name);
+    allocator.destroy(out.data.ReadProp.receiver.?);
 }
 
 test "irExprToOutputExpr — SlotLiteralExpr" {
@@ -1171,12 +1174,18 @@ test "emitNamespaceDeclare uses intFromEnum directly" {
 
     const result_html = try emitNamespaceDeclare(allocator, .HTML);
     try std.testing.expect(result_html != null);
+    allocator.free(result_html.?.data.Expression.data.InvokeFunction.args);
+    allocator.destroy(result_html.?.data.Expression.data.InvokeFunction.fn_expr.?);
 
     const result_svg = try emitNamespaceDeclare(allocator, .SVG);
     try std.testing.expect(result_svg != null);
+    allocator.free(result_svg.?.data.Expression.data.InvokeFunction.args);
+    allocator.destroy(result_svg.?.data.Expression.data.InvokeFunction.fn_expr.?);
 
     const result_math = try emitNamespaceDeclare(allocator, .MathML);
     try std.testing.expect(result_math != null);
+    allocator.free(result_math.?.data.Expression.data.InvokeFunction.args);
+    allocator.destroy(result_math.?.data.Expression.data.InvokeFunction.fn_expr.?);
 }
 
 test "emitElementStart without attrs" {
@@ -1184,20 +1193,30 @@ test "emitElementStart without attrs" {
     const result = try emitElementStart(allocator, 0, "div", .HTML, 0);
     try std.testing.expect(result != null);
     try std.testing.expectEqual(StmtKind.Expression, result.?.kind);
+    // Free the args array allocated by emitElementStart
+    allocator.free(result.?.data.Expression.data.InvokeFunction.args);
+    allocator.destroy(result.?.data.Expression.data.InvokeFunction.fn_expr.?);
 }
 
 test "emitElementStart with attrs" {
     const allocator = std.testing.allocator;
     const result = try emitElementStart(allocator, 2, "span", .HTML, 5);
     try std.testing.expect(result != null);
+    allocator.free(result.?.data.Expression.data.InvokeFunction.args);
+    allocator.destroy(result.?.data.Expression.data.InvokeFunction.fn_expr.?);
 }
 
 test "callRuntime produces InvokeFunction" {
     const allocator = std.testing.allocator;
-    const expr = try callRuntime(allocator, "ɵɵadvance", try allocArgs(allocator, &[_]Expr{
+    const args = try allocArgs(allocator, &[_]Expr{
         Expr.literalNum(1),
-    }));
+    });
+    const expr = try callRuntime(allocator, "ɵɵadvance", args);
     try std.testing.expectEqual(ExprKind.InvokeFunction, expr.kind);
     try std.testing.expect(expr.data.InvokeFunction.fn_expr != null);
     try std.testing.expectEqual(@as(usize, 1), expr.data.InvokeFunction.args.len);
+    // callRuntime took ownership of args via fn_expr — but it stored the same args slice.
+    // The args slice is now referenced by expr.data.InvokeFunction.args.
+    allocator.free(expr.data.InvokeFunction.args);
+    allocator.destroy(expr.data.InvokeFunction.fn_expr.?);
 }

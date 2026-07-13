@@ -23,7 +23,14 @@ fn serializeNode(writer: anytype, node: *const Ast) !void {
                     try writer.writeAll(s);
                     try writer.writeAll("\"");
                 },
-                .Number => |n| try writer.print("{d}", .{n}),
+                .Number => |n| {
+                    // Print with .0 suffix if integer-valued, else print as-is
+                    if (@floor(n) == n and n < 1e15 and n > -1e15) {
+                        try writer.print("{d}.0", .{@as(i64, @intFromFloat(n))});
+                    } else {
+                        try writer.print("{d}", .{n});
+                    }
+                },
                 .Boolean => |b| try writer.writeAll(if (b) "true" else "false"),
                 .Null => try writer.writeAll("null"),
                 .Undefined => try writer.writeAll("undefined"),

@@ -250,7 +250,8 @@ fn convertCall(
     args: []const *const Ast,
 ) !IrExpr {
     const recv_ir = try convertExpr(job, receiver);
-    const ir_args = try job.allocator.alloc(*IrExpr, args.len);
+    // Allocate ir_args on the expr_arena (freed in one shot at job.deinit)
+    const ir_args = try job.expr_arena.allocator().alloc(*IrExpr, args.len);
     for (args, 0..) |arg, i| {
         ir_args[i] = try convertExpr(job, arg);
     }
@@ -265,7 +266,7 @@ fn convertSafeCall(
     args: []const *const Ast,
 ) !IrExpr {
     const recv_ir = try convertExpr(job, receiver);
-    const ir_args = try job.allocator.alloc(*IrExpr, args.len);
+    const ir_args = try job.expr_arena.allocator().alloc(*IrExpr, args.len);
     for (args, 0..) |arg, i| {
         ir_args[i] = try convertExpr(job, arg);
     }
@@ -464,7 +465,7 @@ fn convertArrowFunction(
     params: []const expr_ast.ArrowParam,
     body: *const Ast,
 ) !IrExpr {
-    const param_names = try job.allocator.alloc([]const u8, params.len);
+    const param_names = try job.expr_arena.allocator().alloc([]const u8, params.len);
     for (params, 0..) |p, i| {
         param_names[i] = p.name;
     }
