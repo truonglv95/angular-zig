@@ -25,7 +25,7 @@ const source_span = @import("../../source_span.zig");
 // ─── Shared helpers ──
 const MAX_DEPTH = helpers.MAX_DEPTH;
 const helpers = @import("helpers.zig");
-const html_tags = @import("../../html/tags.zig");
+const html_tags = @import("../../ml_parser/tags.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
 const Namespace = ir_ops.Namespace;

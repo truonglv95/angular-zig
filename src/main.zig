@@ -28,25 +28,25 @@ pub const arena = @import("arena.zig");
 
 // ─── Expression Parser ────────────────────────────────────────
 pub const expr = struct {
-    pub const Ast = @import("expr/ast.zig");
-    pub const Lexer = @import("expr/lexer.zig");
-    pub const Parser = @import("expr/parser.zig");
-    pub const Serializer = @import("expr/serializer.zig");
+    pub const Ast = @import("expression_parser/ast.zig");
+    pub const Lexer = @import("expression_parser/lexer.zig");
+    pub const Parser = @import("expression_parser/parser.zig");
+    pub const Serializer = @import("expression_parser/serializer.zig");
 };
 
 // ─── HTML/ML Parser ───────────────────────────────────────────
 pub const html = struct {
-    pub const Ast = @import("html/ast.zig");
-    pub const Lexer = @import("html/lexer.zig");
-    pub const Parser = @import("html/parser.zig");
-    pub const Tags = @import("html/tags.zig");
-    pub const Entities = @import("html/entities.zig");
+    pub const Ast = @import("ml_parser/ast.zig");
+    pub const Lexer = @import("ml_parser/lexer.zig");
+    pub const Parser = @import("ml_parser/parser.zig");
+    pub const Tags = @import("ml_parser/tags.zig");
+    pub const Entities = @import("ml_parser/entities.zig");
 };
 
 // ─── Template Parser ──────────────────────────────────────────
 pub const template = struct {
-    pub const BindingParser = @import("template/binding_parser.zig");
-    pub const Preparser = @import("template/preparser.zig");
+    pub const BindingParser = @import("template_parser/binding_parser.zig");
+    pub const Preparser = @import("template_parser/template_preparser.zig");
     pub const Transform = @import("template/transform.zig");
 };
 
@@ -83,7 +83,7 @@ pub const output = struct {
 pub const schema = @import("schema/dom_element_schema_registry.zig");
 
 // ─── Type Checking ─────────────────────────────────────────────
-pub const type_checker = @import("type_checker.zig");
+pub const type_checker = @import("typecheck/type_check_block.zig");
 
 // ─── i18n (Internationalization) ────────────────────────────────
 pub const i18n = @import("i18n/index.zig");
@@ -98,14 +98,14 @@ test {
     _ = @import("interned.zig");
     _ = @import("arena.zig");
     _ = @import("config.zig");
-    _ = @import("expr/ast.zig");
-    _ = @import("expr/lexer.zig");
-    _ = @import("expr/parser.zig");
-    _ = @import("html/ast.zig");
-    _ = @import("html/lexer.zig");
-    _ = @import("html/parser.zig");
-    _ = @import("html/tags.zig");
-    _ = @import("template/binding_parser.zig");
+    _ = @import("expression_parser/ast.zig");
+    _ = @import("expression_parser/lexer.zig");
+    _ = @import("expression_parser/parser.zig");
+    _ = @import("ml_parser/ast.zig");
+    _ = @import("ml_parser/lexer.zig");
+    _ = @import("ml_parser/parser.zig");
+    _ = @import("ml_parser/tags.zig");
+    _ = @import("template_parser/binding_parser.zig");
     _ = @import("render3/r3_ast.zig");
     _ = @import("ir/enums.zig");
     _ = @import("ir/expression.zig");
@@ -115,15 +115,15 @@ test {
     _ = @import("output/emitter.zig");
     _ = @import("output/source_map.zig");
     _ = @import("template/transform.zig");
-    _ = @import("template/preparser.zig");
+    _ = @import("template_parser/template_preparser.zig");
     _ = @import("ir/ingest.zig");
     _ = @import("ir/phases/registry.zig");
     _ = @import("ir/emit.zig");
     _ = @import("ir/conversion.zig");
     _ = @import("schema/dom_element_schema_registry.zig");
-    _ = @import("html/entities.zig");
-    _ = @import("expr/serializer.zig");
-    _ = @import("type_checker.zig");
+    _ = @import("ml_parser/entities.zig");
+    _ = @import("expression_parser/serializer.zig");
+    _ = @import("typecheck/type_check_block.zig");
     _ = @import("i18n/index.zig");
     _ = @import("pipe_compiler.zig");
     _ = @import("compiler.zig");

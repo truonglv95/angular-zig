@@ -12,7 +12,7 @@ const job_mod = @import("job.zig");
 const ComponentCompilationJob = job_mod.ComponentCompilationJob;
 const ConstantPool = job_mod.ConstantPool;
 
-const expr_ast = @import("../expr/ast.zig");
+const expr_ast = @import("../expression_parser/ast.zig");
 const Ast = expr_ast.Ast;
 const AstKind = expr_ast.AstKind;
 const BinaryOp = expr_ast.BinaryOp;

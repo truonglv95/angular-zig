@@ -38,7 +38,7 @@ const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 const schema = @import("../../schema/dom_element_schema_registry.zig");
 const SecurityContext = schema.SecurityContext;
 
-const html_tags = @import("../../html/tags.zig");
+const html_tags = @import("../../ml_parser/tags.zig");
 
 // ─── Per-phase modules (Phase 3: splitting into per-phase files) ──
 const strip_nonrequired_parens = @import("strip_nonrequired_parentheses.zig");

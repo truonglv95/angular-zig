@@ -9,7 +9,7 @@ const ParseSourceSpan = source_span.ParseSourceSpan;
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 const ParseError = source_span.ParseError;
 
-const expr_ast = @import("../expr/ast.zig");
+const expr_ast = @import("../expression_parser/ast.zig");
 const ExprAst = expr_ast.Ast;
 
 // ─── Binding Types ────────────────────────────────────────────

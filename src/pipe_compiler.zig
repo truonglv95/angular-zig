@@ -14,7 +14,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const expr_ast = @import("expr/ast.zig");
+const expr_ast = @import("expression_parser/ast.zig");
 const Ast = expr_ast.Ast;
 const ir_expr = @import("ir/expression.zig");
 const IrExpr = ir_expr.IrExpr;

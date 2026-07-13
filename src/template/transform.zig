@@ -15,7 +15,7 @@ const Allocator = std.mem.Allocator;
 const arena_mod = @import("../arena.zig");
 const AstArena = arena_mod.AstArena;
 
-const html_ast = @import("../html/ast.zig");
+const html_ast = @import("../ml_parser/ast.zig");
 const HtmlNode = html_ast.Node;
 const TextNode = html_ast.TextNode;
 const AttributeNode = html_ast.AttributeNode;
@@ -36,15 +36,15 @@ const DeferredTrigger = r3_ast.DeferredTrigger;
 const SwitchBlockCase = r3_ast.SwitchBlockCase;
 const SwitchBlockCaseGroup = r3_ast.SwitchBlockCaseGroup;
 
-const binding_parser = @import("binding_parser.zig");
+const binding_parser = @import("../template_parser/binding_parser.zig");
 const ClassifiedAttr = binding_parser.ClassifiedAttr;
 const classifyAttribute = binding_parser.classifyAttribute;
 
-const expr_lexer = @import("../expr/lexer.zig");
-const expr_parser = @import("../expr/parser.zig");
-const expr_ast = @import("../expr/ast.zig");
+const expr_lexer = @import("../expression_parser/lexer.zig");
+const expr_parser = @import("../expression_parser/parser.zig");
+const expr_ast = @import("../expression_parser/ast.zig");
 
-const tags = @import("../html/tags.zig");
+const tags = @import("../ml_parser/tags.zig");
 
 // ─── Transform Context ────────────────────────────────────────
 

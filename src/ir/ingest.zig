@@ -37,7 +37,7 @@ const conversion = @import("conversion.zig");
 const source_span = @import("../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-const tags = @import("../html/tags.zig");
+const tags = @import("../ml_parser/tags.zig");
 
 // ─── Ingest Entry Point ──────────────────────────────────────
 
@@ -557,7 +557,7 @@ fn ingestForLoopBlock(
     var track_by_fn: ?*IrExpr = null;
     if (for_block.track_by) |track_str| {
         // Parse the track-by expression string using the expression parser
-        const expr_parser_mod = @import("../expr/parser.zig");
+        const expr_parser_mod = @import("../expression_parser/parser.zig");
         const expr_arena_mod = @import("../arena.zig");
         var expr_arena = expr_arena_mod.AstArena.init(job.allocator);
         defer expr_arena.deinit();

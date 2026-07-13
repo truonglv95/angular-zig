@@ -35,9 +35,9 @@ const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 const interned = @import("interned.zig");
 const StringPool = interned.StringPool;
 
-const html_lexer = @import("html/lexer.zig");
-const html_parser = @import("html/parser.zig");
-const html_ast = @import("html/ast.zig");
+const html_lexer = @import("ml_parser/lexer.zig");
+const html_parser = @import("ml_parser/parser.zig");
+const html_ast = @import("ml_parser/ast.zig");
 
 const template_transform = @import("template/transform.zig");
 const TransformContext = template_transform.TransformContext;

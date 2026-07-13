@@ -16,15 +16,15 @@ comptime {
     @setEvalBranchQuota(50000);
 }
 
-const expr_ast = @import("expr/ast.zig");
+const expr_ast = @import("../expression_parser/ast.zig");
 const Ast = expr_ast.Ast;
 const AstKind = expr_ast.AstKind;
 
-const r3_ast = @import("render3/r3_ast.zig");
+const r3_ast = @import("../render3/r3_ast.zig");
 const R3Node = r3_ast.R3Node;
 const BindingType = r3_ast.BindingType;
 
-const ir_expr = @import("ir/expression.zig");
+const ir_expr = @import("../ir/expression.zig");
 const IrExpr = ir_expr.IrExpr;
 
 // ─── Type Representation ────────────────────────────────────
@@ -422,7 +422,7 @@ test "infer literal types" {
     defer tc.deinit();
 
     const span = expr_ast.ParseSpan{ .start = 0, .end = 5 };
-    const abs = @import("source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
+    const abs = @import("../source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
 
     var str_lit = Ast.literalString(span, abs, "hello");
     const str_type = tc.inferType(&str_lit);
@@ -444,7 +444,7 @@ test "infer binary expression types" {
     defer tc.deinit();
 
     const span = expr_ast.ParseSpan{ .start = 0, .end = 5 };
-    const abs = @import("source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
+    const abs = @import("../source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
 
     // 1 + 2 → Number
     var left = Ast.literalNumber(span, abs, 1.0);
@@ -472,7 +472,7 @@ test "infer unary not type" {
     defer tc.deinit();
 
     const span = expr_ast.ParseSpan{ .start = 0, .end = 5 };
-    const abs = @import("source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
+    const abs = @import("../source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 5 };
 
     var inner = Ast.literalBool(span, abs, true);
     var not_expr = Ast.prefixNot(span, abs, &inner);
@@ -489,7 +489,7 @@ test "infer property read on context" {
     try tc.registerInput("count", .Number);
 
     const span = expr_ast.ParseSpan{ .start = 0, .end = 10 };
-    const abs = @import("source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 10 };
+    const abs = @import("../source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 10 };
 
     var recv = Ast.implicitReceiver(span, abs);
     var prop_title = Ast.propertyRead(span, abs, &recv, "title");
@@ -531,7 +531,7 @@ test "infer known string method types" {
     defer tc.deinit();
 
     const span = expr_ast.ParseSpan{ .start = 0, .end = 10 };
-    const abs = @import("source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 10 };
+    const abs = @import("../source_span.zig").AbsoluteSourceSpan{ .start = 0, .end = 10 };
 
     // "hello".length → Number
     var str_lit = Ast.literalString(span, abs, "hello");
