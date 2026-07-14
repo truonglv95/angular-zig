@@ -281,7 +281,8 @@ pub const Lexer = struct {
         const start = self.pos;
         self.pos += 1; // skip opening backtick
 
-        var kind: StringKind = .TemplateHead;
+        // Scan the entire template literal as a single token.
+        // Handle ${...} interpolations by scanning to matching }.
         var brace_depth: u32 = 0;
 
         while (self.pos < self.source.len) {
@@ -292,36 +293,33 @@ pub const Lexer = struct {
             }
             if (ch == '`') {
                 self.pos += 1;
-                kind = .TemplateTail;
                 break;
             }
             if (ch == '$' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '{') {
                 self.pos += 2; // skip ${
-                // Scan the expression part to find matching }
                 brace_depth = 1;
                 while (self.pos < self.source.len and brace_depth > 0) {
                     const c = self.source[self.pos];
+                    if (c == '\\') {
+                        self.pos += 2;
+                        continue;
+                    }
                     if (c == '{') brace_depth += 1;
                     if (c == '}') brace_depth -= 1;
                     if (brace_depth > 0) self.pos += 1;
                 }
                 if (brace_depth == 0) self.pos += 1; // skip closing }
-                kind = .TemplateMiddle;
-                break;
+                continue;
             }
             self.pos += 1;
         }
 
+        // Emit as a String token — the whole template literal including backticks.
         try self.tokens.append(.{
-            .type = switch (kind) {
-                .TemplateHead => .TemplateHead,
-                .TemplateMiddle => .TemplateMiddle,
-                .TemplateTail => .TemplateTail,
-                .Plain => .String,
-            },
+            .type = .String,
             .index = start,
             .end = self.pos,
-            .string_kind = kind,
+            .string_kind = .Plain,
         });
     }
 

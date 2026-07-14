@@ -177,6 +177,10 @@ pub const Parser = struct {
             @memcpy(@constCast(node.data.Chain.expressions), exprs.items);
             return node;
         }
+        // Check for unconsumed tokens (only if no errors so far — recovery may leave tokens)
+        if (self.errors.items.len == 0 and !self.at(.EOF)) {
+            try self.errorAt(self.current().index, "Unexpected token");
+        }
         return result;
     }
 
@@ -189,7 +193,12 @@ pub const Parser = struct {
                 .msg = "Got interpolation ({{}}) where expression was expected",
             });
         }
-        return self.parsePipe();
+        const result = try self.parsePipe();
+        // Check for unconsumed tokens (only if no errors so far)
+        if (self.errors.items.len == 0 and !self.at(.EOF)) {
+            try self.errorAt(self.current().index, "Unexpected token");
+        }
+        return result;
     }
 
     /// Parse a template binding micro-syntax: `*ngFor="let item of items; trackBy: track"`
@@ -351,7 +360,7 @@ pub const Parser = struct {
             _ = self.next();
             const true_expr = try self.parsePipe();
             if (!(self.expect(.Operator, ":") catch false)) {
-                try self.errorAt(self.current().index, "Expected ':' in conditional expression");
+                try self.errorAt(self.current().index, "Conditional expression requires all 3 expressions");
                 return result;
             }
             const false_expr = try self.parsePipe();
@@ -382,27 +391,36 @@ pub const Parser = struct {
 
         while (true) {
             const tok = self.current();
-            if (tok.type != .Operator) break;
-
-            const op = self.matchBinaryOp(tok.slice(self.source)) orelse break;
-            const prec = op.precedence();
+            // Check both Operator and Keyword tokens (for `in` and `instanceof`)
+            const op_str = tok.slice(self.source);
+            const op = if (tok.type == .Operator)
+                self.matchBinaryOp(op_str)
+            else if (tok.type == .Keyword and (std.mem.eql(u8, op_str, "in") or std.mem.eql(u8, op_str, "instanceof")))
+                self.matchBinaryOp(op_str)
+            else
+                null;
+            const op_final = op orelse break;
+            const prec = op_final.precedence();
             if (prec != level) break;
 
             // Save the start position of the left operand BEFORE advancing.
-            // Bug fix: previously `start` was read AFTER self.next(), pointing
-            // at the right operand instead of the beginning of the binary expr.
             const bin_start = left.span.start;
             const bin_abs_start = left.abs_span.start;
 
             _ = self.next();
-            const right = try self.parseBinaryOps(if (op.isAssociative()) level + 1 else level + 1);
+            const right = try self.parseBinaryOps(if (op_final.isAssociative()) level + 1 else level + 1);
+
+            // Check for unexpected end after binary operator
+            if (right.data == .Empty and self.at(.EOF)) {
+                try self.errorAt(self.current().index, "Unexpected end of expression");
+            }
 
             const end = self.current().index;
             const node = try self.arena.create(Ast);
             node.* = .{
                 .span = .{ .start = bin_start, .end = end },
                 .abs_span = .{ .start = bin_abs_start, .end = @intCast(end) },
-                .data = .{ .Binary = .{ .op = op, .left = left, .right = right } },
+                .data = .{ .Binary = .{ .op = op_final, .left = left, .right = right } },
             };
             left = node;
         }
@@ -533,6 +551,16 @@ pub const Parser = struct {
                         .data = .{ .SafePropertyRead = .{ .receiver = result, .name = name } },
                     };
                     result = node;
+                    // Check for assignment after safe property read
+                    if (self.is_action) {
+                        const next_tok = self.current();
+                        if (next_tok.type == .Operator and isAssignOp(next_tok.slice(self.source))) {
+                            try self.errors.append(.{
+                                .span = source_span.ParseSourceSpan.init(next_tok.index, next_tok.end, self.source),
+                                .msg = "The '?.' operator cannot be used in the assignment",
+                            });
+                        }
+                    }
                 } else if (self.atOperator("[")) {
                     _ = self.next();
                     const key = try self.parsePipe();
@@ -545,6 +573,16 @@ pub const Parser = struct {
                         .data = .{ .SafeKeyedRead = .{ .receiver = result, .key = key } },
                     };
                     result = node;
+                    // Check for assignment after safe keyed read
+                    if (self.is_action) {
+                        const next_tok = self.current();
+                        if (next_tok.type == .Operator and isAssignOp(next_tok.slice(self.source))) {
+                            try self.errors.append(.{
+                                .span = source_span.ParseSourceSpan.init(next_tok.index, next_tok.end, self.source),
+                                .msg = "The '?.' operator cannot be used in the assignment",
+                            });
+                        }
+                    }
                 } else {
                     break;
                 }
@@ -571,10 +609,36 @@ pub const Parser = struct {
                 defer args.deinit();
 
                 if (!self.atOperator(")")) {
-                    try args.append(try self.parsePipe());
+                    // Handle rest arguments (...expr)
+                    if (self.atOperator("...")) {
+                        _ = self.next();
+                        const expr = try self.parsePipe();
+                        const spread_node = try self.arena.create(Ast);
+                        spread_node.* = .{
+                            .span = self.span(open_tok.index, self.current().index),
+                            .abs_span = self.absSpan(open_tok.index, self.current().index),
+                            .data = .{ .SpreadElement = .{ .expression = expr } },
+                        };
+                        try args.append(spread_node);
+                    } else {
+                        try args.append(try self.parsePipe());
+                    }
                     while (self.atOperator(",")) {
                         _ = self.next();
-                        try args.append(try self.parsePipe());
+                        if (self.atOperator(")")) break;
+                        if (self.atOperator("...")) {
+                            _ = self.next();
+                            const expr = try self.parsePipe();
+                            const spread_node = try self.arena.create(Ast);
+                            spread_node.* = .{
+                                .span = self.span(open_tok.index, self.current().index),
+                                .abs_span = self.absSpan(open_tok.index, self.current().index),
+                                .data = .{ .SpreadElement = .{ .expression = expr } },
+                            };
+                            try args.append(spread_node);
+                        } else {
+                            try args.append(try self.parsePipe());
+                        }
                     }
                 }
                 const close_tok = self.current();
@@ -631,8 +695,8 @@ pub const Parser = struct {
         if (tok.type == .String) {
             _ = self.next();
             const raw = tok.slice(self.source);
-            // Strip quotes
-            const content = raw[1 .. raw.len - 1];
+            // Strip quotes (or backticks for template literals)
+            const content = if (raw.len >= 2) raw[1 .. raw.len - 1] else raw;
             const node = try self.arena.create(Ast);
             node.* = .{
                 .span = self.span(tok.index, tok.end),
@@ -740,6 +804,21 @@ pub const Parser = struct {
             return node;
         }
 
+        // Private identifier (#name) — not supported as standalone expression
+        if (tok.type == .PrivateIdentifier) {
+            try self.errors.append(.{
+                .span = source_span.ParseSourceSpan.init(tok.index, tok.end, self.source),
+                .msg = "Private identifiers are not supported",
+            });
+            _ = self.next();
+            const node = try self.arena.create(Ast);
+            node.* = Ast.empty(
+                self.span(tok.index, tok.end),
+                self.absSpan(tok.index, tok.end),
+            );
+            return node;
+        }
+
         try self.errorAt(tok.index, "Unexpected token");
         const node = try self.arena.create(Ast);
         node.* = Ast.empty(
@@ -806,7 +885,19 @@ pub const Parser = struct {
             while (self.atOperator(",")) {
                 _ = self.next();
                 if (self.atOperator("]")) break;
-                try exprs.append(try self.parsePipe());
+                if (self.atOperator("...")) {
+                    _ = self.next();
+                    const expr = try self.parsePipe();
+                    const node = try self.arena.create(Ast);
+                    node.* = .{
+                        .span = self.span(open.index, self.current().index),
+                        .abs_span = self.absSpan(open.index, self.current().index),
+                        .data = .{ .SpreadElement = .{ .expression = expr } },
+                    };
+                    try exprs.append(node);
+                } else {
+                    try exprs.append(try self.parsePipe());
+                }
             }
         }
         _ = self.expect(.Operator, "]") catch {};
@@ -859,6 +950,27 @@ pub const Parser = struct {
     fn parseMapEntry(self: *Parser) !ast.MapEntry {
         const tok = self.next();
         const key = tok.slice(self.source);
+
+        // Check for shorthand: {a} means {a: a}
+        // If the next token is not ':', it's a shorthand property
+        if (!self.atOperator(":")) {
+            // Shorthand: key = value = identifier name
+            // Create a PropertyRead with implicit receiver
+            const ir = try self.arena.create(Ast);
+            ir.* = .{
+                .span = .{ .start = 0, .end = 0 },
+                .abs_span = .{ .start = 0, .end = 0 },
+                .data = .ImplicitReceiver,
+            };
+            const node = try self.arena.create(Ast);
+            node.* = .{
+                .span = self.span(tok.index, tok.end),
+                .abs_span = self.absSpan(tok.index, tok.end),
+                .data = .{ .PropertyRead = .{ .receiver = ir, .name = key } },
+            };
+            return .{ .key = key, .value = node, .quoted = tok.type == .String };
+        }
+
         _ = self.expect(.Operator, ":") catch {};
         const value = try self.parsePipe();
         return .{ .key = key, .value = value, .quoted = tok.type == .String };
