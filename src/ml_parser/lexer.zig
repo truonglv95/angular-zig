@@ -1314,3 +1314,426 @@ test "tokenize text with entities" {
     }
     try std.testing.expect(text_count >= 1);
 }
+
+// ─── CharacterCursor (Direct port of CharacterCursor interface) ──────
+
+/// CharacterCursor — abstract cursor for moving through input text.
+/// Direct port of `CharacterCursor` interface in the TS source.
+pub const CharacterCursor = struct {
+    source: []const u8,
+    pos: u32 = 0,
+    line: u32 = 0,
+    column: u32 = 0,
+
+    pub fn init(source: []const u8) CharacterCursor {
+        return .{ .source = source };
+    }
+
+    /// Peek at the current character code without advancing.
+    pub fn peek(self: *const CharacterCursor) u8 {
+        if (self.pos >= self.source.len) return 0; // EOF
+        return self.source[self.pos];
+    }
+
+    /// Advance the cursor by one character.
+    pub fn advance(self: *CharacterCursor) void {
+        if (self.pos < self.source.len) {
+            if (self.source[self.pos] == '\n') {
+                self.line += 1;
+                self.column = 0;
+            } else {
+                self.column += 1;
+            }
+            self.pos += 1;
+        }
+    }
+
+    /// Get characters from start to current position.
+    pub fn getChars(self: *const CharacterCursor, start: CharacterCursor) []const u8 {
+        if (start.pos <= self.pos and self.pos <= self.source.len) {
+            return self.source[start.pos..self.pos];
+        }
+        return "";
+    }
+
+    /// Number of characters remaining.
+    pub fn charsLeft(self: *const CharacterCursor) u32 {
+        if (self.pos >= self.source.len) return 0;
+        return @intCast(self.source.len - self.pos);
+    }
+
+    /// Clone this cursor.
+    pub fn clone(self: *const CharacterCursor) CharacterCursor {
+        return .{
+            .source = self.source,
+            .pos = self.pos,
+            .line = self.line,
+            .column = self.column,
+        };
+    }
+
+    /// Difference in position between this cursor and another.
+    pub fn diff(self: *const CharacterCursor, other: CharacterCursor) i32 {
+        return @as(i32, @intCast(self.pos)) - @as(i32, @intCast(other.pos));
+    }
+};
+
+// ─── Helper Predicates (Direct port of standalone functions) ─────────
+
+/// Check if a character code is not whitespace.
+/// Direct port of `isNotWhitespace(code)` in the TS source.
+pub fn isNotWhitespace(code: u8) bool {
+    return !chars.isWhitespace(code) or code == 0; // EOF
+}
+
+/// Check if a character code ends a name.
+/// Direct port of `isNameEnd(code)` in the TS source.
+pub fn isNameEnd(code: u8) bool {
+    return chars.isWhitespace(code) or
+        code == '>' or code == '<' or code == '/' or
+        code == '\'' or code == '"' or code == '=' or code == 0;
+}
+
+/// Check if a character code ends a namespace prefix.
+/// Direct port of `isPrefixEnd(code)` in the TS source.
+pub fn isPrefixEnd(code: u8) bool {
+    return !(code >= 'a' and code <= 'z') and
+        !(code >= 'A' and code <= 'Z') and
+        !(code >= '0' and code <= '9');
+}
+
+/// Check if a character code ends a digit entity.
+/// Direct port of `isDigitEntityEnd(code)` in the TS source.
+pub fn isDigitEntityEnd(code: u8) bool {
+    return code == ';' or code == 0 or !chars.isAsciiHexDigit(code);
+}
+
+/// Check if a character code ends a named entity.
+/// Direct port of `isNamedEntityEnd(code)` in the TS source.
+pub fn isNamedEntityEnd(code: u8) bool {
+    return code == ';' or code == 0 or
+        !(chars.isAsciiLetter(code) or chars.isDigit(code));
+}
+
+/// Check if a character is the start of an expansion case.
+/// Direct port of `isExpansionCaseStart(peek)` in the TS source.
+pub fn isExpansionCaseStart(peek: u8) bool {
+    return peek != '}';
+}
+
+/// Compare two character codes case-insensitively.
+/// Direct port of `compareCharCodeCaseInsensitive(code1, code2)` in the TS source.
+pub fn compareCharCodeCaseInsensitive(code1: u8, code2: u8) bool {
+    return toUpperCaseCharCode(code1) == toUpperCaseCharCode(code2);
+}
+
+/// Convert a character code to uppercase.
+/// Direct port of `toUpperCaseCharCode(code)` in the TS source.
+pub fn toUpperCaseCharCode(code: u8) u8 {
+    if (code >= 'a' and code <= 'z') return code - 'a' + 'A';
+    return code;
+}
+
+/// Check if a character is valid in a block name.
+/// Direct port of `isBlockNameChar(code)` in the TS source.
+pub fn isBlockNameChar(code: u8) bool {
+    return chars.isAsciiLetter(code) or chars.isDigit(code) or code == '_';
+}
+
+/// Check if a character is valid in a block parameter.
+/// Direct port of `isBlockParameterChar(code)` in the TS source.
+pub fn isBlockParameterChar(code: u8) bool {
+    return code != ';' and isNotWhitespace(code);
+}
+
+/// Check if a character can start a selectorless name.
+/// Direct port of `isSelectorlessNameStart(code)` in the TS source.
+pub fn isSelectorlessNameStart(code: u8) bool {
+    return code == '_' or (code >= 'A' and code <= 'Z');
+}
+
+/// Check if a character can be part of a selectorless name.
+/// Direct port of `isSelectorlessNameChar(code)` in the TS source.
+pub fn isSelectorlessNameChar(code: u8) bool {
+    return chars.isAsciiLetter(code) or chars.isDigit(code) or code == '_';
+}
+
+/// Check if a character terminates attributes.
+/// Direct port of `isAttributeTerminator(code)` in the TS source.
+pub fn isAttributeTerminator(code: u8) bool {
+    return code == '/' or code == '>' or code == '<' or code == 0;
+}
+
+// ─── Error Message Helpers ──────────────────────────────────
+
+/// Generate an "unexpected character" error message.
+/// Direct port of `_unexpectedCharacterErrorMsg(charCode)` in the TS source.
+pub fn unexpectedCharacterErrorMsg(charCode: u8) []const u8 {
+    if (charCode == 0) return "Unexpected character \"EOF\"";
+    return "Unexpected character"; // Full version would format the char
+}
+
+/// Generate an "unknown entity" error message.
+/// Direct port of `_unknownEntityErrorMsg(entitySrc)` in the TS source.
+pub fn unknownEntityErrorMsg(entity_src: []const u8) []const u8 {
+    _ = entity_src;
+    return "Unknown entity - use the \"&#<decimal>;\" or  \"&#x<hex>;\" syntax";
+}
+
+/// Generate an "unparsable entity" error message.
+/// Direct port of `_unparsableEntityErrorMsg(type, entityStr)` in the TS source.
+pub fn unparsableEntityErrorMsg(entity_str: []const u8) []const u8 {
+    _ = entity_str;
+    return "Unable to parse entity - character reference entities must end with \";\"";
+}
+
+// ─── mergeTextTokens ────────────────────────────────────────
+
+/// Merge adjacent text tokens into single tokens.
+/// Direct port of `mergeTextTokens(srcTokens)` in the TS source.
+pub fn mergeTextTokens(allocator: std.mem.Allocator, src_tokens: []const HtmlToken) ![]const HtmlToken {
+    var dst_tokens = std.array_list.Managed(HtmlToken).init(allocator);
+    errdefer dst_tokens.deinit();
+
+    for (src_tokens) |token| {
+        if (dst_tokens.items.len > 0) {
+            const last_idx = dst_tokens.items.len - 1;
+            // Merge adjacent TEXT tokens
+            if (dst_tokens.items[last_idx].type == .Text and token.type == .Text) {
+                // Extend the last token's end to include this token
+                dst_tokens.items[last_idx].end = token.end;
+                continue;
+            }
+        }
+        try dst_tokens.append(token);
+    }
+
+    return dst_tokens.toOwnedSlice();
+}
+
+// ─── Patterns ───────────────────────────────────────────────
+
+/// Check if a string matches the "default never" pattern.
+/// Direct port of `DEFAULT_NEVER_PATTERN = /^default[^\S\r\n]+never/` in the TS source.
+pub fn isDefaultNeverPattern(s: []const u8) bool {
+    if (!std.mem.startsWith(u8, s, "default")) return false;
+    var i: usize = 7; // skip "default"
+    // Skip whitespace (not newlines)
+    var found_ws = false;
+    while (i < s.len and (s[i] == ' ' or s[i] == '\t')) : (i += 1) {
+        found_ws = true;
+    }
+    if (!found_ws) return false;
+    return std.mem.startsWith(u8, s[i..], "never");
+}
+
+/// Check if a string matches the "else if" pattern.
+/// Direct port of `ELSE_IF_PATTERN = /^else[^\S\r\n]+if/` in the TS source.
+pub fn isElseIfPattern(s: []const u8) bool {
+    if (!std.mem.startsWith(u8, s, "else")) return false;
+    var i: usize = 4; // skip "else"
+    var found_ws = false;
+    while (i < s.len and (s[i] == ' ' or s[i] == '\t')) : (i += 1) {
+        found_ws = true;
+    }
+    if (!found_ws) return false;
+    return std.mem.startsWith(u8, s[i..], "if");
+}
+
+// ─── Additional Tests ───────────────────────────────────────
+
+test "CharacterCursor init and peek" {
+    const cursor = CharacterCursor.init("hello");
+    try std.testing.expectEqual(@as(u8, 'h'), cursor.peek());
+    try std.testing.expectEqual(@as(u32, 5), cursor.charsLeft());
+}
+
+test "CharacterCursor advance" {
+    var cursor = CharacterCursor.init("abc");
+    try std.testing.expectEqual(@as(u8, 'a'), cursor.peek());
+    cursor.advance();
+    try std.testing.expectEqual(@as(u8, 'b'), cursor.peek());
+    cursor.advance();
+    try std.testing.expectEqual(@as(u8, 'c'), cursor.peek());
+    cursor.advance();
+    try std.testing.expectEqual(@as(u8, 0), cursor.peek()); // EOF
+}
+
+test "CharacterCursor getChars" {
+    var cursor = CharacterCursor.init("hello world");
+    const start = cursor.clone();
+    cursor.advance();
+    cursor.advance();
+    cursor.advance();
+    try std.testing.expectEqualStrings("hel", cursor.getChars(start));
+}
+
+test "CharacterCursor clone" {
+    var cursor = CharacterCursor.init("test");
+    cursor.advance();
+    const cloned = cursor.clone();
+    try std.testing.expectEqual(cursor.pos, cloned.pos);
+    try std.testing.expectEqual(cursor.line, cloned.line);
+    try std.testing.expectEqual(cursor.column, cloned.column);
+}
+
+test "CharacterCursor diff" {
+    var cursor1 = CharacterCursor.init("hello");
+    cursor1.pos = 3;
+    var cursor2 = CharacterCursor.init("hello");
+    cursor2.pos = 1;
+    try std.testing.expectEqual(@as(i32, 2), cursor1.diff(cursor2));
+}
+
+test "isNotWhitespace" {
+    try std.testing.expect(isNotWhitespace('a'));
+    try std.testing.expect(isNotWhitespace(0)); // EOF is "not whitespace"
+    try std.testing.expect(!isNotWhitespace(' '));
+    try std.testing.expect(!isNotWhitespace('\n'));
+}
+
+test "isNameEnd" {
+    try std.testing.expect(isNameEnd(' '));
+    try std.testing.expect(isNameEnd('>'));
+    try std.testing.expect(isNameEnd('<'));
+    try std.testing.expect(isNameEnd('/'));
+    try std.testing.expect(isNameEnd('='));
+    try std.testing.expect(isNameEnd('\''));
+    try std.testing.expect(isNameEnd('"'));
+    try std.testing.expect(isNameEnd(0)); // EOF
+    try std.testing.expect(!isNameEnd('a'));
+    try std.testing.expect(!isNameEnd('-'));
+}
+
+test "isPrefixEnd" {
+    try std.testing.expect(isPrefixEnd('-'));
+    try std.testing.expect(isPrefixEnd(':'));
+    try std.testing.expect(!isPrefixEnd('a'));
+    try std.testing.expect(!isPrefixEnd('A'));
+    try std.testing.expect(!isPrefixEnd('0'));
+}
+
+test "isDigitEntityEnd" {
+    try std.testing.expect(isDigitEntityEnd(';'));
+    try std.testing.expect(isDigitEntityEnd(0)); // EOF
+    try std.testing.expect(isDigitEntityEnd('g')); // Not hex
+    try std.testing.expect(!isDigitEntityEnd('0'));
+    try std.testing.expect(!isDigitEntityEnd('a'));
+    try std.testing.expect(!isDigitEntityEnd('F'));
+}
+
+test "isNamedEntityEnd" {
+    try std.testing.expect(isNamedEntityEnd(';'));
+    try std.testing.expect(isNamedEntityEnd(0)); // EOF
+    try std.testing.expect(isNamedEntityEnd('-'));
+    try std.testing.expect(!isNamedEntityEnd('a'));
+    try std.testing.expect(!isNamedEntityEnd('0'));
+}
+
+test "isExpansionCaseStart" {
+    try std.testing.expect(isExpansionCaseStart('a'));
+    try std.testing.expect(isExpansionCaseStart(0));
+    try std.testing.expect(!isExpansionCaseStart('}'));
+}
+
+test "compareCharCodeCaseInsensitive" {
+    try std.testing.expect(compareCharCodeCaseInsensitive('a', 'A'));
+    try std.testing.expect(compareCharCodeCaseInsensitive('A', 'a'));
+    try std.testing.expect(compareCharCodeCaseInsensitive('z', 'Z'));
+    try std.testing.expect(!compareCharCodeCaseInsensitive('a', 'b'));
+}
+
+test "toUpperCaseCharCode" {
+    try std.testing.expectEqual(@as(u8, 'A'), toUpperCaseCharCode('a'));
+    try std.testing.expectEqual(@as(u8, 'Z'), toUpperCaseCharCode('z'));
+    try std.testing.expectEqual(@as(u8, 'A'), toUpperCaseCharCode('A'));
+    try std.testing.expectEqual(@as(u8, '0'), toUpperCaseCharCode('0'));
+}
+
+test "isBlockNameChar" {
+    try std.testing.expect(isBlockNameChar('a'));
+    try std.testing.expect(isBlockNameChar('A'));
+    try std.testing.expect(isBlockNameChar('0'));
+    try std.testing.expect(isBlockNameChar('_'));
+    try std.testing.expect(!isBlockNameChar('-'));
+    try std.testing.expect(!isBlockNameChar(' '));
+}
+
+test "isBlockParameterChar" {
+    try std.testing.expect(isBlockParameterChar('a'));
+    try std.testing.expect(isBlockParameterChar('('));
+    try std.testing.expect(!isBlockParameterChar(';'));
+    try std.testing.expect(!isBlockParameterChar(' '));
+}
+
+test "isSelectorlessNameStart" {
+    try std.testing.expect(isSelectorlessNameStart('_'));
+    try std.testing.expect(isSelectorlessNameStart('A'));
+    try std.testing.expect(isSelectorlessNameStart('Z'));
+    try std.testing.expect(!isSelectorlessNameStart('a'));
+    try std.testing.expect(!isSelectorlessNameStart('0'));
+}
+
+test "isSelectorlessNameChar" {
+    try std.testing.expect(isSelectorlessNameChar('a'));
+    try std.testing.expect(isSelectorlessNameChar('A'));
+    try std.testing.expect(isSelectorlessNameChar('0'));
+    try std.testing.expect(isSelectorlessNameChar('_'));
+    try std.testing.expect(!isSelectorlessNameChar('-'));
+    try std.testing.expect(!isSelectorlessNameChar('.'));
+}
+
+test "isAttributeTerminator" {
+    try std.testing.expect(isAttributeTerminator('/'));
+    try std.testing.expect(isAttributeTerminator('>'));
+    try std.testing.expect(isAttributeTerminator('<'));
+    try std.testing.expect(isAttributeTerminator(0)); // EOF
+    try std.testing.expect(!isAttributeTerminator('a'));
+    try std.testing.expect(!isAttributeTerminator(' '));
+}
+
+test "unexpectedCharacterErrorMsg" {
+    try std.testing.expect(std.mem.indexOf(u8, unexpectedCharacterErrorMsg(0), "EOF") != null);
+    try std.testing.expect(std.mem.indexOf(u8, unexpectedCharacterErrorMsg('x'), "Unexpected") != null);
+}
+
+test "unknownEntityErrorMsg" {
+    const msg = unknownEntityErrorMsg("&unknown;");
+    try std.testing.expect(std.mem.indexOf(u8, msg, "Unknown entity") != null);
+}
+
+test "unparsableEntityErrorMsg" {
+    const msg = unparsableEntityErrorMsg("&#123");
+    try std.testing.expect(std.mem.indexOf(u8, msg, "Unable to parse") != null);
+}
+
+test "mergeTextTokens" {
+    const allocator = std.testing.allocator;
+    const tokens = [_]HtmlToken{
+        .{ .type = .Text, .index = 0, .end = 5 },
+        .{ .type = .Text, .index = 5, .end = 10 },
+        .{ .type = .TagOpenStart, .index = 10, .end = 11 },
+    };
+    const merged = try mergeTextTokens(allocator, &tokens);
+    defer allocator.free(merged);
+    try std.testing.expectEqual(@as(usize, 2), merged.len);
+    try std.testing.expectEqual(@as(u32, 10), merged[0].end);
+}
+
+test "isDefaultNeverPattern" {
+    try std.testing.expect(isDefaultNeverPattern("default never"));
+    try std.testing.expect(isDefaultNeverPattern("default  never"));
+    try std.testing.expect(isDefaultNeverPattern("default\tnever"));
+    try std.testing.expect(!isDefaultNeverPattern("default"));
+    try std.testing.expect(!isDefaultNeverPattern("defaultnever"));
+    try std.testing.expect(!isDefaultNeverPattern("default\nnever"));
+}
+
+test "isElseIfPattern" {
+    try std.testing.expect(isElseIfPattern("else if"));
+    try std.testing.expect(isElseIfPattern("else  if"));
+    try std.testing.expect(isElseIfPattern("else\tif"));
+    try std.testing.expect(!isElseIfPattern("else"));
+    try std.testing.expect(!isElseIfPattern("elseif"));
+    try std.testing.expect(!isElseIfPattern("else\nif"));
+}
