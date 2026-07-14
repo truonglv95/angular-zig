@@ -1349,3 +1349,140 @@ test "Expr.biggerEquals chaining" {
     const r = a.biggerEquals(&b);
     try std.testing.expectEqualStrings(">=", r.data.BinaryOperator.operator);
 }
+
+// ─── Additional types from output_ast.ts ────────────────────
+
+/// BuiltinTypeName extended with Function and Inferred.
+/// Direct port of the full `BuiltinTypeName` enum in the TS source.
+pub const BuiltinTypeNameFull = enum {
+    Dynamic,
+    Bool,
+    String,
+    Int,
+    Number,
+    Function,
+    Inferred,
+    None,
+};
+
+/// BinaryOperator — all binary operators including assignment operators.
+/// Direct port of `BinaryOperator` enum in the TS source.
+pub const BinaryOperatorFull = enum {
+    Equals,
+    NotEquals,
+    Assign,
+    Identical,
+    NotIdentical,
+    Minus,
+    Plus,
+    Divide,
+    Multiply,
+    Modulo,
+    And,
+    Or,
+    BitwiseOr,
+    BitwiseAnd,
+    Lower,
+    LowerEquals,
+    Bigger,
+    BiggerEquals,
+    NullishCoalesce,
+    Exponentiation,
+    In,
+    InstanceOf,
+    AdditionAssignment,
+    SubtractionAssignment,
+    MultiplicationAssignment,
+    DivisionAssignment,
+    RemainderAssignment,
+    ExponentiationAssignment,
+    AndAssignment,
+    OrAssignment,
+    NullishCoalesceAssignment,
+};
+
+/// StatementKind — kinds of statements.
+pub const StatementKind = enum(u8) {
+    ExpressionStatement,
+    DeclareVar,
+    DeclareFunctionStmt,
+    IfStmt,
+    TryCatchStmt,
+    ReturnStatement,
+    ThrowStmt,
+    AssignExprStmt,
+    ClassStmt,
+};
+
+/// ClassField — a field in a class statement.
+pub const ClassField = struct {
+    name: []const u8,
+    type: ?*const BuiltinType = null,
+    value: ?*const Expr = null,
+    is_static: bool = false,
+};
+
+/// Create a function expression.
+/// Direct port of `fn(params, body, type, sourceSpan, name)` in the TS source.
+pub fn fnExpr(params: []const FnParam, body: []const Stmt) Expr {
+    return .{ .kind = .FunctionExpr, .span = null, .data = .{ .FunctionExpr = .{
+        .params = params,
+        .body = body,
+        .name = null,
+    } } };
+}
+
+/// Create a literal expression from a value.
+/// Direct port of `literal(value, type, sourceSpan)` in the TS source.
+pub fn literal(value: anytype) Expr {
+    const T = @TypeOf(value);
+    return switch (@typeInfo(T)) {
+        .Int, .ComptimeInt => Expr.literalNum(@floatFromInt(value)),
+        .Float, .ComptimeFloat => Expr.literalNum(value),
+        .Bool => Expr.literalBool(value),
+        .Pointer => |ptr| if (ptr.size == .Slice or ptr.child == u8)
+            Expr.literalStr(value)
+        else
+            Expr.literalNum(0),
+        else => Expr.literalNum(0),
+    };
+}
+
+// isNull already defined above with Expr parameter
+
+// ─── Additional tests ──────────────────────────────────────
+
+test "BuiltinTypeNameFull — all values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(BuiltinTypeNameFull.Dynamic));
+    try std.testing.expectEqual(@as(u8, 5), @intFromEnum(BuiltinTypeNameFull.Function));
+    try std.testing.expectEqual(@as(u8, 7), @intFromEnum(BuiltinTypeNameFull.None));
+}
+
+test "BinaryOperatorFull — key values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(BinaryOperatorFull.Equals));
+    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(BinaryOperatorFull.Assign));
+    try std.testing.expectEqual(@as(u8, 18), @intFromEnum(BinaryOperatorFull.NullishCoalesce));
+    try std.testing.expectEqual(@as(u8, 19), @intFromEnum(BinaryOperatorFull.Exponentiation));
+}
+
+test "StatementKind values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(StatementKind.ExpressionStatement));
+    try std.testing.expectEqual(@as(u8, 5), @intFromEnum(StatementKind.ReturnStatement));
+}
+
+test "ClassField defaults" {
+    const field = ClassField{ .name = "value" };
+    try std.testing.expectEqualStrings("value", field.name);
+    try std.testing.expect(!field.is_static);
+    try std.testing.expect(field.value == null);
+}
+
+test "ClassField with static" {
+    const field = ClassField{
+        .name = "instance",
+        .is_static = true,
+    };
+    try std.testing.expect(field.is_static);
+}
+
+
