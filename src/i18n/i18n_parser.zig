@@ -183,11 +183,10 @@ pub const I18nVisitor = struct {
         visit_node_fn: ?VisitNodeFn,
     ) !i18n_ast.Message {
         var context = I18nMessageVisitorContext.init(self.allocator);
-        // NOTE: We do NOT defer context.deinit() here because the
-        // placeholder_to_content and placeholder_to_message hashmaps are
-        // moved into the Message (ownership transferred). We only need to
-        // free the placeholder_registry.
-        defer context.placeholder_registry.deinit();
+        // NOTE: We do NOT free placeholder_registry here because the
+        // placeholder names (start_name, close_name, etc.) are allocated
+        // by the registry and referenced by the returned Message's nodes.
+        // Freeing the registry would create dangling pointers.
         context.is_icu = nodes.len == 1 and nodes[0].kind == .expansion;
         context.visit_node_fn = visit_node_fn;
 
