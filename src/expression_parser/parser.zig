@@ -610,6 +610,27 @@ pub const Parser = struct {
                 break;
             }
         }
+
+        // Check for tagged template literal after member access: tags.first`hello!`
+        if (self.current().type == .String and self.source[self.current().index] == '`') {
+            const tmpl_tok = self.next();
+            const tmpl_raw = tmpl_tok.slice(self.source);
+            const tmpl_content = if (tmpl_raw.len >= 2) tmpl_raw[1 .. tmpl_raw.len - 1] else tmpl_raw;
+            const tagged_node = try self.arena.create(Ast);
+            tagged_node.* = .{
+                .span = .{ .start = result.span.start, .end = tmpl_tok.end },
+                .abs_span = .{ .start = result.abs_span.start, .end = tmpl_tok.end },
+                .data = .{ .TaggedTemplate = .{
+                    .tag = result,
+                    .template = .{
+                        .elements = &[_][]const u8{tmpl_content},
+                        .expressions = &[_]*const Ast{},
+                    },
+                } },
+            };
+            return tagged_node;
+        }
+
         return result;
     }
 
@@ -843,6 +864,25 @@ pub const Parser = struct {
                     } },
                 };
                 result = node;
+            }
+            // Tagged template literal: expr`template`
+            else if (tok.type == .String and self.source[tok.index] == '`') {
+                const tmpl_tok = self.next();
+                const tmpl_raw = tmpl_tok.slice(self.source);
+                const tmpl_content = if (tmpl_raw.len >= 2) tmpl_raw[1 .. tmpl_raw.len - 1] else tmpl_raw;
+                const tagged_node = try self.arena.create(Ast);
+                tagged_node.* = .{
+                    .span = .{ .start = result.span.start, .end = tmpl_tok.end },
+                    .abs_span = .{ .start = result.abs_span.start, .end = tmpl_tok.end },
+                    .data = .{ .TaggedTemplate = .{
+                        .tag = result,
+                        .template = .{
+                            .elements = &[_][]const u8{tmpl_content},
+                            .expressions = &[_]*const Ast{},
+                        },
+                    } },
+                };
+                result = tagged_node;
             } else {
                 break;
             }
@@ -995,8 +1035,8 @@ pub const Parser = struct {
                 self.span(tok.index, tok.index),
                 self.absSpan(tok.index, tok.index),
             );
-            const node = try self.arena.create(Ast);
-            node.* = .{
+            const prop_node = try self.arena.create(Ast);
+            prop_node.* = .{
                 .span = self.span(tok.index, tok.end),
                 .abs_span = self.absSpan(tok.index, tok.end),
                 .data = .{ .PropertyRead = .{
@@ -1004,7 +1044,43 @@ pub const Parser = struct {
                     .name = name,
                 } },
             };
-            return node;
+
+            // Check for tagged template literal: identifier`template`
+            if (self.current().type == .String and self.current().string_kind == .Plain and
+                self.source[self.current().index] == '`')
+            {
+                const tmpl_tok = self.next();
+                const tmpl_raw = tmpl_tok.slice(self.source);
+                const tmpl_content = if (tmpl_raw.len >= 2) tmpl_raw[1 .. tmpl_raw.len - 1] else tmpl_raw;
+
+                // Create TemplateLiteral node
+                const tmpl_node = try self.arena.create(Ast);
+                tmpl_node.* = .{
+                    .span = self.span(tmpl_tok.index, tmpl_tok.end),
+                    .abs_span = self.absSpan(tmpl_tok.index, tmpl_tok.end),
+                    .data = .{ .TemplateLiteral = .{
+                        .elements = &[_][]const u8{tmpl_content},
+                        .expressions = &[_]*const Ast{},
+                    } },
+                };
+
+                // Create TaggedTemplate node
+                const tagged_node = try self.arena.create(Ast);
+                tagged_node.* = .{
+                    .span = self.span(tok.index, tmpl_tok.end),
+                    .abs_span = self.absSpan(tok.index, tmpl_tok.end),
+                    .data = .{ .TaggedTemplate = .{
+                        .tag = prop_node,
+                        .template = .{
+                            .elements = &[_][]const u8{tmpl_content},
+                            .expressions = &[_]*const Ast{},
+                        },
+                    } },
+                };
+                return tagged_node;
+            }
+
+            return prop_node;
         }
 
         // Dollar sign (e.g., in template context)
