@@ -454,6 +454,7 @@ fn binaryOpToSourceStr(op: u8) []const u8 {
         .In => " in ",
         .Instanceof => " instanceof ",
         .Comma => ",",
+        .Power => "**",
         .Assign => "=",
         .AddAssign => "+=",
         .SubtractAssign => "-=",

@@ -385,7 +385,7 @@ pub const Parser = struct {
 
     /// Binary operations — precedence climbing via comptime table
     fn parseBinaryOps(self: *Parser, level: u8) error{OutOfMemory}!*const Ast {
-        if (level >= 12) return self.parseUnary();
+        if (level >= 13) return self.parseUnary();
 
         var left = try self.parseBinaryOps(level + 1);
 
@@ -536,8 +536,9 @@ pub const Parser = struct {
                     break;
                 }
             }
-            // Safe navigation: ?.identifier or ?.[expr]
-            else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.")) {
+            // Safe navigation: ?.identifier or ?.[expr] (but NOT ?.() which is safe call)
+            else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.") and
+                !(self.peekAt(1).type == .Operator and std.mem.eql(u8, self.peekAt(1).slice(self.source), "("))) {
                 _ = self.next();
                 const start = self.tokens[self.pos].index;
 
@@ -599,6 +600,71 @@ pub const Parser = struct {
                     .span = self.span(start, end_tok.index),
                     .abs_span = self.absSpan(start, end_tok.index),
                     .data = .{ .KeyedRead = .{ .receiver = result, .key = key } },
+                };
+                result = node;
+            }
+            // Safe call: ?.()
+            else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.") and
+                self.peekAt(1).type == .Operator and std.mem.eql(u8, self.peekAt(1).slice(self.source), "("))
+            {
+                _ = self.next(); // skip ?.
+                const open_tok = self.next(); // skip (
+                var args = std.array_list.Managed(*const Ast).init(self.allocator);
+                defer args.deinit();
+
+                if (!self.atOperator(")")) {
+                    if (self.atOperator("...")) {
+                        _ = self.next();
+                        const expr = try self.parsePipe();
+                        const spread_node = try self.arena.create(Ast);
+                        spread_node.* = .{
+                            .span = self.span(open_tok.index, self.current().index),
+                            .abs_span = self.absSpan(open_tok.index, self.current().index),
+                            .data = .{ .SpreadElement = .{ .expression = expr } },
+                        };
+                        try args.append(spread_node);
+                    } else {
+                        try args.append(try self.parsePipe());
+                    }
+                    while (self.atOperator(",")) {
+                        _ = self.next();
+                        if (self.atOperator(")")) break;
+                        if (self.atOperator("...")) {
+                            _ = self.next();
+                            const expr = try self.parsePipe();
+                            const spread_node = try self.arena.create(Ast);
+                            spread_node.* = .{
+                                .span = self.span(open_tok.index, self.current().index),
+                                .abs_span = self.absSpan(open_tok.index, self.current().index),
+                                .data = .{ .SpreadElement = .{ .expression = expr } },
+                            };
+                            try args.append(spread_node);
+                        } else {
+                            try args.append(try self.parsePipe());
+                        }
+                    }
+                }
+                const close_tok = self.current();
+                _ = self.expect(.Operator, ")") catch {};
+
+                const args_slice = if (args.items.len > 0)
+                    try self.arena.alloc(*const Ast, args.items.len)
+                else
+                    &[_]*const Ast{};
+                if (args.items.len > 0) @memcpy(@constCast(args_slice), args.items);
+
+                const node = try self.arena.create(Ast);
+                node.* = .{
+                    .span = self.span(tok.index, close_tok.index),
+                    .abs_span = self.absSpan(tok.index, close_tok.index),
+                    .data = .{ .SafeCall = .{
+                        .receiver = result,
+                        .args = args_slice,
+                        .argument_span = ParseSpan{
+                            .start = open_tok.index,
+                            .end = close_tok.index,
+                        },
+                    } },
                 };
                 result = node;
             }
@@ -776,6 +842,25 @@ pub const Parser = struct {
         if (tok.type == .Identifier) {
             _ = self.next();
             const name = tok.slice(self.source);
+
+            // Check for single-parameter arrow function: ident => body
+            if (self.atOperator("=>")) {
+                _ = self.next(); // skip =>
+                const body = try self.parsePipe();
+                const params_slice = try self.arena.alloc(ArrowParam, 1);
+                params_slice[0] = .{ .name = name, .span = self.span(tok.index, tok.end) };
+                const node = try self.arena.create(Ast);
+                node.* = .{
+                    .span = self.span(tok.index, self.current().index),
+                    .abs_span = self.absSpan(tok.index, self.current().index),
+                    .data = .{ .ArrowFunction = .{
+                        .params = params_slice,
+                        .body = body,
+                    } },
+                };
+                return node;
+            }
+
             const receiver = try self.arena.create(Ast);
             receiver.* = Ast.implicitReceiver(
                 self.span(tok.index, tok.index),
@@ -830,29 +915,67 @@ pub const Parser = struct {
 
     fn parseParenthesized(self: *Parser) !*const Ast {
         const open = self.next(); // (
-        const expr = try self.parsePipe();
 
-        // Check for arrow function: (a, b) => expr
-        if (self.atOperator("=") and self.peekAt(1).type == .Operator and
-            std.mem.eql(u8, self.peekAt(1).slice(self.source), ">"))
-        {
-            // We need to re-parse as arrow function
-            // For now, return the expression
-            _ = self.next();
-            _ = self.next();
+        // Try to detect arrow function: (params) => body
+        // Save position to backtrack if not an arrow function
+        const saved_pos = self.pos;
+        var params = std.array_list.Managed(ArrowParam).init(self.allocator);
+        defer params.deinit();
+        var is_arrow = false;
+
+        // Try parsing as parameter list: ident (, ident)* ) =>
+        if (self.at(.Identifier) or self.at(.Keyword) or self.atOperator(")")) {
+            var param_ok = true;
+            if (!self.atOperator(")")) {
+                while (true) {
+                    if (self.at(.Identifier) or self.at(.Keyword)) {
+                        const ptok = self.next();
+                        try params.append(.{ .name = ptok.slice(self.source), .span = self.span(ptok.index, ptok.end) });
+                        if (self.atOperator(",")) {
+                            _ = self.next();
+                            // Check for trailing comma (error in Angular)
+                            if (self.atOperator(")")) {
+                                try self.errorAt(self.current().index, "Unexpected token");
+                                param_ok = false;
+                                break;
+                            }
+                            continue;
+                        }
+                    } else {
+                        param_ok = false;
+                        break;
+                    }
+                    break;
+                }
+            }
+            if (param_ok and self.atOperator(")")) {
+                _ = self.next(); // skip )
+                if (self.atOperator("=>")) {
+                    _ = self.next(); // skip =>
+                    is_arrow = true;
+                }
+            }
+        }
+
+        if (is_arrow) {
             const body = try self.parsePipe();
+            const params_slice = try self.arena.alloc(ArrowParam, params.items.len);
+            @memcpy(params_slice, params.items);
             const node = try self.arena.create(Ast);
             node.* = .{
                 .span = self.span(open.index, self.current().index),
                 .abs_span = self.absSpan(open.index, self.current().index),
                 .data = .{ .ArrowFunction = .{
-                    .params = &[_]ArrowParam{},
+                    .params = params_slice,
                     .body = body,
                 } },
             };
             return node;
         }
 
+        // Not an arrow function — backtrack and parse as parenthesized expression
+        self.pos = saved_pos;
+        const expr = try self.parsePipe();
         _ = self.expect(.Operator, ")") catch {};
         const node = try self.arena.create(Ast);
         node.* = .{
@@ -1027,6 +1150,7 @@ pub const Parser = struct {
                     .RightShift => ">>",
                     .UnsignedRightShift => ">>>",
                     .Comma => ",",
+                    .Power => "**",
                     .Assign => "=",
                     .AddAssign => "+=",
                     .SubtractAssign => "-=",

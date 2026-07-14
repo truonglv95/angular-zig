@@ -98,6 +98,8 @@ pub const BinaryOp = enum {
     NullishCoalescingAssign, // ??=
     LogicalAndAssign, // &&=
     LogicalOrAssign, // ||=
+    // Exponentiation
+    Power, // **
 
     pub fn precedence(self: BinaryOp) u8 {
         return switch (self) {
@@ -118,6 +120,7 @@ pub const BinaryOp = enum {
             .LeftShift, .RightShift, .UnsignedRightShift => 9,
             .Plus, .Minus => 10,
             .Multiply, .Divide, .Percent => 11,
+            .Power => 12,
         };
     }
 

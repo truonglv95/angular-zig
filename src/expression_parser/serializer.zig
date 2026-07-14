@@ -245,6 +245,7 @@ fn binaryOpStr(op: BinaryOp) []const u8 {
         .In => " in ",
         .Instanceof => " instanceof ",
         .Comma => ", ",
+        .Power => "**",
         .Assign => "=",
         .AddAssign => "+=",
         .SubtractAssign => "-=",
