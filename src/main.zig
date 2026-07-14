@@ -213,4 +213,5 @@ test {
     _ = @import("property_mapping.zig");
     _ = @import("constant_pool.zig");
     _ = @import("util.zig");
+    _ = @import("test/expression_parser/lexer_spec.zig");
 }
