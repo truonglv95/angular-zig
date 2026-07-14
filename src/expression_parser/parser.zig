@@ -1155,6 +1155,7 @@ pub const Parser = struct {
         // Try parsing as parameter list: ident (, ident)* ) =>
         if (self.at(.Identifier) or self.at(.Keyword) or self.atOperator(")")) {
             var param_ok = true;
+            var missing_comma = false;
             if (!self.atOperator(")")) {
                 while (true) {
                     if (self.at(.Identifier) or self.at(.Keyword)) {
@@ -1169,6 +1170,11 @@ pub const Parser = struct {
                                 break;
                             }
                             continue;
+                        } else if (!self.atOperator(")")) {
+                            // Missing comma between params: (a b) → mark for error
+                            missing_comma = true;
+                            param_ok = false;
+                            break;
                         }
                     } else {
                         param_ok = false;
@@ -1182,6 +1188,20 @@ pub const Parser = struct {
                 if (self.atOperator("=>")) {
                     _ = self.next(); // skip =>
                     is_arrow = true;
+                }
+            } else if (missing_comma) {
+                // Missing comma between params: (a b) => ...
+                // Try to skip to ) and check for =>
+                while (!self.atOperator(")") and !self.at(.EOF)) {
+                    _ = self.next();
+                }
+                if (self.atOperator(")")) {
+                    _ = self.next(); // skip )
+                    if (self.atOperator("=>")) {
+                        _ = self.next(); // skip =>
+                        is_arrow = true;
+                        try self.errorAt(open.index, "Unexpected token");
+                    }
                 }
             }
         }
