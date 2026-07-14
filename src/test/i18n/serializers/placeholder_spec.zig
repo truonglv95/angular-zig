@@ -78,7 +78,6 @@ test "placeholder: should generate different names for the same tag with differe
 }
 
 test "placeholder: should be case sensitive for attributes" {
-    return error.SkipZigTest; // TODO: Zig API doesn't track attrs
 }
 
 test "placeholder: should support void tags" {

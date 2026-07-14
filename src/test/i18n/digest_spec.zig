@@ -37,11 +37,10 @@ test "digest: should returns the sha1 of unicode strings" {
 }
 
 test "digest: should support arbitrary string size" {
-    return error.SkipZigTest; // TODO: complex string length slicing logic
+    return error.SkipZigTest; // TODO: complex string slicing
     // const allocator = std.testing.allocator;
     // const prefix = "你好，世界";
     // var result = try digest_mod.sha1(allocator, prefix);
-    // ... (string slicing differs between TS char-length and Zig byte-length)
 }
 
 test "digest: should work on well known inputs w/o meaning" {
@@ -76,9 +75,8 @@ test "digest: should work on well known inputs with meaning" {
 }
 
 test "digest: should support arbitrary string size (dup 1)" {
-    return error.SkipZigTest; // TODO: complex string length slicing logic
+    return error.SkipZigTest; // TODO: complex string slicing
     // const allocator = std.testing.allocator;
     // const prefix = "你好，世界";
     // var result = try digest_mod.computeMsgId(allocator, prefix, "");
-    // ... (string slicing differs between TS char-length and Zig byte-length)
 }
