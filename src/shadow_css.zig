@@ -293,7 +293,7 @@ fn scopeAnimationReferences(allocator: std.mem.Allocator, css: []const u8, scope
 }
 
 /// Check if a string is an animation keyword.
-fn isAnimationKeyword(s: []const u8) bool {
+pub fn isAnimationKeyword(s: []const u8) bool {
     // Check common animation shorthand keywords
     const keywords = [_][]const u8{
         "inherit", "initial", "revert", "unset",
