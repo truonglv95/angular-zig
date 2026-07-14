@@ -437,15 +437,15 @@ pub const Lexer = struct {
                 else => 1,
             },
             '&' => switch (next) {
-                '&' => 2, // &&
+                '&' => if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '=') 3 else 2, // &&= or &&
                 else => 1,
             },
             '|' => switch (next) {
-                '|' => 2, // ||
+                '|' => if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '=') 3 else 2, // ||= or ||
                 else => 1,
             },
             '?' => switch (next) {
-                '?' => 2, // ??
+                '?' => if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '=') 3 else 2, // ??= or ??
                 '.' => 2, // ?.
                 else => 1,
             },
@@ -461,7 +461,7 @@ pub const Lexer = struct {
                 else => 1,
             },
             '*' => switch (next) {
-                '*' => 2, // **
+                '*' => if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '=') 3 else 2, // **= or **
                 '=' => 2, // *=
                 else => 1,
             },

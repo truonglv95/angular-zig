@@ -87,10 +87,26 @@ pub const BinaryOp = enum {
     RightShift, // >>
     UnsignedRightShift, // >>>
     Comma, // ,
+    // Assignment operators
+    Assign, // =
+    AddAssign, // +=
+    SubtractAssign, // -=
+    MultiplyAssign, // *=
+    DivideAssign, // /=
+    ModuloAssign, // %=
+    PowerAssign, // **=
+    NullishCoalescingAssign, // ??=
+    LogicalAndAssign, // &&=
+    LogicalOrAssign, // ||=
 
     pub fn precedence(self: BinaryOp) u8 {
         return switch (self) {
             .Comma => 0,
+            // Assignment operators — lowest precedence (below comma in some grammars,
+            // but in Angular templates they're at the action level)
+            .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign, .DivideAssign,
+            .ModuloAssign, .PowerAssign, .NullishCoalescingAssign, .LogicalAndAssign,
+            .LogicalOrAssign => 0,
             .Or => 1,
             .And => 2,
             .Nullish => 3,

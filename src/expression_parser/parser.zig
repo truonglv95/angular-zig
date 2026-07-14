@@ -60,6 +60,7 @@ pub const Parser = struct {
     pos: u32 = 0,
     offset: u32 = 0, // global offset for absolute spans
     errors: std.array_list.Managed(source_span.ParseError),
+    is_action: bool = false, // true when parsing an action (pipes not allowed)
 
     pub fn init(allocator: Allocator, arena: *AstArena, source: []const u8, tokens: []const Token, offset: u32) Parser {
         return .{
@@ -147,6 +148,14 @@ pub const Parser = struct {
 
     /// Parse an action expression (event handler) — allows assignments, chains
     pub fn parseAction(self: *Parser) !*const Ast {
+        self.is_action = true;
+        // Check for interpolation ({{ }}) — not allowed in actions
+        if (checkNoInterpolation(self.source)) |_| {
+            try self.errors.append(.{
+                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                .msg = "Got interpolation ({{}}) where expression was expected",
+            });
+        }
         const result = try self.parsePipe();
         if (self.atOperator(";")) {
             // Chain expression (semicolon-separated)
@@ -173,6 +182,13 @@ pub const Parser = struct {
 
     /// Parse a binding expression (property binding) — no assignments
     pub fn parseBinding(self: *Parser) !*const Ast {
+        // Check for interpolation ({{ }}) — not allowed in bindings
+        if (checkNoInterpolation(self.source)) |_| {
+            try self.errors.append(.{
+                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                .msg = "Got interpolation ({{}}) where expression was expected",
+            });
+        }
         return self.parsePipe();
     }
 
@@ -201,15 +217,87 @@ pub const Parser = struct {
 
     // ─── Core Parsing (Precedence Climbing) ──────────────────
 
-    /// Top-level: pipe expressions
-    fn parsePipe(self: *Parser) error{OutOfMemory}!*const Ast {
+    /// Parse assignment expressions (=, +=, -=, etc.)
+    /// Only allowed in actions, not bindings.
+    fn parseAssignment(self: *Parser) error{OutOfMemory}!*const Ast {
         var result = try self.parseConditional();
 
+        const tok = self.current();
+        if (tok.type == .Operator) {
+            const op_str = tok.slice(self.source);
+            // Check for assignment operators
+            if (isAssignOp(op_str)) {
+                // In bindings, assignments are not allowed
+                if (!self.is_action) {
+                    try self.errors.append(.{
+                        .span = source_span.ParseSourceSpan.init(
+                            tok.index, tok.end, self.source,
+                        ),
+                        .msg = "Bindings cannot contain assignments",
+                    });
+                }
+                _ = self.next();
+                const value = try self.parseAssignment();
+                const assign_op = matchAssignOp(op_str) orelse .Assign;
+                const node = try self.arena.create(Ast);
+                node.* = .{
+                    .span = .{ .start = result.span.start, .end = value.span.end },
+                    .abs_span = .{ .start = result.abs_span.start, .end = value.abs_span.end },
+                    .data = .{ .Binary = .{ .op = assign_op, .left = result, .right = value } },
+                };
+                result = node;
+            }
+        }
+
+        return result;
+    }
+
+    /// Check if a string is an assignment operator.
+    fn isAssignOp(s: []const u8) bool {
+        return std.mem.eql(u8, s, "=") or
+            std.mem.eql(u8, s, "+=") or
+            std.mem.eql(u8, s, "-=") or
+            std.mem.eql(u8, s, "*=") or
+            std.mem.eql(u8, s, "/=") or
+            std.mem.eql(u8, s, "%=") or
+            std.mem.eql(u8, s, "**=") or
+            std.mem.eql(u8, s, "&&=") or
+            std.mem.eql(u8, s, "||=") or
+            std.mem.eql(u8, s, "??=");
+    }
+
+    /// Match an assignment operator string to a BinaryOp.
+    fn matchAssignOp(s: []const u8) ?BinaryOp {
+        if (std.mem.eql(u8, s, "=")) return .Assign;
+        if (std.mem.eql(u8, s, "+=")) return .AddAssign;
+        if (std.mem.eql(u8, s, "-=")) return .SubtractAssign;
+        if (std.mem.eql(u8, s, "*=")) return .MultiplyAssign;
+        if (std.mem.eql(u8, s, "/=")) return .DivideAssign;
+        if (std.mem.eql(u8, s, "%=")) return .ModuloAssign;
+        if (std.mem.eql(u8, s, "**=")) return .PowerAssign;
+        if (std.mem.eql(u8, s, "&&=")) return .LogicalAndAssign;
+        if (std.mem.eql(u8, s, "||=")) return .LogicalOrAssign;
+        if (std.mem.eql(u8, s, "??=")) return .NullishCoalescingAssign;
+        return null;
+    }
+
+    /// Top-level: pipe expressions
+    fn parsePipe(self: *Parser) error{OutOfMemory}!*const Ast {
+        var result = try self.parseAssignment();
+
         while (self.atOperator("|")) {
+            // Pipes are not allowed in action expressions
+            if (self.is_action) {
+                try self.errors.append(.{
+                    .span = source_span.ParseSourceSpan.init(
+                        self.current().index,
+                        @intCast(self.source.len),
+                        self.source,
+                    ),
+                    .msg = "Cannot have a pipe in an action expression",
+                });
+            }
             // Save the start position of the left expression BEFORE advancing.
-            // Bug fix: previously used self.tokens[self.pos - 1].index which
-            // pointed at the last token of the left expr (e.g. 'b' in 'a + b | pipe')
-            // instead of the beginning of the entire left expression.
             const pipe_start = result.span.start;
             const pipe_abs_start = result.abs_span.start;
             _ = self.next(); // skip |
@@ -523,6 +611,17 @@ pub const Parser = struct {
     fn parsePrimary(self: *Parser) !*const Ast {
         const tok = self.current();
 
+        // EOF or empty input — return EmptyExpr
+        if (tok.type == .EOF) {
+            const node = try self.arena.create(Ast);
+            node.* = .{
+                .span = self.span(tok.index, tok.end),
+                .abs_span = self.absSpan(tok.index, tok.end),
+                .data = .Empty,
+            };
+            return node;
+        }
+
         // Parenthesized expression
         if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "(")) {
             return self.parseParenthesized();
@@ -816,6 +915,16 @@ pub const Parser = struct {
                     .RightShift => ">>",
                     .UnsignedRightShift => ">>>",
                     .Comma => ",",
+                    .Assign => "=",
+                    .AddAssign => "+=",
+                    .SubtractAssign => "-=",
+                    .MultiplyAssign => "*=",
+                    .DivideAssign => "/=",
+                    .ModuloAssign => "%=",
+                    .PowerAssign => "**=",
+                    .NullishCoalescingAssign => "??=",
+                    .LogicalAndAssign => "&&=",
+                    .LogicalOrAssign => "||=",
                 };
                 m[i] = .{ str, op };
             }
@@ -1065,10 +1174,38 @@ pub fn parseInterpolationExpression(allocator: std.mem.Allocator, source: []cons
 }
 
 /// Check that the input doesn't contain interpolation markers.
+/// Skips string literals (single and double quoted) so {{ }} inside
+/// strings doesn't trigger a false positive.
 pub fn checkNoInterpolation(input: []const u8) ?[]const u8 {
     var i: usize = 0;
     while (i + 1 < input.len) : (i += 1) {
-        if (input[i] == '{' and input[i + 1] == '{') {
+        const ch = input[i];
+        // Skip string literals
+        if (ch == '\'' or ch == '"') {
+            const quote = ch;
+            i += 1;
+            while (i < input.len) : (i += 1) {
+                if (input[i] == '\\') {
+                    i += 1; // skip escaped char
+                    continue;
+                }
+                if (input[i] == quote) break;
+            }
+            continue;
+        }
+        // Skip template literals (backtick) — may contain ${...}
+        if (ch == '`') {
+            i += 1;
+            while (i < input.len) : (i += 1) {
+                if (input[i] == '\\') {
+                    i += 1;
+                    continue;
+                }
+                if (input[i] == '`') break;
+            }
+            continue;
+        }
+        if (ch == '{' and input[i + 1] == '{') {
             return "Unexpected interpolation";
         }
     }
