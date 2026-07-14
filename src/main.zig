@@ -216,6 +216,7 @@ test {
     _ = @import("test/expression_parser/lexer_spec.zig");
     _ = @import("test/expression_parser/ast_spec.zig");
     _ = @import("test/expression_parser/serializer_spec.zig");
+    _ = @import("test/expression_parser/parser_spec.zig");
     _ = @import("test/ml_parser/lexer_spec.zig");
     _ = @import("test/ml_parser/html_parser_spec.zig");
     _ = @import("test/ml_parser/html_whitespaces_spec.zig");
