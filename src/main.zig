@@ -105,6 +105,9 @@ test {
     _ = @import("ml_parser/lexer.zig");
     _ = @import("ml_parser/parser.zig");
     _ = @import("ml_parser/tags.zig");
+    _ = @import("ml_parser/html_tags.zig");
+    _ = @import("ml_parser/html_whitespaces.zig");
+    _ = @import("ml_parser/tokens.zig");
     _ = @import("template_parser/binding_parser.zig");
     _ = @import("render3/r3_ast.zig");
     _ = @import("template/pipeline/ir/enums.zig");
