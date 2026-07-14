@@ -59,6 +59,12 @@ pub const I18nAttrInfo = struct {
 };
 
 /// Parse an i18n attribute value into meaning, description, and custom ID.
+/// Direct port of `_parseMessageMeta(i18n)` in the TS source.
+///
+/// Format: `meaning|description@@custom-id`
+///   - `meaning` is NOT trimmed (TS preserves whitespace)
+///   - `description` is NOT trimmed
+///   - `custom-id` IS trimmed
 pub fn parseI18nAttrValue(value: []const u8) I18nAttrInfo {
     var info = I18nAttrInfo{};
     var remaining = value;
@@ -71,10 +77,10 @@ pub fn parseI18nAttrValue(value: []const u8) I18nAttrInfo {
 
     // Check for meaning: meaning|description
     if (std.mem.indexOf(u8, remaining, MEANING_SEPARATOR)) |sep_pos| {
-        info.meaning = std.mem.trim(u8, remaining[0..sep_pos], " \t\n\r");
-        info.description = std.mem.trim(u8, remaining[sep_pos + 1 ..], " \t\n\r");
+        info.meaning = remaining[0..sep_pos];
+        info.description = remaining[sep_pos + 1 ..];
     } else {
-        info.description = std.mem.trim(u8, remaining, " \t\n\r");
+        info.description = remaining;
     }
 
     return info;
