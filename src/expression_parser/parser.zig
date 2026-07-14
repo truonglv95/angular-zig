@@ -725,8 +725,32 @@ pub const Parser = struct {
             // Keyed access: [expr]
             else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "[")) {
                 _ = self.next();
+                // Check for empty key
+                if (self.atOperator("]")) {
+                    try self.errorAt(self.current().index, "Unexpected token");
+                    _ = self.next(); // skip ]
+                    const end_tok = self.current();
+                    const start = self.tokens[self.pos].index;
+                    const empty_node = try self.arena.create(Ast);
+                    empty_node.* = .{
+                        .span = self.span(start, end_tok.index),
+                        .abs_span = self.absSpan(start, end_tok.index),
+                        .data = .Empty,
+                    };
+                    const node = try self.arena.create(Ast);
+                    node.* = .{
+                        .span = self.span(start, end_tok.index),
+                        .abs_span = self.absSpan(start, end_tok.index),
+                        .data = .{ .KeyedRead = .{ .receiver = result, .key = empty_node } },
+                    };
+                    result = node;
+                    continue;
+                }
                 const key = try self.parsePipe();
-                _ = self.expect(.Operator, "]") catch {};
+                const got_bracket = self.expect(.Operator, "]") catch false;
+                if (!got_bracket) {
+                    try self.errorAt(self.current().index, "Unexpected end of expression");
+                }
                 const end_tok = self.current();
                 const start = self.tokens[self.pos].index;
                 const node = try self.arena.create(Ast);
@@ -1184,7 +1208,11 @@ pub const Parser = struct {
         // Not an arrow function — backtrack and parse as parenthesized expression
         self.pos = saved_pos;
         const expr = try self.parsePipe();
-        _ = self.expect(.Operator, ")") catch {};
+        const got_paren = self.expect(.Operator, ")") catch false;
+        if (!got_paren) {
+            // Missing closing paren — report error
+            try self.errorAt(self.current().index, "Unexpected end of expression");
+        }
         const node = try self.arena.create(Ast);
         node.* = .{
             .span = self.span(open.index, self.current().index),
