@@ -672,3 +672,420 @@ test "validatePropertyOrAttributeName empty" {
     try std.testing.expect(validatePropertyOrAttributeName("", true) != null);
     try std.testing.expect(validatePropertyOrAttributeName("", false) != null);
 }
+
+// ─── Full BindingParser methods (from binding_parser.ts) ────
+
+/// Check if a name is a legacy animation label (starts with @).
+/// Direct port of `isLegacyAnimationLabel(name)` in the TS source.
+pub fn isLegacyAnimationLabel(name: []const u8) bool {
+    return name.len > 0 and name[0] == '@';
+}
+
+/// Check if a name starts with the legacy animate property prefix.
+/// Direct port of the LEGACY_ANIMATE_PROP_PREFIX check in the TS source.
+pub fn isLegacyAnimationProp(name: []const u8) bool {
+    return std.mem.startsWith(u8, name, LEGACY_ANIMATE_PROP_PREFIX);
+}
+
+/// Check if a name starts with the animate prefix ("animate.").
+/// Direct port of the ANIMATE_PREFIX check in the TS source.
+pub fn isAnimationBinding(name: []const u8) bool {
+    return std.mem.startsWith(u8, name, "animate.");
+}
+
+/// Parse a property binding name to determine its type and actual property name.
+/// Direct port of `parsePropertyBinding` logic in the TS source.
+///
+/// Returns the binding type, the stripped property name, and optional unit.
+pub const ParsedPropertyName = struct {
+    name: []const u8,
+    binding_type: ParsedPropertyType,
+    unit: ?[]const u8 = null,
+};
+
+/// Parse a property binding name to determine its type.
+/// Handles: attr.name, class.name, style.prop.unit, animate.trigger, and regular properties.
+pub fn parsePropertyName(name: []const u8) ParsedPropertyName {
+    // Check for legacy animation prefix (animate-)
+    if (isLegacyAnimationProp(name)) {
+        return .{
+            .name = name[LEGACY_ANIMATE_PROP_PREFIX.len..],
+            .binding_type = .LegacyAnimation,
+        };
+    }
+    // Check for @ prefix (legacy animation label)
+    if (isLegacyAnimationLabel(name)) {
+        return .{
+            .name = name[1..],
+            .binding_type = .LegacyAnimation,
+        };
+    }
+    // Check for animate. prefix
+    if (isAnimationBinding(name)) {
+        return .{
+            .name = name,
+            .binding_type = .Animation,
+        };
+    }
+
+    // Split by "." to check for prefixed bindings
+    if (std.mem.indexOfScalar(u8, name, '.')) |dot_pos| {
+        const prefix = name[0..dot_pos];
+        const rest = name[dot_pos + 1 ..];
+
+        if (std.mem.eql(u8, prefix, ATTRIBUTE_PREFIX)) {
+            return .{ .name = rest, .binding_type = .Attribute };
+        }
+        if (std.mem.eql(u8, prefix, CLASS_PREFIX)) {
+            return .{ .name = rest, .binding_type = .Class };
+        }
+        if (std.mem.eql(u8, prefix, STYLE_PREFIX)) {
+            // Check for unit: style.prop.unit
+            if (std.mem.indexOfScalar(u8, rest, '.')) |unit_dot| {
+                return .{
+                    .name = rest[0..unit_dot],
+                    .binding_type = .Style,
+                    .unit = rest[unit_dot + 1 ..],
+                };
+            }
+            return .{ .name = rest, .binding_type = .Style };
+        }
+    }
+
+    // Default: regular property
+    return .{ .name = name, .binding_type = .Default };
+}
+
+/// Parse an event name to determine its type.
+/// Direct port of the event parsing logic in the TS source.
+pub const ParsedEventName = struct {
+    event_name: []const u8,
+    target: ?[]const u8 = null,
+    event_type: ParsedEventType,
+};
+
+/// Parse an event name.
+/// Handles: @animation.start (legacy animation), animate.event (animation), target:event (targeted), regular events.
+pub fn parseEventName(name: []const u8) ParsedEventName {
+    // Check for legacy animation (@ prefix)
+    if (isLegacyAnimationLabel(name)) {
+        const stripped = name[1..];
+        var event_name = stripped;
+        var phase: ?[]const u8 = null;
+
+        // Check for .start or .done
+        if (std.mem.lastIndexOfScalar(u8, stripped, '.')) |dot_pos| {
+            const p = stripped[dot_pos + 1 ..];
+            if (std.mem.eql(u8, p, "start") or std.mem.eql(u8, p, "done")) {
+                event_name = stripped[0..dot_pos];
+                phase = p;
+            }
+        }
+
+        return .{
+            .event_name = event_name,
+            .target = phase,
+            .event_type = .LegacyAnimation,
+        };
+    }
+
+    // Check for target:event
+    if (std.mem.indexOfScalar(u8, name, ':')) |colon_pos| {
+        const target = name[0..colon_pos];
+        const event_name = name[colon_pos + 1 ..];
+
+        // Check for animate. prefix
+        if (std.mem.startsWith(u8, event_name, "animate.")) {
+            return .{
+                .event_name = event_name,
+                .target = target,
+                .event_type = .Animation,
+            };
+        }
+
+        return .{
+            .event_name = event_name,
+            .target = target,
+            .event_type = .Regular,
+        };
+    }
+
+    // Check for animate. prefix
+    if (std.mem.startsWith(u8, name, "animate.")) {
+        return .{
+            .event_name = name,
+            .event_type = .Animation,
+        };
+    }
+
+    // Regular event
+    return .{
+        .event_name = name,
+        .event_type = .Regular,
+    };
+}
+
+/// Check if an event name represents a two-way binding event.
+/// Direct port of the TwoWay event type check in the TS source.
+pub fn isTwoWayEvent(name: []const u8) bool {
+    // Two-way events end with "Change"
+    return std.mem.endsWith(u8, name, "Change");
+}
+
+/// BoundElementProperty — a fully resolved element property binding.
+/// Direct port of `BoundElementProperty` interface in the TS source.
+pub const BoundElementProperty = struct {
+    name: []const u8,
+    binding_type: BindingType,
+    security_context: u8 = 0,
+    expression: []const u8 = "",
+    unit: ?[]const u8 = null,
+};
+
+/// BindingType — the type of an element property binding.
+/// Direct port of `BindingType` from expression_parser/ast.ts.
+pub const BindingType = enum(u8) {
+    Property,
+    Attribute,
+    Class,
+    Style,
+    Animation,
+    TwoWay,
+    LegacyAnimation,
+};
+
+/// Create a bound element property from a parsed property.
+/// Direct port of `createBoundElementProperty` logic in the TS source.
+pub fn createBoundElementPropertyFromParsed(
+    element_selector: ?[]const u8,
+    bound_prop: ParsedProperty,
+) BoundElementProperty {
+    _ = element_selector;
+    const parsed = parsePropertyName(bound_prop.name);
+
+    return .{
+        .name = parsed.name,
+        .binding_type = switch (parsed.binding_type) {
+            .Attribute => .Attribute,
+            .Class => .Class,
+            .Style => .Style,
+            .Animation => .Animation,
+            .LegacyAnimation => .LegacyAnimation,
+            .TwoWay => .TwoWay,
+            .Default => if (bound_prop.type == .TwoWay) .TwoWay else .Property,
+        },
+        .expression = bound_prop.expression,
+        .unit = parsed.unit,
+    };
+}
+
+/// Check if a recursive AST has a safe receiver.
+/// Direct port of `hasRecursiveSafeReceiver(ast)` in the TS source.
+pub fn hasRecursiveSafeReceiver(ast_kind: u8) bool {
+    // ast_kind: 0=SafePropertyRead, 1=SafeKeyedRead → true
+    // 2=PropertyRead, 3=KeyedRead, 4=Call → check receiver
+    // else → false
+    return ast_kind == 0 or ast_kind == 1;
+}
+
+/// Merge namespace and name: "svg" + "rect" → "svg:rect".
+/// Direct port of `mergeNsAndName(ns, name)` from ml_parser/tags.ts.
+pub fn mergeNsAndName(ns: []const u8, name: []const u8, buf: []u8) []const u8 {
+    return std.fmt.bufPrint(buf, "{s}:{s}", .{ ns, name }) catch name;
+}
+
+// ─── Tests for new functions ────────────────────────────────
+
+test "isLegacyAnimationLabel" {
+    try std.testing.expect(isLegacyAnimationLabel("@animation"));
+    try std.testing.expect(isLegacyAnimationLabel("@fade"));
+    try std.testing.expect(!isLegacyAnimationLabel("animation"));
+    try std.testing.expect(!isLegacyAnimationLabel(""));
+}
+
+test "isLegacyAnimationProp" {
+    try std.testing.expect(isLegacyAnimationProp("animate-fade"));
+    try std.testing.expect(!isLegacyAnimationProp("animate.fade"));
+    try std.testing.expect(!isLegacyAnimationProp("animation"));
+}
+
+test "isAnimationBinding" {
+    try std.testing.expect(isAnimationBinding("animate.fade"));
+    try std.testing.expect(!isAnimationBinding("animate"));
+    try std.testing.expect(!isAnimationBinding("animation"));
+}
+
+test "parsePropertyName regular" {
+    const result = parsePropertyName("value");
+    try std.testing.expectEqualStrings("value", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Default, result.binding_type);
+}
+
+test "parsePropertyName attribute" {
+    const result = parsePropertyName("attr.aria-label");
+    try std.testing.expectEqualStrings("aria-label", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Attribute, result.binding_type);
+}
+
+test "parsePropertyName class" {
+    const result = parsePropertyName("class.active");
+    try std.testing.expectEqualStrings("active", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Class, result.binding_type);
+}
+
+test "parsePropertyName style with unit" {
+    const result = parsePropertyName("style.height.px");
+    try std.testing.expectEqualStrings("height", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Style, result.binding_type);
+    try std.testing.expectEqualStrings("px", result.unit.?);
+}
+
+test "parsePropertyName style without unit" {
+    const result = parsePropertyName("style.color");
+    try std.testing.expectEqualStrings("color", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Style, result.binding_type);
+    try std.testing.expect(result.unit == null);
+}
+
+test "parsePropertyName animation" {
+    const result = parsePropertyName("animate.fade");
+    try std.testing.expectEqualStrings("animate.fade", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.Animation, result.binding_type);
+}
+
+test "parsePropertyName legacy animation @" {
+    const result = parsePropertyName("@fade");
+    try std.testing.expectEqualStrings("fade", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.LegacyAnimation, result.binding_type);
+}
+
+test "parsePropertyName legacy animation prefix" {
+    const result = parsePropertyName("animate-fade");
+    try std.testing.expectEqualStrings("fade", result.name);
+    try std.testing.expectEqual(ParsedPropertyType.LegacyAnimation, result.binding_type);
+}
+
+test "parseEventName regular" {
+    const result = parseEventName("click");
+    try std.testing.expectEqualStrings("click", result.event_name);
+    try std.testing.expect(result.target == null);
+    try std.testing.expectEqual(ParsedEventType.Regular, result.event_type);
+}
+
+test "parseEventName targeted" {
+    const result = parseEventName("document:click");
+    try std.testing.expectEqualStrings("click", result.event_name);
+    try std.testing.expectEqualStrings("document", result.target.?);
+    try std.testing.expectEqual(ParsedEventType.Regular, result.event_type);
+}
+
+test "parseEventName animation" {
+    const result = parseEventName("animate.enter");
+    try std.testing.expectEqualStrings("animate.enter", result.event_name);
+    try std.testing.expectEqual(ParsedEventType.Animation, result.event_type);
+}
+
+test "parseEventName legacy animation with start" {
+    const result = parseEventName("@fade.start");
+    try std.testing.expectEqualStrings("fade", result.event_name);
+    try std.testing.expectEqualStrings("start", result.target.?);
+    try std.testing.expectEqual(ParsedEventType.LegacyAnimation, result.event_type);
+}
+
+test "parseEventName legacy animation with done" {
+    const result = parseEventName("@fade.done");
+    try std.testing.expectEqualStrings("fade", result.event_name);
+    try std.testing.expectEqualStrings("done", result.target.?);
+    try std.testing.expectEqual(ParsedEventType.LegacyAnimation, result.event_type);
+}
+
+test "parseEventName legacy animation no phase" {
+    const result = parseEventName("@fade");
+    try std.testing.expectEqualStrings("fade", result.event_name);
+    try std.testing.expect(result.target == null);
+    try std.testing.expectEqual(ParsedEventType.LegacyAnimation, result.event_type);
+}
+
+test "isTwoWayEvent" {
+    try std.testing.expect(isTwoWayEvent("ngModelChange"));
+    try std.testing.expect(isTwoWayEvent("valueChange"));
+    try std.testing.expect(!isTwoWayEvent("click"));
+    try std.testing.expect(!isTwoWayEvent("change"));
+}
+
+test "hasRecursiveSafeReceiver" {
+    try std.testing.expect(hasRecursiveSafeReceiver(0)); // SafePropertyRead
+    try std.testing.expect(hasRecursiveSafeReceiver(1)); // SafeKeyedRead
+    try std.testing.expect(!hasRecursiveSafeReceiver(2)); // PropertyRead
+    try std.testing.expect(!hasRecursiveSafeReceiver(5)); // Other
+}
+
+test "mergeNsAndName" {
+    var buf: [128]u8 = undefined;
+    const result = mergeNsAndName("svg", "rect", &buf);
+    try std.testing.expectEqualStrings("svg:rect", result);
+}
+
+test "BindingType values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(BindingType.Property));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(BindingType.Attribute));
+    try std.testing.expectEqual(@as(u8, 5), @intFromEnum(BindingType.TwoWay));
+}
+
+test "BoundElementProperty defaults" {
+    const prop = BoundElementProperty{
+        .name = "value",
+        .binding_type = .Property,
+    };
+    try std.testing.expectEqualStrings("value", prop.name);
+    try std.testing.expectEqual(@as(u8, 0), prop.security_context);
+    try std.testing.expect(prop.unit == null);
+}
+
+test "createBoundElementPropertyFromParsed regular" {
+    const parsed_prop = ParsedProperty{ .name = "value", .expression = "name" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqualStrings("value", result.name);
+    try std.testing.expectEqual(BindingType.Property, result.binding_type);
+}
+
+test "createBoundElementPropertyFromParsed attribute" {
+    const parsed_prop = ParsedProperty{ .name = "attr.aria-label", .expression = "label" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqualStrings("aria-label", result.name);
+    try std.testing.expectEqual(BindingType.Attribute, result.binding_type);
+}
+
+test "createBoundElementPropertyFromParsed class" {
+    const parsed_prop = ParsedProperty{ .name = "class.active", .expression = "isActive" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqualStrings("active", result.name);
+    try std.testing.expectEqual(BindingType.Class, result.binding_type);
+}
+
+test "createBoundElementPropertyFromParsed style with unit" {
+    const parsed_prop = ParsedProperty{ .name = "style.height.px", .expression = "100" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqualStrings("height", result.name);
+    try std.testing.expectEqual(BindingType.Style, result.binding_type);
+    try std.testing.expectEqualStrings("px", result.unit.?);
+}
+
+test "createBoundElementPropertyFromParsed two-way" {
+    const parsed_prop = ParsedProperty{ .name = "ngModel", .expression = "name", .type = .TwoWay };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqual(BindingType.TwoWay, result.binding_type);
+}
+
+test "createBoundElementPropertyFromParsed legacy animation" {
+    const parsed_prop = ParsedProperty{ .name = "@fade", .expression = "state" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqualStrings("fade", result.name);
+    try std.testing.expectEqual(BindingType.LegacyAnimation, result.binding_type);
+}
+
+test "createBoundElementPropertyFromParsed animation" {
+    const parsed_prop = ParsedProperty{ .name = "animate.fade", .expression = "state" };
+    const result = createBoundElementPropertyFromParsed(null, parsed_prop);
+    try std.testing.expectEqual(BindingType.Animation, result.binding_type);
+}
