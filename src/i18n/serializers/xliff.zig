@@ -12,7 +12,7 @@ const placeholder = @import("placeholder.zig");
 
 /// Serialize messages to XLIFF 1.2 format.
 pub fn write(allocator: std.mem.Allocator, messages: []const i18n_ast.Message) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
+    var buf = std.array_list.Managed(u8).init(allocator);
     defer buf.deinit();
 
     // XML declaration
@@ -34,7 +34,7 @@ pub fn write(allocator: std.mem.Allocator, messages: []const i18n_ast.Message) !
     return buf.toOwnedSlice();
 }
 
-fn writeTransUnit(buf: *std.ArrayList(u8), msg: *const i18n_ast.Message) !void {
+fn writeTransUnit(buf: *std.array_list.Managed(u8), msg: *const i18n_ast.Message) !void {
     // <trans-unit id="msgId" datatype="html">
     try buf.appendSlice("      <trans-unit id=\"");
     try buf.appendSlice(msg.id);
@@ -68,7 +68,7 @@ fn writeTransUnit(buf: *std.ArrayList(u8), msg: *const i18n_ast.Message) !void {
     try buf.appendSlice("      </trans-unit>\n");
 }
 
-fn writeNode(buf: *std.ArrayList(u8), node: *const i18n_ast.Node) !void {
+fn writeNode(buf: *std.array_list.Managed(u8), node: *const i18n_ast.Node) !void {
     switch (node.data) {
         .text => |t| try xml_helper.writeEscaped(buf, t.value),
         .container => |c| {
@@ -87,18 +87,29 @@ fn writeNode(buf: *std.ArrayList(u8), node: *const i18n_ast.Node) !void {
             try buf.appendSlice("\"/>");
         },
         .tag_placeholder => |tp| {
-            if (tp.is_start) {
-                try buf.appendSlice("<x id=\"START_TAG_");
-                try buf.appendSlice(tp.tag);
+            if (tp.start_name.len > 0) {
+                try buf.appendSlice("<x id=\"");
+                try buf.appendSlice(tp.start_name);
                 try buf.appendSlice("\"/>");
-            } else if (tp.is_close) {
-                try buf.appendSlice("<x id=\"CLOSE_TAG_");
-                try buf.appendSlice(tp.tag);
+            }
+            if (tp.close_name.len > 0) {
+                try buf.appendSlice("<x id=\"");
+                try buf.appendSlice(tp.close_name);
                 try buf.appendSlice("\"/>");
             }
             for (tp.children) |child| {
                 try writeNode(buf, &child);
             }
+        },
+        .icu_placeholder => |ip| {
+            try buf.appendSlice("<x id=\"");
+            try buf.appendSlice(ip.name);
+            try buf.appendSlice("\"/>");
+        },
+        .block_placeholder => |bp| {
+            try buf.appendSlice("<x id=\"BLOCK_");
+            try buf.appendSlice(bp.name);
+            try buf.appendSlice("\"/>");
         },
     }
 }
