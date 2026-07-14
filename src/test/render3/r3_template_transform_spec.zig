@@ -61,7 +61,7 @@ test "r3_template_transform: should parse incomplete tags terminated by EOF" {
 
 test "r3_template_transform: should parse incomplete tags terminated by another tag" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                             try expectNodeCount(std.testing.allocator, "<a <span></span>", 2);
+    //                                 try expectNodeCount(std.testing.allocator, "<a <span></span>", 2);
 }
 
 test "r3_template_transform: should parse text nodes" {
@@ -398,7 +398,7 @@ test "r3_template_transform: should parse title element" {
 
 test "r3_template_transform: should parse named entities" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                             try expectNodeCount(std.testing.allocator, "&amp;&lt;&gt;&quot;", 1);
+    //                                 try expectNodeCount(std.testing.allocator, "&amp;&lt;&gt;&quot;", 1);
 }
 
 test "r3_template_transform: should parse numeric entities" {

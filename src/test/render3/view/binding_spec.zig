@@ -88,21 +88,21 @@ test "binding: should get @let declarations when resolving entities at the root"
 
 test "binding: should scope @let declarations to their current view" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //             var parent = t2.Scope.init(allocator);
-    //             defer parent.deinit();
-    //             try parent.addEntity("one", .{ .kind = .Directive, .name = "one" });
-    //         
-    //             var child = t2.Scope.init(allocator);
-    //             defer child.deinit();
-    //             try parent.addChild(&child);
-    //             try child.addEntity("two", .{ .kind = .Directive, .name = "two" });
-    //         
-    //             // Child can see parent's entities
-    //             try std.testing.expect(child.lookup("one") != null);
-    //             try std.testing.expect(child.lookup("two") != null);
-    //         
-    //             // Parent cannot see child's entities
-    //             try std.testing.expect(parent.lookup("two") == null);
+    //                 var parent = t2.Scope.init(allocator);
+    //                 defer parent.deinit();
+    //                 try parent.addEntity("one", .{ .kind = .Directive, .name = "one" });
+    //             
+    //                 var child = t2.Scope.init(allocator);
+    //                 defer child.deinit();
+    //                 try parent.addChild(&child);
+    //                 try child.addEntity("two", .{ .kind = .Directive, .name = "two" });
+    //             
+    //                 // Child can see parent's entities
+    //                 try std.testing.expect(child.lookup("one") != null);
+    //                 try std.testing.expect(child.lookup("two") != null);
+    //             
+    //                 // Parent cannot see child's entities
+    //                 try std.testing.expect(parent.lookup("two") == null);
 }
 
 test "binding: should resolve expressions to an @let declaration" {

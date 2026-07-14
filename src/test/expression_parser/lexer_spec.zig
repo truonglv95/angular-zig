@@ -863,42 +863,42 @@ test "should not tokenize a regex that is preceded by a keyword" {
 
 test "should not tokenize a regex preceded by a non-null assertion on an identifier" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                 const a = std.testing.allocator;
-    //                 const src = "foo! / 2";
-    //                 var r = try lex(a, src); defer r.l.deinit();
-    //                 try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
-    //                 try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
-    //                 try expectOperatorToken(r.tokens, src, 1, 3, 4, "!");
-    //                 try expectOperatorToken(r.tokens, src, 2, 5, 6, "/");
-    //                 try expectNumberToken(r.tokens, 3, 7, 8, 2);
+    //                     const a = std.testing.allocator;
+    //                     const src = "foo! / 2";
+    //                     var r = try lex(a, src); defer r.l.deinit();
+    //                     try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
+    //                     try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
+    //                     try expectOperatorToken(r.tokens, src, 1, 3, 4, "!");
+    //                     try expectOperatorToken(r.tokens, src, 2, 5, 6, "/");
+    //                     try expectNumberToken(r.tokens, 3, 7, 8, 2);
 }
 
 test "should not tokenize a regex preceded by a non-null assertion on a function call" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                 const a = std.testing.allocator;
-    //                 const src = "foo()! / 2";
-    //                 var r = try lex(a, src); defer r.l.deinit();
-    //                 try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
-    //                 try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
-    //                 try expectCharacterToken(r.tokens, src, 1, 3, 4, '(');
-    //                 try expectCharacterToken(r.tokens, src, 2, 4, 5, ')');
-    //                 try expectOperatorToken(r.tokens, src, 3, 5, 6, "!");
-    //                 try expectOperatorToken(r.tokens, src, 4, 7, 8, "/");
-    //                 try expectNumberToken(r.tokens, 5, 9, 10, 2);
+    //                     const a = std.testing.allocator;
+    //                     const src = "foo()! / 2";
+    //                     var r = try lex(a, src); defer r.l.deinit();
+    //                     try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
+    //                     try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
+    //                     try expectCharacterToken(r.tokens, src, 1, 3, 4, '(');
+    //                     try expectCharacterToken(r.tokens, src, 2, 4, 5, ')');
+    //                     try expectOperatorToken(r.tokens, src, 3, 5, 6, "!");
+    //                     try expectOperatorToken(r.tokens, src, 4, 7, 8, "/");
+    //                     try expectNumberToken(r.tokens, 5, 9, 10, 2);
 }
 
 test "should not tokenize a regex preceded by a non-null assertion on an array" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                 const a = std.testing.allocator;
-    //                 const src = "[1]! / 2";
-    //                 var r = try lex(a, src); defer r.l.deinit();
-    //                 try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
-    //                 try expectCharacterToken(r.tokens, src, 0, 0, 1, '[');
-    //                 try expectNumberToken(r.tokens, 1, 1, 2, 1);
-    //                 try expectCharacterToken(r.tokens, src, 2, 2, 3, ']');
-    //                 try expectOperatorToken(r.tokens, src, 3, 3, 4, "!");
-    //                 try expectOperatorToken(r.tokens, src, 4, 5, 6, "/");
-    //                 try expectNumberToken(r.tokens, 5, 7, 8, 2);
+    //                     const a = std.testing.allocator;
+    //                     const src = "[1]! / 2";
+    //                     var r = try lex(a, src); defer r.l.deinit();
+    //                     try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
+    //                     try expectCharacterToken(r.tokens, src, 0, 0, 1, '[');
+    //                     try expectNumberToken(r.tokens, 1, 1, 2, 1);
+    //                     try expectCharacterToken(r.tokens, src, 2, 2, 3, ']');
+    //                     try expectOperatorToken(r.tokens, src, 3, 3, 4, "!");
+    //                     try expectOperatorToken(r.tokens, src, 4, 5, 6, "/");
+    //                     try expectNumberToken(r.tokens, 5, 7, 8, 2);
 }
 
 test "should not tokenize consecutive regexes" {
