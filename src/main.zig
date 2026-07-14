@@ -133,6 +133,8 @@ test {
     _ = @import("typecheck/expression.zig");
     _ = @import("typecheck/host_bindings.zig");
     _ = @import("typecheck/oob.zig");
+    _ = @import("typecheck/schema.zig");
+    _ = @import("typecheck/comments.zig");
     _ = @import("typecheck/ops/events.zig");
     _ = @import("typecheck/ops/inputs.zig");
     _ = @import("typecheck/ops/expression.zig");
@@ -148,6 +150,14 @@ test {
     _ = @import("typecheck/ops/variables.zig");
     _ = @import("typecheck/ops/for_block.zig");
     _ = @import("typecheck/ops/signal_forms.zig");
+    _ = @import("typecheck/ops/scope.zig");
+    _ = @import("typecheck/ops/context.zig");
+    _ = @import("typecheck/ops/schema.zig");
+    _ = @import("typecheck/ops/element.zig");
+    _ = @import("typecheck/ops/host.zig");
+    _ = @import("typecheck/ops/let.zig");
+    _ = @import("typecheck/ops/selectorless.zig");
+    _ = @import("typecheck/ops/intersection_observer.zig");
     _ = @import("i18n/index.zig");
     _ = @import("i18n/i18n_parser.zig");
     _ = @import("i18n/extractor_merger.zig");
