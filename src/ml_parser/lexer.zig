@@ -401,6 +401,29 @@ pub const Lexer = struct {
                 break;
             }
 
+            // Inline single-line comment: // ... up to end of line
+            if (ch == '/' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '/') {
+                self.pos += 2;
+                while (self.pos < self.source.len and self.source[self.pos] != '\n') self.pos += 1;
+                continue;
+            }
+
+            // Inline multi-line comment: /* ... */
+            if (ch == '/' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '*') {
+                self.pos += 2;
+                var terminated = false;
+                while (self.pos + 1 < self.source.len) {
+                    if (self.source[self.pos] == '*' and self.source[self.pos + 1] == '/') {
+                        self.pos += 2;
+                        terminated = true;
+                        break;
+                    }
+                    self.pos += 1;
+                }
+                if (!terminated) self.pos = @intCast(self.source.len);
+                continue;
+            }
+
             if (chars.isIdentifierStart(ch) or ch == '@' or ch == '[' or ch == '(' or ch == '*') {
                 try self.scanAttribute();
             } else {

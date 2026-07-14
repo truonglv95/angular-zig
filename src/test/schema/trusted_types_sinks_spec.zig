@@ -1,21 +1,27 @@
-/// trusted_types_sinks Tests — Ported from Angular TS test/schema/trusted_types_sinks_spec.ts
+/// Trusted Types Sinks Tests — Ported from Angular TS test/schema/trusted_types_sinks_spec.ts
 ///
 /// Source: packages/compiler/test/schema/trusted_types_sinks_spec.ts (3 test cases)
-/// ALL test cases ported from the Angular TS source.
+/// ALL 3 test cases ported with REAL assertions using isTrustedTypesSink.
 const std = @import("std");
+const tts = @import("../../schema/trusted_types_sinks.zig");
 
 test "trusted_types_sinks: should classify Trusted Types sinks" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(tts.isTrustedTypesSink("iframe", "srcdoc"));
+    try std.testing.expect(tts.isTrustedTypesSink("p", "innerHTML"));
+    try std.testing.expect(tts.isTrustedTypesSink("embed", "src"));
+    try std.testing.expect(tts.isTrustedTypesSink("iframe", "src"));
+    try std.testing.expect(!tts.isTrustedTypesSink("a", "href"));
+    try std.testing.expect(!tts.isTrustedTypesSink("base", "href"));
+    try std.testing.expect(!tts.isTrustedTypesSink("div", "style"));
 }
 
 test "trusted_types_sinks: should classify Trusted Types sinks case insensitive" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(tts.isTrustedTypesSink("p", "iNnErHtMl"));
+    try std.testing.expect(!tts.isTrustedTypesSink("p", "formaction"));
+    try std.testing.expect(!tts.isTrustedTypesSink("p", "formAction"));
 }
 
 test "trusted_types_sinks: should classify attributes as Trusted Types sinks" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(tts.isTrustedTypesSink("p", "innerHtml"));
+    try std.testing.expect(!tts.isTrustedTypesSink("p", "formaction"));
 }
-

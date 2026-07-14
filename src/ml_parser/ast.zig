@@ -153,6 +153,123 @@ pub const ParseTreeResult = struct {
     errors: []const ParseError,
 };
 
+// ─── Serialization ────────────────────────────────────────────
+
+/// Serialize a single node to its HTML string representation.
+pub fn serializeNode(allocator: std.mem.Allocator, node: *const Node) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try serializeNodeInto(&buf, node);
+    return buf.toOwnedSlice();
+}
+
+/// Serialize multiple nodes to a single HTML string.
+pub fn serializeNodes(allocator: std.mem.Allocator, nodes: []const *const Node) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    for (nodes) |n| {
+        try serializeNodeInto(&buf, n);
+    }
+    return buf.toOwnedSlice();
+}
+
+fn serializeNodeInto(buf: *std.array_list.Managed(u8), node: *const Node) !void {
+    switch (node.data) {
+        .Element => |e| {
+            try buf.append('<');
+            try buf.appendSlice(e.name);
+            for (e.attrs) |attr| {
+                try buf.append(' ');
+                try buf.appendSlice(attr.name);
+                if (attr.value.len > 0) {
+                    try buf.append('=');
+                    try buf.append('"');
+                    try buf.appendSlice(attr.value);
+                    try buf.append('"');
+                }
+            }
+            if (e.is_void or e.is_self_closing) {
+                try buf.appendSlice("/>");
+                return;
+            }
+            try buf.append('>');
+            for (e.children) |child| {
+                try serializeNodeInto(buf, child);
+            }
+            try buf.appendSlice("</");
+            try buf.appendSlice(e.name);
+            try buf.append('>');
+        },
+        .Text => |t| {
+            try buf.appendSlice(t.value);
+        },
+        .Comment => |c| {
+            try buf.appendSlice("<!--");
+            try buf.appendSlice(c.value);
+            try buf.appendSlice("-->");
+        },
+        .Attribute => |a| {
+            try buf.appendSlice(a.name);
+            if (a.value.len > 0) {
+                try buf.append('=');
+                try buf.append('"');
+                try buf.appendSlice(a.value);
+                try buf.append('"');
+            }
+        },
+        .Cdata => |c| {
+            try buf.appendSlice("<![CDATA[");
+            try buf.appendSlice(c.value);
+            try buf.appendSlice("]]>");
+        },
+        .DocType => |d| {
+            try buf.appendSlice("<!DOCTYPE ");
+            try buf.appendSlice(d.value);
+            try buf.append('>');
+        },
+        .Block => |b| {
+            try buf.append('@');
+            try buf.appendSlice(b.name);
+            if (b.parameters.len > 0) {
+                try buf.appendSlice(" (");
+                for (b.parameters, 0..) |p, i| {
+                    if (i > 0) try buf.appendSlice("; ");
+                    try buf.appendSlice(p.expression);
+                }
+                try buf.append(')');
+            }
+            try buf.append('{');
+            for (b.children) |child| {
+                try serializeNodeInto(buf, child);
+            }
+            try buf.append('}');
+        },
+        .Expansion => |exp| {
+            try buf.append('{');
+            try buf.appendSlice(exp.switch_value);
+            try buf.appendSlice(", ");
+            try buf.appendSlice(exp.type);
+            try buf.append(',');
+            for (exp.cases) |case| {
+                try serializeNodeInto(buf, case);
+            }
+            try buf.append('}');
+        },
+        .ExpansionCase => |c| {
+            try buf.append(' ');
+            try buf.appendSlice(c.value);
+            try buf.appendSlice(" {");
+            for (c.children) |child| {
+                try serializeNodeInto(buf, child);
+            }
+            try buf.append('}');
+        },
+        .BlockParameter => |p| {
+            try buf.appendSlice(p.expression);
+        },
+    }
+}
+
 // ─── Tests ────────────────────────────────────────────────────
 
 test "Node size" {

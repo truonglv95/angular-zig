@@ -1,6 +1,10 @@
 /// ML Parser Inline Comment Tests — Ported from Angular TS test/ml_parser/inline_comment_spec.ts
 ///
 /// Source: packages/compiler/test/ml_parser/inline_comment_spec.ts (145 lines)
+///
+/// Tests that the lexer supports `//` and `/* */` comments inside element tags
+/// (between attributes). This is a Zig-specific extension that matches the
+/// Angular TS behavior.
 const std = @import("std");
 const ml_parser = @import("../../ml_parser/parser.zig");
 const ml_ast = @import("../../ml_parser/ast.zig");
@@ -12,7 +16,6 @@ fn parseHtml(allocator: std.mem.Allocator, arena: *arena_mod.AstArena, source: [
     defer lex.deinit();
     const lex_result = try lex.tokenize(); const lex_tokens = lex_result[0];
     var parser = ml_parser.Parser.init(allocator, arena, source, lex_tokens);
-    // parser.deinit() skipped to keep root_nodes alive
     return parser.parse();
 }
 
@@ -58,50 +61,96 @@ test "inline_comment: should parse empty comment" {
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
-// ─── Additional tests ported from TS spec ──────────────────
+// ─── Inline comments inside element tags (// and /* */) ─────
 
 test "inline_comment: should ignore single line comments between attributes" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div \n // comment 1\n attr1=\"value1\"\n // comment 2\n attr2=\"value2\"\n></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
+    try std.testing.expectEqualStrings("attr1", element.attrs[0].name);
+    try std.testing.expectEqualStrings("attr2", element.attrs[1].name);
 }
 
 test "inline_comment: should ignore single line comments between inputs and outputs" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div \n // comment 1\n [input]=\"value1\"\n // comment 2\n (output)=\"handler()\"\n></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
 
 test "inline_comment: should ignore single line comments at the end of tag" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div attr1=\"value1\" // comment \n ></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
 
 test "inline_comment: should handle commented out attribute" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div /* attr1=\"value1\" */ attr2=\"value2\"></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
 
 test "inline_comment: should comment an attribute with a // on a new line" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div\n // attr1=\"value1\"\n attr2=\"value2\"></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
 
 test "inline_comment: should ignore multi-line comments between attributes" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div \n /* comment 1 */\n attr1=\"value1\"\n /* comment 2 spanning multiple lines */\n attr2=\"value2\"\n></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
 
 test "inline_comment: should ignore multi-line comments at the end of tag" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div attr1=\"value1\" /* comment */ ></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
 
 test "inline_comment: should handle * inside multi-line comments" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div attr1=\"value1\" /* comment with * inside */ attr2=\"value2\"></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
 
 test "inline_comment: should maintain correct source spans with comments" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const source = "<div attr1=\"a\" /* comment */ attr2=\"b\"></div>";
+    const result = try parseHtml(allocator, &arena, source);
+    const element = result.root_nodes[0].data.Element;
+    try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
-
