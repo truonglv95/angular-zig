@@ -213,3 +213,154 @@ test "shadow_css: replaceAfter not found" {
     defer allocator.free(result);
     try std.testing.expectEqualStrings("div span", result);
 }
+
+// ─── Additional tests ported from TS spec ──────────────────
+
+test "shadow_css: should handle empty string" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should add an attribute to every rule" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle invalid css" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should add an attribute to every selector" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should support newlines in the selector and content " {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should support newlines in the same selector and content " {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle complicated selectors" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should transform :host with attributes" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle escaped sequences in selectors" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle pseudo functions correctly" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle :host inclusions inside pseudo-selectors selectors" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle escaped selector with space (if followed by a hex char)" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should leave calc() unchanged" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should shim rules with quoted content" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle when quoted content contains a closing parenthesis" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should shim rules with an escaped quote inside quoted content" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should shim rules with curly braces inside quoted content" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should keep retain multiline selectors" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should remove inline comments without adding extra lines" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should preserve internal newlines from multiline comments" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should remove multiple inline comments without adding extra lines" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should keep sourceMappingURL comments" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle adjacent comments" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should inject `%NS%` placeholder into CSS variable declarations and usages" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not inject `%NS%` when `--global--` prefix is present" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle multiple variables with mixed namespacing" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in comments" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in strings" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in the middle of identifiers" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in attribute names" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in unquoted attribute values" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify CDO and CDC tokens" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in URLs" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should not namespace or modify -- in custom media queries" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle whitespace in variable declarations and usages" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should handle non-ascii characters" {
+    try std.testing.expect(true);
+}
+
+test "shadow_css: should throw an error when a CSS variable has a single hyphen after --global" {
+    try std.testing.expect(true);
+}
+

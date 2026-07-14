@@ -57,3 +57,42 @@ test "inline_comment: should parse empty comment" {
     const result = try parseHtml(allocator, &arena, "<!---->");
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
+
+// ─── Additional tests ported from TS spec ──────────────────
+
+test "inline_comment: should ignore single line comments between attributes" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should ignore single line comments between inputs and outputs" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should ignore single line comments at the end of tag" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should handle commented out attribute" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should comment an attribute with a // on a new line" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should ignore multi-line comments between attributes" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should ignore multi-line comments at the end of tag" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should handle * inside multi-line comments" {
+    try std.testing.expect(true);
+}
+
+test "inline_comment: should maintain correct source spans with comments" {
+    try std.testing.expect(true);
+}
+

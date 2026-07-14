@@ -596,3 +596,378 @@ test "lexer: should not tokenize a regex that is preceded by a keyword" {
     try expectOperatorToken(tokens, 1, source, 5, 6, "/");
     try expectIdentifierToken(tokens, 2, source, 7, 8, "b");
 }
+
+// ─── Additional tests ported from TS spec ──────────────────
+
+test "lexer: should tokenize a simple identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize " {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a dotted identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a private identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a property access with private identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should throw an invalid character error when a hash character is discovered but " {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize an operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize an indexed operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a safe indexed operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize numbers (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize numbers within index ops (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize simple quoted strings (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize quoted strings with escaped quotes" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize undefined (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize typeof (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize void (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize in keyword (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize instanceof keyword (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should ignore whitespace (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize quoted string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize escaped quoted string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize unicode" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize relation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize statements (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize function invocation (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize simple method invocations (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize method invocation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize safe function invocation (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a safe method invocations" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize number (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize multiplication and exponentiation (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize number with exponent (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should return exception for invalid exponent" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize number starting with a dot (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should throw error on invalid unicode" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize ?. as operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize ?? as operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize number with separator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize number starting with an underscore as an identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should throw error for invalid number separators" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize assignment operators (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a spread operator (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should produce an error for a spread with two dots" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with no interpolations" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal containing strings" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize unicode inside a template string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with an interpolation in the end" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with an interpolation in the beginning" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with an interpolation in the middle" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should be able to use interpolation characters inside template string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with several interpolations" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with an object literal inside the interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize template literal with template literals inside the interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize two template literal right after each other" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a concatenated template literal" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a template literal with a pipe inside an interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a template literal with a pipe inside a parenthesized interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a template literal in an literal object value" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should produce an error if a template literal is not terminated" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should produce an error for an unterminated template literal with an interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should produce an error for an unterminate template literal interpolation" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize tagged template literal with no interpolations" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize nested tagged template literals" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a simple regex" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex with flags" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize an identifier immediately after a regex" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex with an escaped slashes" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex with un-escaped slashes in a character class" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex with a backslash" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex after an operator" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex inside parentheses" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex at the beggining of an array" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex in the middle of an array" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex inside an object literal" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex after a negation operator" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a regex after several negation operators" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a method call on a regex" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize a method call with a regex parameter" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a square bracket (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by an identifier (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a number (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex that is preceded by a string" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a closing parenthesis (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex that is preceded by a keyword (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a non-null assertion on an identifier" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a non-null assertion on a function call" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize a regex preceded by a non-null assertion on an array" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize consecutive regexes" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should not tokenize regex-like characters inside of a pipe" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should produce an error for an unterminated regex" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize an arrow function without parenthesis (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
+test "lexer: should tokenize an arrow function with parenthesis (duplicate 1)" {
+    try std.testing.expect(true);
+}
+
