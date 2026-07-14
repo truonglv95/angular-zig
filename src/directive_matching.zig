@@ -217,11 +217,21 @@ pub fn parseSelector(allocator: Allocator, input: []const u8) !Selector {
                 inner_selector = parsed;
             }
 
+            // Allocate inner selector array on the heap so it persists
+            const inner_slice: ?[]const Selector = blk: {
+                if (inner_selector) |s| {
+                    const arr = try allocator.alloc(Selector, 1);
+                    arr[0] = s;
+                    break :blk arr;
+                }
+                break :blk null;
+            };
+
             try parts.append(.{
                 .kind = .PseudoClass,
                 .name = pseudo_name,
                 .value = "",
-                .inner = if (inner_selector) |*s| &[_]Selector{s.*} else null,
+                .inner = inner_slice,
             });
         } else if (ch == '*') {
             try parts.append(.{

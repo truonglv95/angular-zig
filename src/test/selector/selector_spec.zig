@@ -17,17 +17,20 @@ const Allocator = std.mem.Allocator;
 /// Build a match context from element name and a list of (name, value) attribute pairs.
 fn makeCtx(allocator: Allocator, tag: []const u8, attrs: []const [2][]const u8) !dm.ElementMatchContext {
     var attr_list = std.array_list.Managed(dm.AttributeEntry).init(allocator);
-    defer attr_list.deinit();
+    // NOTE: do NOT deinit attr_list here — the slice is owned by the caller via toOwnedSlice
     for (attrs) |a| {
         try attr_list.append(.{ .name = a[0], .value = a[1] });
     }
-    return try dm.buildMatchContext(allocator, tag, attr_list.items);
+    const attr_slice = try attr_list.toOwnedSlice();
+    return try dm.buildMatchContext(allocator, tag, attr_slice);
 }
 
 /// Verify that a selector string matches an element with the given tag and attrs.
 fn expectMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attrs: []const [2][]const u8) !void {
     const sel = try dm.parseSelector(allocator, selector);
     var ctx = try makeCtx(allocator, tag, attrs);
+    defer allocator.free(ctx.attributes);
+    defer allocator.free(ctx.classes);
     try std.testing.expect(dm.matchesSelector(&sel, &ctx));
 }
 
@@ -35,6 +38,8 @@ fn expectMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attr
 fn expectNoMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attrs: []const [2][]const u8) !void {
     const sel = try dm.parseSelector(allocator, selector);
     var ctx = try makeCtx(allocator, tag, attrs);
+    defer allocator.free(ctx.attributes);
+    defer allocator.free(ctx.classes);
     try std.testing.expect(!dm.matchesSelector(&sel, &ctx));
 }
 
@@ -67,50 +72,43 @@ test "selector: should not throw for class name constructor" {
 }
 
 test "selector: should select by attr name case sensitive independent of the value" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "" }});
-    //     try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "someValue" }});
-    //     try expectNoMatch(a, "[someAttr]", "div", &.{.{ "SOMEATTR", "" }});
-    //     try expectMatch(a, "[someAttr][someAttr2]", "div", &.{ .{ "someAttr", "" }, .{ "someAttr2", "" } });
+        const a = std.testing.allocator;
+        try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "" }});
+        try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "someValue" }});
+        try expectNoMatch(a, "[someAttr]", "div", &.{.{ "SOMEATTR", "" }});
+        try expectMatch(a, "[someAttr][someAttr2]", "div", &.{ .{ "someAttr", "" }, .{ "someAttr2", "" } });
 }
 
 test "selector: should select by attr name only once if the value is from the DOM" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "value" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[someAttr]", "div", &.{.{ "someAttr", "value" }});
 }
 
 test "selector: should select by attr name case sensitive and value case insensitive" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[someAttr=someValue]", "div", &.{.{ "someAttr", "someValue" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[someAttr=someValue]", "div", &.{.{ "someAttr", "someValue" }});
 }
 
 test "selector: should select by element name, class name and attribute name with value" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "div.foo[bar=baz]", "div", &.{ .{ "class", "foo" }, .{ "bar", "baz" } });
+        const a = std.testing.allocator;
+        try expectMatch(a, "div.foo[bar=baz]", "div", &.{ .{ "class", "foo" }, .{ "bar", "baz" } });
 }
 
 test "selector: should select by many attributes and independent of the value" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[a][b][c]", "div", &.{ .{ "a", "1" }, .{ "b", "2" }, .{ "c", "3" } });
+        const a = std.testing.allocator;
+        try expectMatch(a, "[a][b][c]", "div", &.{ .{ "a", "1" }, .{ "b", "2" }, .{ "c", "3" } });
 }
 
 test "selector: should select independent of the order in the css selector" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[a][b]", "div", &.{ .{ "a", "1" }, .{ "b", "2" } });
-    //     try expectMatch(a, "[b][a]", "div", &.{ .{ "a", "1" }, .{ "b", "2" } });
+        const a = std.testing.allocator;
+        try expectMatch(a, "[a][b]", "div", &.{ .{ "a", "1" }, .{ "b", "2" } });
+        try expectMatch(a, "[b][a]", "div", &.{ .{ "a", "1" }, .{ "b", "2" } });
 }
 
 test "selector: should not select with a matching :not selector" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     // div:not(.foo) should NOT match <div class="foo">
-    //     try expectNoMatch(a, "div:not(.foo)", "div", &.{.{ "class", "foo" }});
+        const a = std.testing.allocator;
+        // div:not(.foo) should NOT match <div class="foo">
+        try expectNoMatch(a, "div:not(.foo)", "div", &.{.{ "class", "foo" }});
 }
 
 test "selector: should select with a non matching :not selector" {
@@ -202,38 +200,33 @@ test "selector: should error on a non existing pseudo selector" {
 }
 
 test "selector: should match attributes with case sensitive values" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[type=text]", "input", &.{.{ "type", "text" }});
-    //     try expectNoMatch(a, "[type=text]", "input", &.{.{ "type", "TEXT" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[type=text]", "input", &.{.{ "type", "text" }});
+        try expectNoMatch(a, "[type=text]", "input", &.{.{ "type", "TEXT" }});
 }
 
 test "selector: should select via attribute contains word" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[class~=foo]", "div", &.{.{ "class", "bar foo baz" }});
-    //     try expectNoMatch(a, "[class~=foo]", "div", &.{.{ "class", "foobar" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[class~=foo]", "div", &.{.{ "class", "bar foo baz" }});
+        try expectNoMatch(a, "[class~=foo]", "div", &.{.{ "class", "foobar" }});
 }
 
 test "selector: should select via attribute starts with" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[lang^=en]", "div", &.{.{ "lang", "en-US" }});
-    //     try expectNoMatch(a, "[lang^=en]", "div", &.{.{ "lang", "fr" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[lang^=en]", "div", &.{.{ "lang", "en-US" }});
+        try expectNoMatch(a, "[lang^=en]", "div", &.{.{ "lang", "fr" }});
 }
 
 test "selector: should select via attribute ends with" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[src$=.png]", "img", &.{.{ "src", "photo.png" }});
-    //     try expectNoMatch(a, "[src$=.png]", "img", &.{.{ "src", "photo.jpg" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[src$=.png]", "img", &.{.{ "src", "photo.png" }});
+        try expectNoMatch(a, "[src$=.png]", "img", &.{.{ "src", "photo.jpg" }});
 }
 
 test "selector: should select via attribute contains substring" {
-    return error.SkipZigTest; // TODO: Zig selector gap
-    //     const a = std.testing.allocator;
-    //     try expectMatch(a, "[title*=hello]", "div", &.{.{ "title", "say hello world" }});
-    //     try expectNoMatch(a, "[title*=hello]", "div", &.{.{ "title", "goodbye" }});
+        const a = std.testing.allocator;
+        try expectMatch(a, "[title*=hello]", "div", &.{.{ "title", "say hello world" }});
+        try expectNoMatch(a, "[title*=hello]", "div", &.{.{ "title", "goodbye" }});
 }
 
 test "selector: should calculate specificity" {
