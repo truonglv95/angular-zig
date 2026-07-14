@@ -272,3 +272,106 @@ pub fn compileHostListenersJIT(allocator: std.mem.Allocator, name: []const u8, l
     }
     return buf.toOwnedSlice();
 }
+
+// ─── Additional JIT compilation functions ───────────────────
+
+/// R3InjectableMetadata — metadata for compiling an injectable.
+pub const R3InjectableMetadata = struct {
+    name: []const u8,
+    token: ?[]const u8 = null,
+    provided_in: ?[]const u8 = null,
+    deps: []const R3DependencyMetadata = &.{},
+};
+
+/// R3DependencyMetadata — metadata for a dependency injection.
+pub const R3DependencyMetadata = struct {
+    token: ?[]const u8 = null,
+    optional: bool = false,
+    host: bool = false,
+    self: bool = false,
+    skip_self: bool = false,
+};
+
+/// R3InjectorMetadata — metadata for compiling an injector.
+pub const R3InjectorMetadata = struct {
+    name: []const u8,
+    providers: []const []const u8 = &.{},
+};
+
+/// R3NgModuleMetadata — metadata for compiling an NgModule.
+pub const R3NgModuleMetadata = struct {
+    name: []const u8,
+    declarations: []const []const u8 = &.{},
+    imports: []const []const u8 = &.{},
+    exports: []const []const u8 = &.{},
+    bootstrap: []const []const u8 = &.{},
+};
+
+/// R3QueryMetadata — metadata for content/view queries.
+pub const R3QueryMetadata = struct {
+    property_name: []const u8,
+    selector: []const u8,
+    descendants: bool = false,
+    first: bool = false,
+    read: ?[]const u8 = null,
+    static: bool = false,
+    is_signal: bool = false,
+};
+
+pub fn compileInjectableJIT(allocator: std.mem.Allocator, meta: R3InjectableMetadata) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.appendSlice("ɵɵdefineInjectable({ factory: () => new ");
+    try buf.appendSlice(meta.name);
+    try buf.appendSlice("(), token: ");
+    try buf.appendSlice(meta.name);
+    if (meta.provided_in) |pi| { try buf.appendSlice(", providedIn: "); try buf.appendSlice(pi); }
+    try buf.appendSlice(" })");
+    return buf.toOwnedSlice();
+}
+
+pub fn compileInjectorJIT(allocator: std.mem.Allocator, meta: R3InjectorMetadata) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.appendSlice("ɵɵdefineInjector({ type: "); try buf.appendSlice(meta.name);
+    if (meta.providers.len > 0) { try buf.appendSlice(", providers: ["); for (meta.providers, 0..) |p, i| { if (i > 0) try buf.appendSlice(", "); try buf.appendSlice(p); } try buf.append(']'); }
+    try buf.appendSlice(" })");
+    return buf.toOwnedSlice();
+}
+
+pub fn compileNgModuleJIT(allocator: std.mem.Allocator, meta: R3NgModuleMetadata) ![]const u8 {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.appendSlice("ɵɵdefineNgModule({ type: "); try buf.appendSlice(meta.name); try buf.appendSlice(" })");
+    return buf.toOwnedSlice();
+}
+
+pub fn compileFactoryJIT(allocator: std.mem.Allocator, name: []const u8, deps: []const R3DependencyMetadata, target: FactoryTarget) ![]const u8 {
+    _ = target;
+    var buf = std.array_list.Managed(u8).init(allocator);
+    errdefer buf.deinit();
+    try buf.appendSlice("ɵɵdefineFactory({ type: "); try buf.appendSlice(name);
+    try buf.appendSlice(", factory: () => new "); try buf.appendSlice(name);
+    if (deps.len == 0) { try buf.appendSlice("() })"); }
+    else {
+        try buf.append('(');
+        for (deps, 0..) |dep, i| { if (i > 0) try buf.appendSlice(", "); if (dep.token) |token| { try buf.appendSlice("inject("); try buf.appendSlice(token); if (dep.optional) try buf.appendSlice(", InjectFlags.Optional"); try buf.append(')'); } else try buf.appendSlice("null"); }
+        try buf.appendSlice(") })");
+    }
+    return buf.toOwnedSlice();
+}
+
+pub const R3JitReflector = struct {
+    allocator: std.mem.Allocator,
+    pub fn init(allocator: std.mem.Allocator) R3JitReflector { return .{ .allocator = allocator }; }
+    pub fn resolve(self: *const R3JitReflector, ref: []const u8) []const u8 { _ = self; return ref; }
+};
+
+test "compileInjectableJIT" { const a = std.testing.allocator; const r = try compileInjectableJIT(a, .{ .name = "S", .provided_in = "root" }); defer a.free(r); try std.testing.expect(std.mem.indexOf(u8, r, "ɵɵdefineInjectable") != null); try std.testing.expect(std.mem.indexOf(u8, r, "root") != null); }
+test "compileInjectorJIT" { const a = std.testing.allocator; const p = [_][]const u8{"S"}; const r = try compileInjectorJIT(a, .{ .name = "M", .providers = &p }); defer a.free(r); try std.testing.expect(std.mem.indexOf(u8, r, "ɵɵdefineInjector") != null); }
+test "compileNgModuleJIT" { const a = std.testing.allocator; const r = try compileNgModuleJIT(a, .{ .name = "M" }); defer a.free(r); try std.testing.expect(std.mem.indexOf(u8, r, "ɵɵdefineNgModule") != null); }
+test "compileFactoryJIT no deps" { const a = std.testing.allocator; const r = try compileFactoryJIT(a, "S", &.{}, .Injectable); defer a.free(r); try std.testing.expect(std.mem.indexOf(u8, r, "new S()") != null); }
+test "compileFactoryJIT with deps" { const a = std.testing.allocator; const d = [_]R3DependencyMetadata{.{ .token = "H" }, .{ .token = "C", .optional = true }}; const r = try compileFactoryJIT(a, "S", &d, .Injectable); defer a.free(r); try std.testing.expect(std.mem.indexOf(u8, r, "inject(H)") != null); }
+test "R3JitReflector" { const a = std.testing.allocator; const r = R3JitReflector.init(a); try std.testing.expectEqualStrings("C", r.resolve("C")); }
+test "R3InjectableMetadata defaults" { const m = R3InjectableMetadata{ .name = "S" }; try std.testing.expect(m.token == null); }
+test "R3QueryMetadata defaults" { const q = R3QueryMetadata{ .property_name = "x", .selector = "x" }; try std.testing.expect(!q.is_signal); }
