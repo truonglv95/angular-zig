@@ -207,4 +207,10 @@ test {
     _ = @import("template/pipeline/ir/ops/update.zig");
     _ = @import("directive_matching.zig");
     _ = @import("render3/view/t2_binder.zig");
+    _ = @import("shadow_css.zig");
+    _ = @import("core.zig");
+    _ = @import("parse_util.zig");
+    _ = @import("property_mapping.zig");
+    _ = @import("constant_pool.zig");
+    _ = @import("util.zig");
 }

@@ -27,6 +27,7 @@ pub fn createAbsoluteSpan(start: u32, end: u32) AbsoluteSourceSpan {
 
 /// Format a parse error for display.
 pub fn formatError(allocator: std.mem.Allocator, err: ParseError, source: []const u8) ![]const u8 {
+    _ = source;
     return std.fmt.allocPrint(allocator, "Error at {d}-{d}: {s}",
         .{ err.span.start, err.span.end, err.msg });
 }
