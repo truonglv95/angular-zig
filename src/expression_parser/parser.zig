@@ -970,29 +970,15 @@ pub const Parser = struct {
                 // We set is_action=false for the body so pipes are allowed, but we need
                 // to check if the body contains a BindingPipe and report it.
                 const saved_is_action = self.is_action;
-                self.is_action = false; // Arrow body is always binding context
-                const body = try self.parseConditional();
+                // Arrow body: pipes not allowed inside arrow body.
+                // Use parsePipe so the pipe IS parsed (and error reported by is_action=true),
+                // but the pipe expression itself becomes the body AST.
+                // For (a => a + 1) | pipe: the outer | is NOT inside arrow body —
+                // the arrow function is parsed inside parens, then | pipe applies to the
+                // parenthesized expression.
+                self.is_action = true; // Reject pipes in arrow body
+                const body = try self.parsePipe();
                 self.is_action = saved_is_action;
-
-                // Check if body contains a pipe — if so, report error for binding context
-                // Arrow functions in Angular don't allow pipes inside their body
-                if (body.data == .BindingPipe) {
-                    try self.errors.append(.{
-                        .span = source_span.ParseSourceSpan.init(
-                            body.span.start, body.span.end, self.source,
-                        ),
-                        .msg = "Cannot have a pipe in an action expression",
-                    });
-                }
-                // Also check nested pipes: a => a + b | c → the pipe is inside binary
-                if (body.data == .Binary and body.data.Binary.right.data == .BindingPipe) {
-                    try self.errors.append(.{
-                        .span = source_span.ParseSourceSpan.init(
-                            body.data.Binary.right.span.start, body.data.Binary.right.span.end, self.source,
-                        ),
-                        .msg = "Cannot have a pipe in an action expression",
-                    });
-                }
                 const params_slice = try self.arena.alloc(ArrowParam, 1);
                 params_slice[0] = .{ .name = name, .span = self.span(tok.index, tok.end) };
                 const node = try self.arena.create(Ast);
@@ -1105,19 +1091,9 @@ pub const Parser = struct {
 
         if (is_arrow) {
             const saved_is_action = self.is_action;
-            self.is_action = false; // Arrow body is always binding context
-            const body = try self.parseConditional();
+            self.is_action = true; // Arrow body rejects pipes like action context
+            const body = try self.parsePipe();
             self.is_action = saved_is_action;
-
-            // Check if body contains a pipe — report error
-            if (body.data == .BindingPipe) {
-                try self.errors.append(.{
-                    .span = source_span.ParseSourceSpan.init(
-                        body.span.start, body.span.end, self.source,
-                    ),
-                    .msg = "Cannot have a pipe in an action expression",
-                });
-            }
             const params_slice = try self.arena.alloc(ArrowParam, params.items.len);
             @memcpy(params_slice, params.items);
             const node = try self.arena.create(Ast);
