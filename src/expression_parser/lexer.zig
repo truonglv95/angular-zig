@@ -131,6 +131,8 @@ pub const Lexer = struct {
             } else if (ch == '$') {
                 try self.tokens.append(.{ .type = .Dollar, .index = self.pos, .end = self.pos + 1 });
                 self.pos += 1;
+            } else if (ch == '/' and self.isRegexStart()) {
+                try self.scanRegex();
             } else {
                 try self.scanOperator();
             }
@@ -152,6 +154,68 @@ pub const Lexer = struct {
         while (self.pos < self.source.len and chars.isWhitespace(self.source[self.pos])) {
             self.pos += 1;
         }
+    }
+
+    /// Check if the current `/` should be treated as the start of a regex literal
+    /// (as opposed to a division operator).
+    fn isRegexStart(self: *Lexer) bool {
+        if (self.tokens.items.len == 0) return true;
+        const last = self.tokens.items[self.tokens.items.len - 1];
+        // After these token types, `/` is a regex start
+        return switch (last.type) {
+            .Operator, .Character => blk: {
+                const s = last.slice(self.source);
+                // After `)`, `]`, or identifier-like chars, `/` is division
+                if (s.len == 1 and (s[0] == ')' or s[0] == ']')) break :blk false;
+                break :blk true;
+            },
+            .Number, .String, .Identifier, .Keyword => false,
+            else => true,
+        };
+    }
+
+    /// Scan a regex literal: /body/flags
+    fn scanRegex(self: *Lexer) !void {
+        const start = self.pos;
+        self.pos += 1; // skip opening /
+
+        // Scan body — handle escaped /
+        var in_class: bool = false; // inside [...]
+        while (self.pos < self.source.len) {
+            const ch = self.source[self.pos];
+            if (ch == '\\') {
+                self.pos += 2;
+                continue;
+            }
+            if (ch == '[') in_class = true;
+            if (ch == ']') in_class = false;
+            if (ch == '/' and !in_class) break;
+            if (ch == '\n') break; // unterminated
+            self.pos += 1;
+        }
+
+        if (self.pos >= self.source.len or self.source[self.pos] != '/') {
+            // Unterminated regex — treat as error
+            try self.tokens.append(.{
+                .type = .Operator,
+                .index = start,
+                .end = self.pos,
+            });
+            return;
+        }
+
+        self.pos += 1; // skip closing /
+
+        // Scan flags
+        while (self.pos < self.source.len and chars.isIdentifierPart(self.source[self.pos])) {
+            self.pos += 1;
+        }
+
+        try self.tokens.append(.{
+            .type = .String, // Use String type for regex (parser handles it)
+            .index = start,
+            .end = self.pos,
+        });
     }
 
     /// Skip whitespace and comments (// line comments and /* */ block comments).
