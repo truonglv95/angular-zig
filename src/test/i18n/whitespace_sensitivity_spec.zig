@@ -5,18 +5,18 @@
 const std = @import("std");
 
 test "whitespace_sensitivity: from converting one-line messages to block messages" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "whitespace_sensitivity: from indenting a message" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "whitespace_sensitivity: from adjusting line wrapping" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "whitespace_sensitivity: from trimming significant whitespace" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 

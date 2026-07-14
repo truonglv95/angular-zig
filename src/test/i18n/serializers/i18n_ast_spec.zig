@@ -5,10 +5,10 @@
 const std = @import("std");
 
 test "i18n_ast: should clone an AST" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "i18n_ast: should visit all nodes" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 

@@ -5,18 +5,18 @@
 const std = @import("std");
 
 test "integration_xliff2: should extract from templates" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff2: should translate templates" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff2: should extract from templates (with CRLF line endings)" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff2: should translate templates (with CRLF line endings)" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 

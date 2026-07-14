@@ -5,18 +5,18 @@
 const std = @import("std");
 
 test "integration_xmb_xtb: should extract from templates" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xmb_xtb: should translate templates" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xmb_xtb: should extract from templates (with CRLF line endings)" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xmb_xtb: should translate templates (with CRLF line endings)" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: need real assertions
 }
 
