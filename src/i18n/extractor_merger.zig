@@ -36,7 +36,8 @@ pub const VisitorMode = enum(u8) {
 /// ExtractionResult — result of message extraction.
 /// Direct port of `ExtractionResult` class in the TS source.
 pub const ExtractionResult = struct {
-    messages: std.StringHashMap(i18n_ast.Message),
+    messages: std.StringHashMap(i18n_ast.Message) = undefined,
+    messages_list: []const i18n_ast.Message = &.{},
     errors: []const ParseError = &.{},
 
     pub const ParseError = struct {
@@ -102,22 +103,208 @@ pub fn getI18nAttributeTarget(name: []const u8) ?[]const u8 {
     return null;
 }
 
+const ml_lexer = @import("../ml_parser/lexer.zig");
+const ml_parser = @import("../ml_parser/parser.zig");
+const ml_ast = @import("../ml_parser/ast.zig");
+const arena_mod = @import("../arena.zig");
+const i18n_parser = @import("i18n_parser.zig");
+const source_span_mod = @import("../source_span.zig");
+
 /// Extract translatable messages from HTML source.
-/// Direct port of `extractMessages(nodes, implicitTags, implicitAttrs, preserveSignificantWhitespace)` in the TS source.
+/// This is a convenience function that parses HTML and calls extractMessagesFromNodes.
 pub fn extract(allocator: std.mem.Allocator, source: []const u8) !ExtractionResult {
-    var messages = std.StringHashMap(i18n_ast.Message).init(allocator);
-    var i: usize = 0;
-    while (i < source.len) : (i += 1) {
-        if (i + 4 < source.len and std.mem.startsWith(u8, source[i..], I18N_ATTR)) {
-            var msg = i18n_ast.Message.init(allocator);
-            msg.message_string = "";
-            if (msg.message_string.len > 0) {
-                msg.id = try digest.computeDigest(allocator, &msg);
-                try messages.put(msg.id, msg);
-            }
-        }
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    var lex = ml_lexer.Lexer.init(allocator, source);
+    defer lex.deinit();
+    const lex_result = try lex.tokenize();
+    var html_parser = ml_parser.Parser.init(allocator, &arena, source, lex_result[0]);
+    const html_result = try html_parser.parse();
+    return try extractMessagesFromNodes(allocator, html_result.root_nodes, source);
+}
+
+/// Extract messages from HTML AST nodes.
+/// Direct port of `_Visitor.extract(nodes)` in the TS source.
+/// Walks the HTML tree looking for `i18n` attributes and i18n comments.
+pub fn extractMessagesFromNodes(
+    allocator: std.mem.Allocator,
+    root_nodes: []const *const ml_ast.Node,
+    source: []const u8,
+) !ExtractionResult {
+    var messages = std.array_list.Managed(i18n_ast.Message).init(allocator);
+    var errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator);
+    var visitor = i18n_parser.I18nVisitor.init(allocator, false, true);
+
+    for (root_nodes) |node| {
+        try extractFromNode(allocator, &visitor, node, source, &messages, &errors);
     }
-    return .{ .messages = messages };
+
+    return .{
+        .messages_list = try messages.toOwnedSlice(),
+        .errors = try errors.toOwnedSlice(),
+    };
+}
+
+/// Recursively extract i18n messages from a single HTML node.
+fn extractFromNode(
+    allocator: std.mem.Allocator,
+    visitor: *i18n_parser.I18nVisitor,
+    node: *const ml_ast.Node,
+    source: []const u8,
+    messages: *std.array_list.Managed(i18n_ast.Message),
+    errors: *std.array_list.Managed(ExtractionResult.ParseError),
+) anyerror!void {
+    switch (node.data) {
+        .Element => |elem| {
+            // Check for i18n attribute
+            var i18n_attr_value: ?[]const u8 = null;
+            for (elem.attrs) |attr| {
+                if (std.mem.eql(u8, attr.name, I18N_ATTR)) {
+                    i18n_attr_value = attr.value;
+                    break;
+                }
+            }
+
+            if (i18n_attr_value) |i18n_val| {
+                // Parse i18n attribute value: meaning|description@@customId
+                const info = parseI18nAttrValue(i18n_val);
+
+                // Only create message if element has children
+                if (elem.children.len > 0) {
+                    // Convert HTML children to i18n nodes
+                    var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+                    defer html_inputs.deinit();
+                    for (elem.children) |child| {
+                        try html_inputs.append(try mlNodeToHtmlInput(allocator, child, source));
+                    }
+
+                    // Create the i18n message
+                    var msg = try visitor.toI18nMessage(
+                        html_inputs.items,
+                        info.meaning,
+                        info.description,
+                        info.custom_id,
+                        null,
+                    );
+                    // Compute message string and id
+                    const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+                    defer allocator.free(serialized);
+                    msg.message_string = try allocator.dupe(u8, serialized);
+                    msg.id = try digest.computeDigest(allocator, &msg);
+                    try messages.append(msg);
+                }
+            }
+
+            // Check for i18n-* attributes (attribute-level i18n)
+            for (elem.attrs) |attr| {
+                if (getI18nAttributeTarget(attr.name)) |_| {
+                    if (attr.name.len > I18N_ATTR_PREFIX.len) {
+                        // Find the i18n-* attribute value
+                        var i18n_attr_val: ?[]const u8 = null;
+                        for (elem.attrs) |a| {
+                            if (std.mem.eql(u8, a.name, attr.name)) {
+                                i18n_attr_val = a.value;
+                            }
+                        }
+                        const info = if (i18n_attr_val) |v| parseI18nAttrValue(v) else I18nAttrInfo{};
+
+                        // Create message from attribute value
+                        if (attr.value.len > 0) {
+                            var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+                            defer html_inputs.deinit();
+                            const attr_span = source_span_mod.ParseSourceSpan.init(0, 0, source);
+                            try html_inputs.append(.{
+                                .kind = .attribute,
+                                .name = attr.name,
+                                .value = attr.value,
+                                .source_span = attr_span,
+                            });
+
+                            var msg = try visitor.toI18nMessage(
+                                html_inputs.items,
+                                info.meaning,
+                                info.description,
+                                info.custom_id,
+                                null,
+                            );
+                            const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+                            defer allocator.free(serialized);
+                            msg.message_string = try allocator.dupe(u8, serialized);
+                            msg.id = try digest.computeDigest(allocator, &msg);
+                            try messages.append(msg);
+                        }
+                    }
+                }
+            }
+
+            // Recurse into children
+            for (elem.children) |child| {
+                try extractFromNode(allocator, visitor, child, source, messages, errors);
+            }
+        },
+        .Comment => |comment| {
+            // Check for i18n comment blocks: <!-- i18n --> ... <!-- /i18n -->
+            if (isI18nComment(comment.value)) {
+                // i18n comment block — content between this and /i18n is translatable
+                // For now, just mark that we found it
+            }
+        },
+        .Block => |block| {
+            // Recurse into block children
+            for (block.children) |child| {
+                try extractFromNode(allocator, visitor, child, source, messages, errors);
+            }
+        },
+        else => {},
+    }
+}
+
+/// Convert an ml_ast.Node to an HtmlNodeInput for the i18n visitor.
+fn mlNodeToHtmlInput(
+    allocator: std.mem.Allocator,
+    node: *const ml_ast.Node,
+    source: []const u8,
+) !i18n_parser.HtmlNodeInput {
+    const empty_span = @import("../source_span.zig").ParseSourceSpan.init(0, 0, source);
+    return switch (node.data) {
+        .Text => |t| .{
+            .kind = .text,
+            .text = t.value,
+            .value = t.value,
+            .source_span = empty_span,
+        },
+        .Element => |e| blk: {
+            // Convert children recursively
+            var children = try allocator.alloc(i18n_parser.HtmlNodeInput, e.children.len);
+            for (e.children, 0..) |child, i| {
+                children[i] = try mlNodeToHtmlInput(allocator, child, source);
+            }
+            break :blk .{
+                .kind = .element,
+                .name = e.name,
+                .source_span = empty_span,
+                .children = children,
+            };
+        },
+        .Comment => |c| .{
+            .kind = .comment,
+            .value = c.value,
+            .text = c.value,
+            .source_span = empty_span,
+        },
+        .Cdata => |c| .{
+            .kind = .text,
+            .text = c.value,
+            .value = c.value,
+            .source_span = empty_span,
+        },
+        else => .{
+            .kind = .text,
+            .text = "",
+            .value = "",
+            .source_span = empty_span,
+        },
+    };
 }
 
 /// Extract messages from HTML AST nodes.
@@ -129,12 +316,14 @@ pub fn extractMessages(
     implicit_attrs: anytype,
     preserve_significant_whitespace: bool,
 ) !ExtractionResult {
+    _ = allocator;
     _ = nodes;
     _ = implicit_tags;
     _ = implicit_attrs;
     _ = preserve_significant_whitespace;
     return .{
-        .messages = std.StringHashMap(i18n_ast.Message).init(allocator),
+        .messages_list = &.{},
+        .errors = &.{},
     };
 }
 

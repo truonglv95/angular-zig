@@ -115,8 +115,8 @@ test "I18NHtmlParser init" {
 test "I18NHtmlParser parse returns extraction result" {
     const allocator = std.testing.allocator;
     var parser = I18NHtmlParser.init(allocator);
-    var result = try parser.parse("<div>Hello</div>");
-    defer result.messages.deinit();
+    const result = try parser.parse("<div>Hello</div>");
+    _ = result;
 }
 
 test "I18NHtmlParser initWithTranslations" {
