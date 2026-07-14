@@ -1,43 +1,101 @@
+/// IR Update Ops — All update-phase operation types for the Angular IR
+///
 /// Port of: template/pipeline/ir/src/ops/update.ts (1072 LoC)
-/// DOD + Arena Memory
+///
+/// This file defines all update-phase operation types. Each op is a plain
+/// struct with a kind discriminant and optional data. The operations are:
+///   - Text: InterpolateText
+///   - Binding: Binding, Property, TwoWayProperty, Attribute
+///   - Style: StyleProp, ClassProp, StyleMap, ClassMap
+///   - Control: Advance, Conditional, Repeater, Control
+///   - Animation: AnimationBinding
+///   - Defer: DeferWhen
+///   - i18n: I18nExpression, I18nApply
+///   - Let: StoreLet
 const std = @import("std");
+const update_ops = @import("../update_ops.zig");
+const ir_enums = @import("../enums.zig");
 
-pub const InterpolateTextOp = struct {};
-pub const BindingOp = struct {};
-pub const PropertyOp = struct {};
-pub const TwoWayPropertyOp = struct {};
-pub const StylePropOp = struct {};
-pub const ClassPropOp = struct {};
-pub const StyleMapOp = struct {};
-pub const ClassMapOp = struct {};
-pub const AttributeOp = struct {};
-pub const AdvanceOp = struct {};
-pub const ConditionalOp = struct {};
-pub const RepeaterOp = struct {};
-pub const AnimationBindingOp = struct {};
-pub const DeferWhenOp = struct {};
-pub const I18nExpressionOp = struct {};
-pub const I18nApplyOp = struct {};
-pub const StoreLetOp = struct {};
-pub const ControlOp = struct {};
-pub fn createInterpolateTextOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createBindingOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createPropertyOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createTwoWayPropertyOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createStylePropOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createClassPropOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createStyleMapOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createClassMapOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createAttributeOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createAdvanceOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createConditionalOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createRepeaterOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createAnimationBindingOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createDeferWhenOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createI18nExpressionOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createI18nApplyOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createStoreLetOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub fn createControlOp(allocator: std.mem.Allocator) void { _ = allocator; }
-pub const UpdateOp = anytype;
+/// Re-export types from update_ops.zig.
+pub const Interpolation = update_ops.Interpolation;
+pub const InterpolateTextOp = update_ops.InterpolateTextOp;
+pub const BindingOp = update_ops.BindingOp;
+pub const PropertyOp = update_ops.PropertyOp;
+pub const TwoWayPropertyOp = update_ops.TwoWayPropertyOp;
+pub const StylePropOp = update_ops.StylePropOp;
+pub const ClassPropOp = update_ops.ClassPropOp;
+pub const StyleMapOp = update_ops.StyleMapOp;
+pub const ClassMapOp = update_ops.ClassMapOp;
+pub const AttributeOp = update_ops.AttributeOp;
+pub const AdvanceOp = update_ops.AdvanceOp;
+pub const ConditionalOp = update_ops.ConditionalOp;
+pub const RepeaterOp = update_ops.RepeaterOp;
+pub const AnimationBindingOp = update_ops.AnimationBindingOp;
+pub const DeferWhenOp = update_ops.DeferWhenOp;
+pub const I18nExpressionOp = update_ops.I18nExpressionOp;
+pub const I18nApplyOp = update_ops.I18nApplyOp;
+pub const StoreLetOp = update_ops.StoreLetOp;
+pub const ControlOp = update_ops.ControlOp;
 
-test "module loads" { std.testing.expect(true); }
+/// Re-export factory functions from update_ops.zig.
+pub const createInterpolateTextOp = update_ops.createInterpolateTextOp;
+pub const createBindingOp = update_ops.createBindingOp;
+pub const createAdvanceOp = update_ops.createAdvanceOp;
+pub const createConditionalOp = update_ops.createConditionalOp;
+pub const createRepeaterOp = update_ops.createRepeaterOp;
+
+/// UpdateOp type alias.
+pub const UpdateOp = update_ops.UpdateOp;
+
+/// UpdateOpKind — the kind of an update-phase operation.
+pub const UpdateOpKind = ir_enums.OpKind;
+
+/// Check if an op kind is an update-phase op.
+pub fn isUpdateOp(kind: UpdateOpKind) bool {
+    return ir_enums.isUpdateOp(kind);
+}
+
+/// Check if an op kind is a binding op (Property, Binding, StyleProp, etc.).
+pub fn isBindingOp(kind: UpdateOpKind) bool {
+    return switch (kind) {
+        .Binding, .Property, .StyleProp, .ClassProp,
+        .StyleMap, .ClassMap, .DomProperty, .TwoWayProperty,
+        .Attribute => true,
+        else => false,
+    };
+}
+
+/// Check if an op kind is an i18n update op.
+pub fn isI18nUpdateOp(kind: UpdateOpKind) bool {
+    return switch (kind) {
+        .I18nExpression => true,
+        else => false,
+    };
+}
+
+// ─── Tests ──────────────────────────────────────────────────
+
+test "isUpdateOp" {
+    try std.testing.expect(isUpdateOp(.Property));
+    try std.testing.expect(isUpdateOp(.Binding));
+    try std.testing.expect(isUpdateOp(.InterpolateText));
+    try std.testing.expect(isUpdateOp(.Conditional));
+    try std.testing.expect(!isUpdateOp(.ElementStart));
+    try std.testing.expect(!isUpdateOp(.Text));
+}
+
+test "isBindingOp" {
+    try std.testing.expect(isBindingOp(.Property));
+    try std.testing.expect(isBindingOp(.Binding));
+    try std.testing.expect(isBindingOp(.StyleProp));
+    try std.testing.expect(isBindingOp(.ClassProp));
+    try std.testing.expect(isBindingOp(.TwoWayProperty));
+    try std.testing.expect(!isBindingOp(.Conditional));
+    try std.testing.expect(!isBindingOp(.Advance));
+}
+
+test "isI18nUpdateOp" {
+    try std.testing.expect(isI18nUpdateOp(.I18nExpression));
+    try std.testing.expect(!isI18nUpdateOp(.Property));
+    try std.testing.expect(!isI18nUpdateOp(.Binding));
+}
