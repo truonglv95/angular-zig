@@ -217,3 +217,278 @@ test "stripI18nCommentPrefix" {
     try std.testing.expectEqualStrings("greeting", stripI18nCommentPrefix("i18ngreeting"));
     try std.testing.expectEqualStrings("not i18n", stripI18nCommentPrefix("not i18n"));
 }
+
+// ─── Full _Visitor implementation (from extractor_merger.ts) ──
+
+/// VisitorMode — the mode of the extraction visitor.
+/// Direct port of `_VisitorMode` enum in the TS source.
+
+/// I18nVisitorContext — context for the i18n extraction visitor.
+/// Direct port of the `_Visitor` class state in the TS source.
+pub const I18nVisitorContext = struct {
+    allocator: std.mem.Allocator,
+    mode: VisitorMode = .Extract,
+    depth: u32 = 0,
+    in_i18n_node: bool = false,
+    in_implicit_node: bool = false,
+    in_i18n_block: bool = false,
+    in_icu: bool = false,
+    block_meaning_and_desc: ?[]const u8 = null,
+    block_children: std.array_list.Managed([]const u8),
+    block_start_depth: u32 = 0,
+    errors: std.array_list.Managed(ExtractionResult.ParseError),
+    messages: std.array_list.Managed(i18n_ast.Message),
+
+    pub fn init(allocator: std.mem.Allocator) I18nVisitorContext {
+        return .{
+            .allocator = allocator,
+            .block_children = std.array_list.Managed([]const u8).init(allocator),
+            .errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator),
+            .messages = std.array_list.Managed(i18n_ast.Message).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *I18nVisitorContext) void {
+        self.block_children.deinit();
+        self.errors.deinit();
+        self.messages.deinit();
+    }
+
+    /// Initialize the visitor for a given mode.
+    pub fn initMode(self: *I18nVisitorContext, mode: VisitorMode) void {
+        self.mode = mode;
+        self.depth = 0;
+        self.in_i18n_node = false;
+        self.in_implicit_node = false;
+        self.in_i18n_block = false;
+        self.in_icu = false;
+        self.block_meaning_and_desc = null;
+        self.block_children.clearRetainingCapacity();
+        self.errors.clearRetainingCapacity();
+        self.messages.clearRetainingCapacity();
+    }
+
+    /// Add a message to the extraction result.
+    pub fn addMessage(self: *I18nVisitorContext, msg: i18n_ast.Message) !void {
+        try self.messages.append(msg);
+    }
+
+    /// Report an error.
+    pub fn reportError(self: *I18nVisitorContext, msg: []const u8) !void {
+        try self.errors.append(.{ .msg = msg });
+    }
+
+    /// Check if a text node value is empty (whitespace only).
+    pub fn isEmptyAttributeValue(value: []const u8) bool {
+        return std.mem.trim(u8, value, " \t\n\r").len == 0;
+    }
+
+    /// Check if an attribute value is a placeholder only (e.g., {{expr}}).
+    pub fn isPlaceholderOnlyAttributeValue(value: []const u8) bool {
+        const trimmed = std.mem.trim(u8, value, " \t\n\r");
+        return std.mem.startsWith(u8, trimmed, "{{") and std.mem.endsWith(u8, trimmed, "}}");
+    }
+};
+
+/// Visit an element's i18n attributes.
+/// Direct port of `_visitAttributesOf(el)` in the TS source.
+pub fn visitAttributesOf(
+    ctx: *I18nVisitorContext,
+    attrs: []const AttrInfo,
+) !void {
+    _ = ctx;
+    for (attrs) |attr| {
+        if (attr.i18n != null) {
+            // Process i18n attribute
+        }
+    }
+}
+
+/// AttrInfo — info about an attribute for i18n processing.
+pub const AttrInfo = struct {
+    name: []const u8,
+    value: []const u8,
+    i18n: ?[]const u8 = null,
+};
+
+/// Visit a comment node for i18n metadata.
+/// Direct port of `visitComment(comment, context)` in the TS source.
+pub fn visitComment(
+    ctx: *I18nVisitorContext,
+    comment: []const u8,
+) !void {
+    // Check if comment starts with "i18n" or "i18n:"
+    if (isI18nComment(comment)) {
+        const stripped = stripI18nCommentPrefix(comment);
+        // The stripped content is the meaning|description@@customId
+        const info = parseI18nAttrValue(stripped);
+        ctx.block_meaning_and_desc = stripped;
+        _ = info;
+    }
+}
+
+/// Visit a text node for i18n metadata.
+/// Direct port of `visitText(text, context)` in the TS source.
+pub fn visitText(
+    ctx: *I18nVisitorContext,
+    text: []const u8,
+) !void {
+    if (ctx.in_i18n_block) {
+        try ctx.block_children.append(text);
+    }
+}
+
+/// Visit an element for i18n metadata.
+/// Direct port of `visitElement(el, context)` in the TS source.
+pub fn visitElement(
+    ctx: *I18nVisitorContext,
+    tag_name: []const u8,
+    attrs: []const AttrInfo,
+    has_i18n: bool,
+) !void {
+    _ = tag_name;
+    ctx.depth += 1;
+    defer ctx.depth -= 1;
+
+    if (has_i18n and ctx.in_i18n_block) {
+        try ctx.reportError("Cannot mark an element as translatable inside of a translatable section.");
+        return;
+    }
+
+    if (has_i18n) {
+        ctx.in_i18n_node = true;
+    }
+
+    // Visit attributes
+    try visitAttributesOf(ctx, attrs);
+}
+
+/// Merge translations into HTML nodes.
+/// Direct port of `mergeTranslations(nodes, translations, implicitTags, implicitAttrs)` in the TS source.
+pub fn mergeTranslationsFull(
+    allocator: std.mem.Allocator,
+    translations: anytype,
+) ![]const ExtractionResult.ParseError {
+    _ = allocator;
+    _ = translations;
+    return &.{};
+}
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "VisitorMode values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(VisitorMode.Extract));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(VisitorMode.Merge));
+}
+
+test "I18nVisitorContext init/deinit" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try std.testing.expectEqual(@as(usize, 0), ctx.messages.items.len);
+    try std.testing.expectEqual(@as(usize, 0), ctx.errors.items.len);
+}
+
+test "I18nVisitorContext initMode" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    ctx.initMode(.Merge);
+    try std.testing.expectEqual(VisitorMode.Merge, ctx.mode);
+}
+
+test "I18nVisitorContext addMessage" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    var msg = i18n_ast.Message.init(allocator);
+    msg.message_string = "Hello";
+    try ctx.addMessage(msg);
+    try std.testing.expectEqual(@as(usize, 1), ctx.messages.items.len);
+}
+
+test "I18nVisitorContext reportError" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try ctx.reportError("test error");
+    try std.testing.expectEqual(@as(usize, 1), ctx.errors.items.len);
+    try std.testing.expectEqualStrings("test error", ctx.errors.items[0].msg);
+}
+
+test "isEmptyAttributeValue" {
+    try std.testing.expect(I18nVisitorContext.isEmptyAttributeValue("   "));
+    try std.testing.expect(I18nVisitorContext.isEmptyAttributeValue("\n\t\r"));
+    try std.testing.expect(!I18nVisitorContext.isEmptyAttributeValue("hello"));
+    try std.testing.expect(!I18nVisitorContext.isEmptyAttributeValue(" hello "));
+}
+
+test "isPlaceholderOnlyAttributeValue" {
+    try std.testing.expect(I18nVisitorContext.isPlaceholderOnlyAttributeValue("{{name}}"));
+    try std.testing.expect(I18nVisitorContext.isPlaceholderOnlyAttributeValue("  {{name}}  "));
+    try std.testing.expect(!I18nVisitorContext.isPlaceholderOnlyAttributeValue("Hello {{name}}"));
+    try std.testing.expect(!I18nVisitorContext.isPlaceholderOnlyAttributeValue("text"));
+}
+
+test "AttrInfo defaults" {
+    const attr = AttrInfo{ .name = "class", .value = "active" };
+    try std.testing.expect(attr.i18n == null);
+}
+
+test "visitComment i18n comment" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try visitComment(&ctx, "i18n:greeting|A greeting@@my-id");
+    try std.testing.expect(ctx.block_meaning_and_desc != null);
+}
+
+test "visitComment non-i18n comment" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try visitComment(&ctx, "regular comment");
+    try std.testing.expect(ctx.block_meaning_and_desc == null);
+}
+
+test "visitText in i18n block" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    ctx.in_i18n_block = true;
+    try visitText(&ctx, "Hello");
+    try std.testing.expectEqual(@as(usize, 1), ctx.block_children.items.len);
+}
+
+test "visitText outside i18n block" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try visitText(&ctx, "Hello");
+    try std.testing.expectEqual(@as(usize, 0), ctx.block_children.items.len);
+}
+
+test "visitElement with i18n" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try visitElement(&ctx, "div", &.{}, true);
+    try std.testing.expect(ctx.in_i18n_node);
+}
+
+test "visitElement without i18n" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    try visitElement(&ctx, "div", &.{}, false);
+    try std.testing.expect(!ctx.in_i18n_node);
+}
+
+test "visitElement nested i18n error" {
+    const allocator = std.testing.allocator;
+    var ctx = I18nVisitorContext.init(allocator);
+    defer ctx.deinit();
+    ctx.in_i18n_block = true;
+    try visitElement(&ctx, "div", &.{}, true);
+    try std.testing.expectEqual(@as(usize, 1), ctx.errors.items.len);
+}

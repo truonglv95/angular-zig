@@ -207,3 +207,57 @@ fn serializeNode(buf: *std.array_list.Managed(u8), node: *const Node) !void {
         },
     }
 }
+
+// ─── Additional i18n AST types ──────────────────────────────
+
+/// I18nBlockPlaceholder — placeholder for a block (@if, @for) in an i18n message.
+pub const BlockPlaceholderData = struct {
+    name: []const u8,
+    start_name: ?[]const u8 = null,
+    close_name: ?[]const u8 = null,
+    children: []const Node = &.{},
+};
+
+/// Serialize a message to a string representation.
+pub fn serializeMessageToString(allocator: std.mem.Allocator, nodes: []const Node) ![]const u8 {
+    return serializeMessage(allocator, nodes);
+}
+
+// ─── Tests ──────────────────────────────────────────────────
+
+test "TagPlaceholderData defaults" {
+    const tp = TagPlaceholderData{ .tag = "div", .is_start = false, .is_close = false, .children = &.{} };
+    
+    try std.testing.expect(!tp.is_start);
+    try std.testing.expect(!tp.is_close);
+}
+
+test "BlockPlaceholderData defaults" {
+    const bp = BlockPlaceholderData{ .name = "if" };
+    try std.testing.expectEqualStrings("if", bp.name);
+    try std.testing.expect(bp.start_name == null);
+}
+
+test "serializeMessageToString text" {
+    const allocator = std.testing.allocator;
+    var nodes = [_]Node{.{
+        .kind = .text,
+        .source_span = .{ .start = 0, .end = 0 },
+        .data = .{ .text = .{ .value = "Hello" } },
+    }};
+    const result = try serializeMessageToString(allocator, &nodes);
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("Hello", result);
+}
+
+test "serializeMessageToString placeholder" {
+    const allocator = std.testing.allocator;
+    var nodes = [_]Node{.{
+        .kind = .placeholder,
+        .source_span = .{ .start = 0, .end = 0 },
+        .data = .{ .placeholder = .{ .name = "PH", .expression = "expr" } },
+    }};
+    const result = try serializeMessageToString(allocator, &nodes);
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("{PH}", result);
+}

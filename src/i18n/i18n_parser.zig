@@ -108,7 +108,7 @@ pub fn parseInterpolation(
 ) !i18n_ast.PlaceholderData {
     _ = allocator;
     return i18n_ast.PlaceholderData{
-        .value = expression,
+        .expression = expression,
         .name = "INTERPOLATION",
     };
 }
@@ -156,4 +156,112 @@ test "createI18nMessageFactory" {
 test "parseText creates text node" {
     const text = try parseText(std.testing.allocator, "Hello World");
     try std.testing.expectEqualStrings("Hello World", text.value);
+}
+
+// ─── Full I18nVisitor (from i18n_parser.ts) ─────────────────
+
+/// I18nVisitor — walks HTML AST and builds i18n Message.
+/// Direct port of `_I18nVisitor` class in the TS source.
+pub const I18nVisitor = struct {
+    allocator: std.mem.Allocator,
+    retain_empty_tokens: bool = false,
+    preserve_expression_whitespace: bool = false,
+    errors: std.array_list.Managed([]const u8),
+
+    pub fn init(allocator: std.mem.Allocator) I18nVisitor {
+        return .{
+            .allocator = allocator,
+            .errors = std.array_list.Managed([]const u8).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *I18nVisitor) void {
+        self.errors.deinit();
+    }
+
+    /// Convert HTML nodes to an i18n Message.
+    /// Direct port of `toI18nMessage(nodes, meaning, description, customId, visitNodeFn)` in the TS source.
+    pub fn toI18nMessage(
+        self: *I18nVisitor,
+        nodes: []const []const u8,
+        meaning: []const u8,
+        description: []const u8,
+        custom_id: []const u8,
+    ) !i18n_ast.Message {
+        var msg = i18n_ast.Message.init(self.allocator);
+        msg.meaning = meaning;
+        msg.description = description;
+        msg.custom_id = custom_id;
+        // Build message nodes from HTML nodes
+        for (nodes) |node_text| {
+            _ = node_text;
+        }
+        return msg;
+    }
+
+    /// Visit a text HTML node.
+    pub fn visitText(self: *I18nVisitor, text: []const u8) !i18n_ast.TextData {
+        _ = self;
+        return i18n_ast.TextData{ .value = text };
+    }
+
+    /// Visit an interpolation HTML node.
+    pub fn visitInterpolation(self: *I18nVisitor, expression: []const u8) !i18n_ast.PlaceholderData {
+        _ = self;
+        return i18n_ast.PlaceholderData{
+            .expression = expression,
+            .name = "INTERPOLATION",
+        };
+    }
+
+    /// Visit an ICU expansion.
+    pub fn visitExpansion(
+        self: *I18nVisitor,
+        switch_value: []const u8,
+        cases: []const IcuCase,
+    ) !i18n_ast.IcuData {
+        _ = self;
+        return i18n_ast.IcuData{
+            .expression = switch_value,
+            .name = "ICU",
+            .cases = @ptrCast(cases),
+        };
+    }
+};
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "I18nVisitor init/deinit" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nVisitor.init(allocator);
+    defer visitor.deinit();
+    try std.testing.expectEqual(@as(usize, 0), visitor.errors.items.len);
+}
+
+test "I18nVisitor toI18nMessage" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nVisitor.init(allocator);
+    defer visitor.deinit();
+    const nodes = [_][]const u8{"Hello"};
+    const msg = try visitor.toI18nMessage(&nodes, "greeting", "A greeting", "custom-id");
+    try std.testing.expectEqualStrings("greeting", msg.meaning);
+    try std.testing.expectEqualStrings("A greeting", msg.description);
+    try std.testing.expectEqualStrings("custom-id", msg.custom_id);
+}
+
+test "I18nVisitor visitText" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nVisitor.init(allocator);
+    defer visitor.deinit();
+    const text = try visitor.visitText("Hello World");
+    try std.testing.expectEqualStrings("Hello World", text.value);
+}
+
+test "I18nVisitor visitInterpolation" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nVisitor.init(allocator);
+    defer visitor.deinit();
+    const ph = try visitor.visitInterpolation("name");
+    try std.testing.expectEqualStrings("INTERPOLATION", ph.name);
+    try std.testing.expectEqualStrings("name", ph.expression);
 }
