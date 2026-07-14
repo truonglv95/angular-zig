@@ -334,11 +334,49 @@ pub const Lexer = struct {
             return;
         }
 
+        // Check for <! without valid comment/doctype/cdata
+        if (self.pos + 1 < self.source.len and self.source[self.pos + 1] == '!') {
+            // Check for <!- without second -
+            if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '-' and
+                (self.pos + 3 >= self.source.len or self.source[self.pos + 3] != '-'))
+            {
+                try self.reportError(@intCast(self.pos + 3), "Unexpected character");
+                self.pos += 3;
+                return;
+            }
+            // Check for <![ without CDATA[
+            if (self.pos + 2 < self.source.len and self.source[self.pos + 2] == '[') {
+                if (!self.startsWith("<![CDATA[")) {
+                    try self.reportError(@intCast(self.pos + 3), "Unexpected character");
+                    self.pos += 3;
+                    return;
+                }
+            }
+            // Generic <! with no matching construct
+            if (self.pos + 2 >= self.source.len) {
+                try self.reportError(@intCast(self.pos + 2), "Unexpected character EOF");
+                self.pos = @intCast(self.source.len);
+                return;
+            }
+            // Unknown <! — try to scan as doctype anyway
+            try self.scanDocType();
+            return;
+        }
+
         // Closing tag: </
         if (self.pos + 1 < self.source.len and self.source[self.pos + 1] == '/') {
             self.pos += 2;
             try self.tokens.append(.{ .type = .TagCloseStart, .index = start, .end = self.pos });
-            try self.scanTagName();
+            // Check for missing name after </
+            if (self.pos >= self.source.len or !chars.isTagNameChar(self.source[self.pos])) {
+                if (self.pos >= self.source.len) {
+                    try self.reportError(@intCast(self.pos), "Unexpected character EOF");
+                } else {
+                    try self.reportError(@intCast(self.pos), "Unexpected character");
+                }
+            } else {
+                try self.scanTagName();
+            }
             try self.scanTagEnd();
             return;
         }
@@ -490,7 +528,10 @@ pub const Lexer = struct {
         const value_end = self.pos;
 
         if (self.pos < self.source.len) {
-            self.pos += 1;
+            self.pos += 1; // skip closing quote
+        } else {
+            // Missing closing quote
+            try self.reportError(@intCast(value_start), "Unexpected character EOF");
         }
 
         const parts = trackInterpolations(self.source, value_start, value_end, allocator) catch &[_]TokenPart{};
@@ -505,7 +546,11 @@ pub const Lexer = struct {
 
     fn scanTagEnd(self: *Lexer) !void {
         const start = self.pos;
-        if (self.pos >= self.source.len) return;
+        if (self.pos >= self.source.len) {
+            // Missing > at end of source
+            try self.reportError(@intCast(self.pos), "Unexpected character EOF");
+            return;
+        }
 
         const self_closing = if (self.source[self.pos] == '/') blk: {
             self.pos += 1;
@@ -514,6 +559,9 @@ pub const Lexer = struct {
 
         if (self.pos < self.source.len and self.source[self.pos] == '>') {
             self.pos += 1;
+        } else {
+            // Missing > — report error
+            try self.reportError(@intCast(self.pos), "Unexpected character");
         }
 
         try self.tokens.append(.{
@@ -752,12 +800,18 @@ pub const Lexer = struct {
         const start = self.pos;
         self.pos += 4; // skip <!--
 
+        var found_end = false;
         while (self.pos < self.source.len) {
             if (self.startsWith("-->")) {
                 self.pos += 3;
+                found_end = true;
                 break;
             }
             self.pos += 1;
+        }
+
+        if (!found_end) {
+            try self.reportError(@intCast(self.pos), "Unexpected character EOF");
         }
 
         try self.tokens.append(.{
@@ -773,7 +827,11 @@ pub const Lexer = struct {
         while (self.pos < self.source.len and self.source[self.pos] != '>') {
             self.pos += 1;
         }
-        if (self.pos < self.source.len) self.pos += 1;
+        if (self.pos < self.source.len) {
+            self.pos += 1;
+        } else {
+            try self.reportError(@intCast(self.pos), "Unexpected character EOF");
+        }
 
         try self.tokens.append(.{
             .type = .DocType,
@@ -786,12 +844,18 @@ pub const Lexer = struct {
         const start = self.pos;
         self.pos += 9; // skip <![CDATA[
 
+        var found_end = false;
         while (self.pos < self.source.len) {
             if (self.startsWith("]]>")) {
                 self.pos += 3;
+                found_end = true;
                 break;
             }
             self.pos += 1;
+        }
+
+        if (!found_end) {
+            try self.reportError(@intCast(self.pos), "Unexpected character EOF");
         }
 
         try self.tokens.append(.{
