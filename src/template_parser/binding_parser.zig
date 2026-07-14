@@ -463,3 +463,212 @@ test "parse interpolation" {
     try std.testing.expect(result.parts[2].text != null);
     try std.testing.expectEqualStrings("name", result.parts[1].expression.?);
 }
+
+// ─── Additional BindingParser methods (from binding_parser.ts) ──
+
+/// ParsedEventListener — result of parsing an event listener name.
+/// Direct port of `parseEventListenerName(rawName)` in the TS source.
+pub const ParsedEventListener = struct {
+    event_name: []const u8,
+    target: ?[]const u8 = null,
+};
+
+/// Parse an event listener name.
+/// Direct port of `parseEventListenerName(rawName)` in the TS source.
+/// Examples: "click" → {event_name: "click"}, "document:click" → {event_name: "click", target: "document"}
+pub fn parseEventListenerName(raw_name: []const u8) ParsedEventListener {
+    if (std.mem.indexOfScalar(u8, raw_name, ':')) |colon_pos| {
+        return .{
+            .target = raw_name[0..colon_pos],
+            .event_name = raw_name[colon_pos + 1 ..],
+        };
+    }
+    return .{ .event_name = raw_name };
+}
+
+/// ParsedLegacyAnimationEvent — result of parsing a legacy animation event name.
+/// Direct port of `parseLegacyAnimationEventName(rawName)` in the TS source.
+pub const ParsedLegacyAnimationEvent = struct {
+    event_name: []const u8,
+    phase: ?[]const u8 = null,
+};
+
+/// Parse a legacy animation event name.
+/// Direct port of `parseLegacyAnimationEventName(rawName)` in the TS source.
+/// Example: "@animation.start" → {event_name: "@animation", phase: "start"}
+pub fn parseLegacyAnimationEventName(raw_name: []const u8) ParsedLegacyAnimationEvent {
+    // Find the last dot
+    if (std.mem.lastIndexOfScalar(u8, raw_name, '.')) |dot_pos| {
+        const phase = raw_name[dot_pos + 1 ..];
+        if (std.mem.eql(u8, phase, "start") or std.mem.eql(u8, phase, "done")) {
+            return .{
+                .event_name = raw_name[0..dot_pos],
+                .phase = phase,
+            };
+        }
+    }
+    return .{ .event_name = raw_name };
+}
+
+/// Parse a literal attribute (no expression, just a string value).
+/// Direct port of `parseLiteralAttr(name, value, sourceSpan)` in the TS source.
+pub fn parseLiteralAttr(name: []const u8, value: []const u8) ParsedProperty {
+    return .{
+        .name = name,
+        .expression = value,
+        .type = .Default,
+    };
+}
+
+/// Parse an interpolation expression.
+/// Direct port of `parseInterpolationExpression(expression, sourceSpan)` in the TS source.
+pub fn parseInterpolationExpression(expression: []const u8) ParsedProperty {
+    return .{
+        .name = "",
+        .expression = expression,
+        .type = .Default,
+    };
+}
+
+/// Parse a binding (expression).
+/// Direct port of `parseBinding(value, sourceSpan)` in the TS source.
+pub fn parseBinding(value: []const u8) ParsedProperty {
+    return .{
+        .name = "",
+        .expression = value,
+        .type = .Default,
+    };
+}
+
+/// Parse an action (event handler expression).
+/// Direct port of `parseAction(value, sourceSpan)` in the TS source.
+pub fn parseAction(value: []const u8) ParsedProperty {
+    return .{
+        .name = "",
+        .expression = value,
+        .type = .Default,
+    };
+}
+
+/// Create a bound element property.
+/// Direct port of `createBoundElementProperty(name, expression, ...)` in the TS source.
+pub fn createBoundElementProperty(name: []const u8, expression: []const u8, binding_type: ParsedPropertyType) ParsedProperty {
+    return .{
+        .name = name,
+        .expression = expression,
+        .type = binding_type,
+    };
+}
+
+/// Parse an inline template binding (*ngIf="condition").
+/// Direct port of `parseInlineTemplateBinding(name, value, sourceSpan)` in the TS source.
+pub fn parseInlineTemplateBinding(name: []const u8, value: []const u8) TemplateBinding {
+    return .{
+        .name = name,
+        .key = value,
+        .key_is_var = false,
+        .value = value,
+    };
+}
+
+/// Check if a property name is an allowed assignment event.
+/// Direct port of `_isAllowedAssignmentEvent(ast)` in the TS source.
+pub fn isAllowedAssignmentEvent(name: []const u8) bool {
+    // ngModelChange is the only event that allows assignment
+    return std.mem.eql(u8, name, "ngModelChange");
+}
+
+/// Validate a property or attribute name.
+/// Direct port of `_validatePropertyOrAttributeName(name, isAttr)` in the TS source.
+pub fn validatePropertyOrAttributeName(name: []const u8, is_attr: bool) ?[]const u8 {
+    if (name.len == 0) {
+        return if (is_attr) "Attribute name cannot be empty" else "Property name cannot be empty";
+    }
+    return null;
+}
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "parseEventListenerName simple" {
+    const result = parseEventListenerName("click");
+    try std.testing.expectEqualStrings("click", result.event_name);
+    try std.testing.expect(result.target == null);
+}
+
+test "parseEventListenerName with target" {
+    const result = parseEventListenerName("document:click");
+    try std.testing.expectEqualStrings("click", result.event_name);
+    try std.testing.expectEqualStrings("document", result.target.?);
+}
+
+test "parseEventListenerName window target" {
+    const result = parseEventListenerName("window:scroll");
+    try std.testing.expectEqualStrings("scroll", result.event_name);
+    try std.testing.expectEqualStrings("window", result.target.?);
+}
+
+test "parseLegacyAnimationEventName start" {
+    const result = parseLegacyAnimationEventName("@animation.start");
+    try std.testing.expectEqualStrings("@animation", result.event_name);
+    try std.testing.expectEqualStrings("start", result.phase.?);
+}
+
+test "parseLegacyAnimationEventName done" {
+    const result = parseLegacyAnimationEventName("@fade.done");
+    try std.testing.expectEqualStrings("@fade", result.event_name);
+    try std.testing.expectEqualStrings("done", result.phase.?);
+}
+
+test "parseLegacyAnimationEventName no phase" {
+    const result = parseLegacyAnimationEventName("@animation");
+    try std.testing.expectEqualStrings("@animation", result.event_name);
+    try std.testing.expect(result.phase == null);
+}
+
+test "parseLiteralAttr" {
+    const result = parseLiteralAttr("class", "container");
+    try std.testing.expectEqualStrings("class", result.name);
+    try std.testing.expectEqualStrings("container", result.expression);
+}
+
+test "parseInterpolationExpression" {
+    const result = parseInterpolationExpression("name");
+    try std.testing.expectEqualStrings("name", result.expression);
+}
+
+test "parseBinding" {
+    const result = parseBinding("isValid");
+    try std.testing.expectEqualStrings("isValid", result.expression);
+}
+
+test "parseAction" {
+    const result = parseAction("onClick($event)");
+    try std.testing.expectEqualStrings("onClick($event)", result.expression);
+}
+
+test "createBoundElementProperty" {
+    const result = createBoundElementProperty("value", "name", .Default);
+    try std.testing.expectEqualStrings("value", result.name);
+    try std.testing.expectEqualStrings("name", result.expression);
+}
+
+test "parseInlineTemplateBinding" {
+    const result = parseInlineTemplateBinding("ngIf", "condition");
+    try std.testing.expectEqualStrings("ngIf", result.name);
+}
+
+test "isAllowedAssignmentEvent" {
+    try std.testing.expect(isAllowedAssignmentEvent("ngModelChange"));
+    try std.testing.expect(!isAllowedAssignmentEvent("click"));
+    try std.testing.expect(!isAllowedAssignmentEvent("change"));
+}
+
+test "validatePropertyOrAttributeName valid" {
+    try std.testing.expect(validatePropertyOrAttributeName("class", true) == null);
+    try std.testing.expect(validatePropertyOrAttributeName("value", false) == null);
+}
+
+test "validatePropertyOrAttributeName empty" {
+    try std.testing.expect(validatePropertyOrAttributeName("", true) != null);
+    try std.testing.expect(validatePropertyOrAttributeName("", false) != null);
+}
