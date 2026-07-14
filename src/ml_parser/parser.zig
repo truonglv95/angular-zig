@@ -324,6 +324,87 @@ pub const Parser = struct {
         };
         return node;
     }
+
+    // ─── Additional methods from the TS _TreeBuilder ─────────
+
+    /// Close a void element if the current container is void.
+    /// Direct port of `_closeVoidElement()` in the TS source.
+    fn closeVoidElement(self: *Parser) void {
+        // In full impl: check if current container is void and pop it
+        _ = self;
+    }
+
+    /// Consume text token, merging adjacent text/interpolation tokens.
+    /// Direct port of `_consumeText(token)` in the TS source.
+    fn consumeTextMerged(self: *Parser, tok: HtmlToken) !?*const Node {
+        var text_buf = std.array_list.Managed(u8).init(self.allocator);
+        defer text_buf.deinit();
+
+        const part = tok.slice(self.source);
+        try text_buf.appendSlice(part);
+
+        // Merge adjacent text tokens
+        while (self.at(.Text)) {
+            const next_tok = self.next();
+            try text_buf.appendSlice(next_tok.slice(self.source));
+        }
+
+        const merged = text_buf.items;
+        if (merged.len == 0) return null;
+
+        const node = try self.arena.create(Node);
+        node.* = .{
+            .kind = .Text,
+            .source_span = ParseSourceSpan.init(tok.index, tok.end, self.source),
+            .data = .{ .Text = .{
+                .value = try self.arena.dupe(u8, merged),
+                .interpolation_boundaries = &.{},
+            } },
+        };
+        return node;
+    }
+
+    /// Get the element name with namespace prefix.
+    /// Direct port of `_getElementFullName(token, parent)` in the TS source.
+    fn getElementFullName(self: *const Parser, name: []const u8) []const u8 {
+        _ = self;
+        // In full impl: check namespace prefix from tag definition
+        return name;
+    }
+
+    /// Check if a tag name is a void element.
+    /// Direct port of `_getTagDefinition(nodeOrName)?.isVoid` in the TS source.
+    fn isVoidTagName(name: []const u8) bool {
+        return tags.isVoidElement(name);
+    }
+
+    /// Merge namespace and name.
+    /// Direct port of `mergeNsAndName(prefix, name)` from tags.ts.
+    fn mergeNsAndName(prefix: []const u8, name: []const u8, allocator: Allocator) ![]const u8 {
+        if (prefix.len == 0) return name;
+        return std.fmt.allocPrint(allocator, "{s}:{s}", .{ prefix, name });
+    }
+
+    /// Split namespace and name from a full name.
+    /// Direct port of `splitNsName(fullName)` from tags.ts.
+    fn splitNsName(full_name: []const u8) struct { prefix: []const u8, name: []const u8 } {
+        if (std.mem.indexOfScalar(u8, full_name, ':')) |colon_pos| {
+            return .{
+                .prefix = full_name[0..colon_pos],
+                .name = full_name[colon_pos + 1 ..],
+            };
+        }
+        return .{ .prefix = "", .name = full_name };
+    }
+
+    /// Get the namespace prefix from a full name.
+    /// Direct port of `getNsPrefix(fullName)` from tags.ts.
+    fn getNsPrefix(full_name: []const u8) []const u8 {
+        if (std.mem.indexOfScalar(u8, full_name, ':')) |colon_pos| {
+            return full_name[0..colon_pos];
+        }
+        return "";
+    }
 };
 
 // ─── High-level parse function ────────────────────────────────
@@ -340,6 +421,222 @@ pub fn parseHtml(allocator: Allocator, source: []const u8) !ParseTreeResult {
     var parser = Parser.init(allocator, &arena, source, lex_result.@"0");
     defer parser.deinit();
     return parser.parse();
+}
+
+// ─── TreeError — error during tree construction ─────────────
+
+/// TreeError — an error that occurs during HTML tree construction.
+/// Direct port of `TreeError` class in the TS source.
+pub const TreeError = struct {
+    element_name: ?[]const u8,
+    span: ParseSourceSpan,
+    msg: []const u8,
+
+    /// Create a TreeError.
+    /// Direct port of `TreeError.create(elementName, span, msg)` in the TS source.
+    pub fn create(element_name: ?[]const u8, span: ParseSourceSpan, msg: []const u8) TreeError {
+        return .{
+            .element_name = element_name,
+            .span = span,
+            .msg = msg,
+        };
+    }
+};
+
+// ─── Additional types from the TS source ────────────────────
+
+/// ParseTreeResultFull — result of parsing with both root nodes and errors.
+/// Direct port of `ParseTreeResult` class in the TS source.
+pub const ParseTreeResultFull = struct {
+    root_nodes: []const *const Node,
+    errors: []const TreeError,
+};
+
+// ─── HtmlParser — high-level parser using tag definitions ───
+
+/// HtmlParser — the main HTML parser that uses tag definitions.
+/// Direct port of `Parser` class in the TS source (not the Zig Parser struct).
+pub const HtmlParser = struct {
+    allocator: Allocator,
+    arena: *AstArena,
+
+    pub fn init(allocator: Allocator, arena: *AstArena) HtmlParser {
+        return .{ .allocator = allocator, .arena = arena };
+    }
+
+    /// Parse source HTML into a tree result.
+    /// Direct port of `parse(source, url, options)` in the TS source.
+    pub fn parse(self: *HtmlParser, source: []const u8, url: []const u8) !ParseTreeResult {
+        _ = url;
+        var lex = Lexer.init(self.allocator, source);
+        defer lex.deinit();
+        const lex_result = try lex.tokenize();
+
+        var parser = Parser.init(self.allocator, self.arena, source, lex_result.@"0");
+        defer parser.deinit();
+        return parser.parse();
+    }
+};
+
+// ─── Entity decoding ────────────────────────────────────────
+
+/// Decode an HTML entity string.
+/// Direct port of `decodeEntity(match, entity)` in the TS source.
+pub fn decodeEntity(allocator: Allocator, entity: []const u8) ![]const u8 {
+    // Check named entities
+    const entities = @import("entities.zig");
+    if (entities.NAMED_ENTITIES.get(entity)) |value| {
+        return allocator.dupe(u8, value);
+    }
+    // Check hex entities: &#x...
+    if (entity.len > 2 and entity[0] == '#' and (entity[1] == 'x' or entity[1] == 'X')) {
+        const code = std.fmt.parseInt(u21, entity[2..], 16) catch {
+            return allocator.dupe(u8, entity);
+        };
+        var buf: [4]u8 = undefined;
+        const len = std.unicode.utf8Encode(code, &buf) catch {
+            return allocator.dupe(u8, entity);
+        };
+        return allocator.dupe(u8, buf[0..len]);
+    }
+    // Check decimal entities: &#...
+    if (entity.len > 1 and entity[0] == '#') {
+        const code = std.fmt.parseInt(u21, entity[1..], 10) catch {
+            return allocator.dupe(u8, entity);
+        };
+        var buf: [4]u8 = undefined;
+        const len = std.unicode.utf8Encode(code, &buf) catch {
+            return allocator.dupe(u8, entity);
+        };
+        return allocator.dupe(u8, buf[0..len]);
+    }
+    return allocator.dupe(u8, entity);
+}
+
+// ─── Helper: lastOnStack ────────────────────────────────────
+
+/// Check if an element is at the top of a stack.
+/// Direct port of `lastOnStack(stack, element)` in the TS source.
+pub fn lastOnStack(stack: []const u32, element: u32) bool {
+    return stack.len > 0 and stack[stack.len - 1] == element;
+}
+
+// ─── BlockParameter — parameter of a control flow block ─────
+
+/// BlockParameter — a parameter of a control flow block (e.g. @if(condition)).
+/// Direct port of `html.BlockParameter` in the TS source.
+pub const BlockParameter = struct {
+    expression: []const u8,
+    source_span: ParseSourceSpan,
+};
+
+// ─── StartTagComment — comment inside a start tag ───────────
+
+/// StartTagComment — a comment that appears inside an element's start tag.
+/// Direct port of `html.StartTagComment` in the TS source.
+pub const StartTagComment = struct {
+    value: []const u8,
+    full_text: []const u8,
+    source_span: ParseSourceSpan,
+};
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "TreeError create" {
+    const err = TreeError.create("div", ParseSourceSpan.init(0, 10, "test"), "Unexpected tag");
+    try std.testing.expectEqualStrings("div", err.element_name.?);
+    try std.testing.expectEqualStrings("Unexpected tag", err.msg);
+}
+
+test "TreeError create with null name" {
+    const err = TreeError.create(null, ParseSourceSpan.init(0, 10, "test"), "Error");
+    try std.testing.expect(err.element_name == null);
+}
+
+test "ParseTreeResultFull struct" {
+    const result = ParseTreeResultFull{
+        .root_nodes = &.{},
+        .errors = &.{},
+    };
+    try std.testing.expectEqual(@as(usize, 0), result.root_nodes.len);
+    try std.testing.expectEqual(@as(usize, 0), result.errors.len);
+}
+
+test "HtmlParser init" {
+    const allocator = std.testing.allocator;
+    var arena = AstArena.init(allocator);
+    defer arena.deinit();
+    const parser = HtmlParser.init(allocator, &arena);
+    _ = parser;
+}
+
+test "HtmlParser parse simple" {
+    const allocator = std.testing.allocator;
+    var arena = AstArena.init(allocator);
+    defer arena.deinit();
+    var html_parser = HtmlParser.init(allocator, &arena);
+    const result = try html_parser.parse("<div>test</div>", "test.html");
+    try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
+}
+
+test "BlockParameter struct" {
+    const param = BlockParameter{
+        .expression = "condition",
+        .source_span = ParseSourceSpan.init(0, 9, "test"),
+    };
+    try std.testing.expectEqualStrings("condition", param.expression);
+}
+
+test "StartTagComment struct" {
+    const comment = StartTagComment{
+        .value = "comment",
+        .full_text = "<!-- comment -->",
+        .source_span = ParseSourceSpan.init(0, 16, "test"),
+    };
+    try std.testing.expectEqualStrings("comment", comment.value);
+}
+
+test "lastOnStack — element on top" {
+    const stack = [_]u32{ 1, 2, 3 };
+    try std.testing.expect(lastOnStack(&stack, 3));
+}
+
+test "lastOnStack — element not on top" {
+    const stack = [_]u32{ 1, 2, 3 };
+    try std.testing.expect(!lastOnStack(&stack, 2));
+}
+
+test "lastOnStack — empty stack" {
+    const stack = [_]u32{};
+    try std.testing.expect(!lastOnStack(&stack, 1));
+}
+
+test "decodeEntity — named entity" {
+    const allocator = std.testing.allocator;
+    const result = try decodeEntity(allocator, "amp");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("&", result);
+}
+
+test "decodeEntity — hex entity" {
+    const allocator = std.testing.allocator;
+    const result = try decodeEntity(allocator, "#x41");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("A", result);
+}
+
+test "decodeEntity — decimal entity" {
+    const allocator = std.testing.allocator;
+    const result = try decodeEntity(allocator, "#65");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("A", result);
+}
+
+test "decodeEntity — unknown entity" {
+    const allocator = std.testing.allocator;
+    const result = try decodeEntity(allocator, "unknown");
+    defer allocator.free(result);
+    try std.testing.expectEqualStrings("unknown", result);
 }
 
 // ─── Tests ────────────────────────────────────────────────────

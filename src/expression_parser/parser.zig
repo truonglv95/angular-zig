@@ -1703,3 +1703,46 @@ pub fn _reportErrorForPrivateIdentifier(allocator: std.mem.Allocator, token_text
 pub fn _stripComments(allocator: std.mem.Allocator, input: []const u8) ![]const u8 {
     return stripComments(allocator, input);
 }
+
+// ─── Additional types from parser.ts ────────────────────────
+
+// InterpolationPiece already defined above as a union
+
+// SplitInterpolation already defined above
+
+// TemplateBindingParseResult already defined above
+
+// TemplateBinding already defined above
+
+// ParseFlags already defined above as packed struct
+
+// ParseContextFlags — context flags for the parser.
+/// Direct port of `ParseContextFlags` in the TS source.
+pub const ParseContextFlags = struct {
+    pub const None: u8 = 0;
+    pub const Writable: u8 = 1 << 0;
+};
+
+// getLocation already defined above
+
+// getParseError already defined above
+
+// SimpleExpressionChecker already defined above
+
+/// TemplateBindingIdentifier — identifier in a template binding.
+pub const TemplateBindingIdentifier = struct {
+    name: []const u8,
+    source_span: ?source_span.AbsoluteSourceSpan = null,
+};
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "ParseContextFlags constants" {
+    try std.testing.expectEqual(@as(u8, 0), ParseContextFlags.None);
+    try std.testing.expectEqual(@as(u8, 1), ParseContextFlags.Writable);
+}
+
+test "TemplateBindingIdentifier struct" {
+    const ident = TemplateBindingIdentifier{ .name = "item" };
+    try std.testing.expectEqualStrings("item", ident.name);
+}
