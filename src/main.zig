@@ -214,4 +214,16 @@ test {
     _ = @import("constant_pool.zig");
     _ = @import("util.zig");
     _ = @import("test/expression_parser/lexer_spec.zig");
+    _ = @import("test/expression_parser/ast_spec.zig");
+    _ = @import("test/expression_parser/serializer_spec.zig");
+    _ = @import("test/ml_parser/lexer_spec.zig");
+    _ = @import("test/ml_parser/html_parser_spec.zig");
+    _ = @import("test/ml_parser/html_whitespaces_spec.zig");
+    _ = @import("test/ml_parser/inline_comment_spec.zig");
+    _ = @import("test/shadow_css/shadow_css_spec.zig");
+    _ = @import("test/selector/selector_spec.zig");
+    _ = @import("test/schema/dom_element_schema_registry_spec.zig");
+    _ = @import("test/output/abstract_emitter_spec.zig");
+    _ = @import("test/util_spec.zig");
+    _ = @import("test/style_url_resolver_spec.zig");
 }
