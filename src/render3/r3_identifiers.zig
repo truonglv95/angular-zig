@@ -263,9 +263,9 @@ pub const IdKind = enum(u8) {
 pub fn classifyId(name: []const u8) IdKind {
     if (std.mem.startsWith(u8, name, "Component_")) return .Component;
     if (std.mem.startsWith(u8, name, "Directive_")) return .Directive;
-    if (std.mem.endsWith(u8, name, "_pipe_")) return .Pipe;
     if (std.mem.startsWith(u8, name, "View_")) return .View;
     if (std.mem.indexOf(u8, name, "_handle") != null) return .Handler;
+    if (std.mem.indexOf(u8, name, "_pipe_") != null) return .Pipe;
     if (std.mem.startsWith(u8, name, "TemplateRef_")) return .TemplateRef;
     return .Unknown;
 }
@@ -273,7 +273,31 @@ pub fn classifyId(name: []const u8) IdKind {
 /// Extract the type name from a fully qualified identifier.
 /// E.g., "Component_MyApp_MyButton" → "MyButton"
 /// E.g., "Directive_NgIf" → "NgIf"
+/// E.g., "View_MyComp_0" → "MyComp"
 pub fn extractTypeName(name: []const u8) []const u8 {
+    // For View_ prefixed IDs: "View_MyComp_0" → "MyComp"
+    // (skip the View_ prefix and the trailing _number)
+    if (std.mem.startsWith(u8, name, "View_")) {
+        const rest = name["View_".len..];
+        // Find the last underscore that separates the name from the index
+        if (std.mem.lastIndexOfScalar(u8, rest, '_')) |last_us| {
+            // Check if the part after the last _ is a number (index)
+            const after = rest[last_us + 1 ..];
+            var all_digits = after.len > 0;
+            for (after) |ch| {
+                if (ch < '0' or ch > '9') {
+                    all_digits = false;
+                    break;
+                }
+            }
+            if (all_digits) {
+                return rest[0..last_us];
+            }
+        }
+        return rest;
+    }
+
+    // For Component_/Directive_ prefixed IDs: "Component_MyApp_MyButton" → "MyButton"
     // Find the last underscore separator
     var last_sep: usize = 0;
     for (name, 0..) |ch, i| {

@@ -608,7 +608,7 @@ test "I18nSerializer — XTB format" {
 test "findMatchingBrace — nested" {
     const src = "{a{b{c}d}e}";
     const result = findMatchingBrace(src, 0);
-    try std.testing.expectEqual(@as(usize, 9), result.?);
+    try std.testing.expectEqual(@as(usize, 10), result.?);
 }
 
 test "isIcuStart — detection" {

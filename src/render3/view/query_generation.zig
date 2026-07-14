@@ -83,6 +83,11 @@ pub fn parseQuery(allocator: Allocator, source: []const u8) Allocator.Error!Comp
     var nodes = std.array_list.Managed(QueryNode).init(allocator);
     errdefer nodes.deinit();
 
+    // Track if we're inside a group (comma-separated selectors)
+    var in_group = false;
+    var group_children = std.array_list.Managed(QueryNode).init(allocator);
+    errdefer group_children.deinit();
+
     var i: usize = 0;
     while (i < source.len) {
         // Skip whitespace
@@ -91,23 +96,36 @@ pub fn parseQuery(allocator: Allocator, source: []const u8) Allocator.Error!Comp
 
         // Parse a single selector (sequence of simple selectors)
         const selector = try parseSingleSelector(allocator, source, &i);
-        try nodes.append(selector);
+
+        if (in_group) {
+            try group_children.append(selector);
+        } else {
+            try nodes.append(selector);
+        }
 
         // Check for group (comma)
         while (i < source.len and isSpace(source[i])) i += 1;
         if (i < source.len and source[i] == ',') {
-            // Create a Group node with all nodes collected so far
-            const all_nodes = try allocator.dupe(QueryNode, nodes.items);
-            nodes.clearRetainingCapacity();
-            try nodes.append(.{
-                .kind = .Group,
-                .name = "",
-                .value = "",
-                .children = all_nodes,
-            });
+            if (!in_group) {
+                // Start a group — move existing nodes into group_children
+                try group_children.appendSlice(nodes.items);
+                nodes.clearRetainingCapacity();
+                in_group = true;
+            }
             i += 1;
             // Continue parsing the next selector in the group
         }
+    }
+
+    // If we were in a group, create the Group node
+    if (in_group) {
+        const all_children = try group_children.toOwnedSlice();
+        try nodes.append(.{
+            .kind = .Group,
+            .name = "",
+            .value = "",
+            .children = all_children,
+        });
     }
 
     // If we have multiple nodes without a comma, they're implicitly
@@ -138,6 +156,9 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
     while (i.* < source.len) {
         const ch = source[i.*];
 
+        // Stop at comma (group separator)
+        if (ch == ',') break;
+
         // Skip whitespace (potential combinator)
         if (isSpace(ch)) {
             // Check if there's a combinator after whitespace
@@ -147,6 +168,9 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
             if (i.* >= source.len) break;
 
             const next = source[i.*];
+            // Stop at comma (group separator)
+            if (next == ',') break;
+
             if (next == '>') {
                 // Child combinator
                 const left_items = try allocator.dupe(QueryNode, parts.items);
