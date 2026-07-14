@@ -58,8 +58,7 @@ test "r3_ast_absolute_span: should handle comment in an action binding" {
 }
 
 test "r3_ast_absolute_span: should provide absolute offsets with arbitrary whitespace" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     try expectNodeCount(std.testing.allocator, "  <div></div>  ", 3);
+        try expectNodeCount(std.testing.allocator, "  <div></div>  ", 3);
 }
 
 test "r3_ast_absolute_span: should provide absolute offsets of an expression in a bound text" {
@@ -223,8 +222,7 @@ test "r3_ast_absolute_span: should provide absolute offsets of an @switch block"
 }
 
 test "r3_ast_absolute_span: should provide absolute offsets of a comment" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                 try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
+                    try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
 }
 
 test "r3_ast_absolute_span: should provide absolute offsets of a CDATA section" {

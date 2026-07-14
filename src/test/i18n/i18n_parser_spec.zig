@@ -44,10 +44,10 @@ test "i18n_parser: should extract from elements" {
 
 test "i18n_parser: should extract from nested elements" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     const messages = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
-    //     try std.testing.expectEqual(@as(usize, 1), messages.len);
-    //     try std.testing.expectEqualStrings("m", messages[0].meaning);
-    //     try std.testing.expectEqualStrings("d", messages[0].description);
+    //         const messages = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
+    //         try std.testing.expectEqual(@as(usize, 1), messages.len);
+    //         try std.testing.expectEqualStrings("m", messages[0].meaning);
+    //         try std.testing.expectEqualStrings("d", messages[0].description);
 }
 
 test "i18n_parser: should not create a message for empty elements" {
@@ -62,8 +62,8 @@ test "i18n_parser: should not create a message for plain elements" {
 
 test "i18n_parser: should support void elements" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     const messages = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
-    //     try std.testing.expectEqual(@as(usize, 1), messages.len);
+    //         const messages = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
+    //         try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should trim whitespace from custom ids (but not meanings)" {
@@ -88,9 +88,9 @@ test "i18n_parser: should extract from attributes outside of translatable sectio
 
 test "i18n_parser: should extract from attributes in translatable element" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     const messages = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
-    //     // Should extract at least the attribute message
-    //     try std.testing.expect(messages.len >= 1);
+    //         const messages = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
+    //         // Should extract at least the attribute message
+    //         try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in translatable block" {
@@ -100,8 +100,8 @@ test "i18n_parser: should extract from attributes in translatable block" {
 
 test "i18n_parser: should extract from attributes in translatable ICU" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     const messages = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
-    //     try std.testing.expect(messages.len >= 1);
+    //         const messages = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
+    //         try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in non translatable ICU" {
@@ -203,8 +203,8 @@ test "i18n_parser: should extract implicit attributes" {
 
 test "i18n_parser: should reuse the same placeholder name for tags" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     const messages = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
-    //     try std.testing.expectEqual(@as(usize, 1), messages.len);
+    //         const messages = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
+    //         try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should reuse the same placeholder name for interpolations" {
