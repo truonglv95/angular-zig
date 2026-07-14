@@ -206,8 +206,33 @@ pub const Lexer = struct {
 
         self.pos += 1; // skip closing /
 
-        // Scan flags
+        // Scan flags and validate
+        var seen_flags: u32 = 0; // bitmask: g=1, i=2, m=4, s=8, u=16, y=32
         while (self.pos < self.source.len and chars.isIdentifierPart(self.source[self.pos])) {
+            const fch = self.source[self.pos];
+            const bit: u32 = switch (fch) {
+                'g' => 1,
+                'i' => 2,
+                'm' => 4,
+                's' => 8,
+                'u' => 16,
+                'y' => 32,
+                else => 0,
+            };
+            if (bit == 0) {
+                // Invalid flag
+                try self.errors.append(.{
+                    .index = self.pos,
+                    .message = "Invalid regular expression flag",
+                });
+            } else if (seen_flags & bit != 0) {
+                // Duplicate flag
+                try self.errors.append(.{
+                    .index = self.pos,
+                    .message = "Duplicate regular expression flag",
+                });
+            }
+            seen_flags |= bit;
             self.pos += 1;
         }
 

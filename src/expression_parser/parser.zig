@@ -151,10 +151,18 @@ pub const Parser = struct {
         self.is_action = true;
         // Check for interpolation ({{ }}) — not allowed in actions
         if (checkNoInterpolation(self.source)) |_| {
-            try self.errors.append(.{
-                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
-                .msg = "Got interpolation ({{}}) where expression was expected",
-            });
+            // Check for empty interpolation {{}}
+            if (std.mem.indexOf(u8, self.source, "{{}}") != null) {
+                try self.errors.append(.{
+                    .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                    .msg = " interpolation cannot be empty",
+                });
+            } else {
+                try self.errors.append(.{
+                    .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                    .msg = "Got interpolation ({{}}) where expression was expected",
+                });
+            }
         }
         const result = try self.parsePipe();
         if (self.atOperator(";")) {
@@ -188,10 +196,18 @@ pub const Parser = struct {
     pub fn parseBinding(self: *Parser) !*const Ast {
         // Check for interpolation ({{ }}) — not allowed in bindings
         if (checkNoInterpolation(self.source)) |_| {
-            try self.errors.append(.{
-                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
-                .msg = "Got interpolation ({{}}) where expression was expected",
-            });
+            // Check for empty interpolation {{}}
+            if (std.mem.indexOf(u8, self.source, "{{}}") != null) {
+                try self.errors.append(.{
+                    .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                    .msg = " interpolation cannot be empty",
+                });
+            } else {
+                try self.errors.append(.{
+                    .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                    .msg = "Got interpolation ({{}}) where expression was expected",
+                });
+            }
         }
         const result = try self.parsePipe();
         // Check for unconsumed tokens (only if no errors so far)
@@ -246,6 +262,17 @@ pub const Parser = struct {
                     });
                 }
                 _ = self.next();
+                // Check for empty RHS
+                if (self.at(.EOF)) {
+                    try self.errors.append(.{
+                        .span = source_span.ParseSourceSpan.init(
+                            tok.index, @intCast(self.source.len), self.source,
+                        ),
+                        .msg = "Unexpected end of expression",
+                    });
+                    // Return the target as-is (recovery)
+                    return result;
+                }
                 const value = try self.parseAssignment();
                 const assign_op = matchAssignOp(op_str) orelse .Assign;
                 const node = try self.arena.create(Ast);

@@ -40,6 +40,13 @@ fn parseActionFull(allocator: Allocator, expr: []const u8) !struct {
     var lex = lexer.Lexer.init(allocator, expr);
     const result = try lex.tokenize();
     var p = Parser.init(allocator, &arena, expr, result[0], 0);
+    // Copy lexer errors into parser errors so they're visible to tests
+    for (result[1]) |lex_err| {
+        try p.errors.append(.{
+            .span = source_span.ParseSourceSpan.init(lex_err.index, lex_err.index + 1, expr),
+            .msg = lex_err.message,
+        });
+    }
     const ast = try p.parseAction();
     return .{ .ast = ast, .arena = arena, .parser = p, .lex = lex };
 }
@@ -54,6 +61,13 @@ fn parseBindingFull(allocator: Allocator, expr: []const u8) !struct {
     var lex = lexer.Lexer.init(allocator, expr);
     const result = try lex.tokenize();
     var p = Parser.init(allocator, &arena, expr, result[0], 0);
+    // Copy lexer errors into parser errors so they're visible to tests
+    for (result[1]) |lex_err| {
+        try p.errors.append(.{
+            .span = source_span.ParseSourceSpan.init(lex_err.index, lex_err.index + 1, expr),
+            .msg = lex_err.message,
+        });
+    }
     const ast = try p.parseBinding();
     return .{ .ast = ast, .arena = arena, .parser = p, .lex = lex };
 }
@@ -350,13 +364,13 @@ test "parser: should parse map" {
 }
 
 test "parser: should only allow identifier, string, or keyword as map key" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             const a = std.testing.allocator;
-    //                             try expectActionError(a, "{(:0}", "expected identifier");
-    //                             try expectActionError(a, "{1234:0}", "expected identifier");
-    //                             try expectActionError(a, "{#myField:0}", "expected identifier");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 const a = std.testing.allocator;
+    //                                 try expectActionError(a, "{(:0}", "expected identifier");
+    //                                 try expectActionError(a, "{1234:0}", "expected identifier");
+    //                                 try expectActionError(a, "{#myField:0}", "expected identifier");
+    //                             
 }
 
 test "parser: should parse property shorthand declarations" {
@@ -370,29 +384,29 @@ test "parser: should parse property shorthand declarations" {
 }
 
 test "parser: should not allow property shorthand declaration on quoted properties" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "{\"a-b\"}", "expected :");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "{\"a-b\"}", "expected :");
+    //                             
 }
 
 test "parser: should not infer invalid identifiers as shorthand property declarations" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             const a = std.testing.allocator;
-    //                             try expectActionError(a, "{a.b}", "expected }");
-    //                             try expectActionError(a, "{a[\"b\"]}", "expected }");
-    //                             try expectActionError(a, "{1234}", "expected identifier");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 const a = std.testing.allocator;
+    //                                 try expectActionError(a, "{a.b}", "expected }");
+    //                                 try expectActionError(a, "{a[\"b\"]}", "expected }");
+    //                                 try expectActionError(a, "{1234}", "expected identifier");
+    //                             
 }
 
 test "parser: should parse spread assignments in object literals" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             const a = std.testing.allocator;
-    //             try checkAction(a, "{...foo}");
-    //             try checkAction(a, "{one: 1, ...foo, two: 2}");
-    //             try checkAction(a, "{...foo, middle: true, ...bar}");
-    //             try checkAction(a, "{...{...{...{foo: 1}}}}");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 const a = std.testing.allocator;
+    //                 try checkAction(a, "{...foo}");
+    //                 try checkAction(a, "{one: 1, ...foo, two: 2}");
+    //                 try checkAction(a, "{...foo, middle: true, ...bar}");
+    //                 try checkAction(a, "{...{...{...{foo: 1}}}}");
 }
 
 test "parser: should spread elements in array literals" {
@@ -422,15 +436,15 @@ test "parser: should error for private identifiers with implicit receiver" {
 }
 
 test "parser: should only allow identifier or keyword as member names" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             const a = std.testing.allocator;
-    //                             try expectActionError(a, "x.", "identifier or keyword");
-    //                             try expectActionError(a, "x.(", "identifier or keyword");
-    //                             try expectActionError(a, "x. 1234", "identifier or keyword");
-    //                             try expectActionError(a, "x.\"foo\"", "identifier or keyword");
-    //                             try expectActionError(a, "x.#privateField", "Private identifiers");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 const a = std.testing.allocator;
+    //                                 try expectActionError(a, "x.", "identifier or keyword");
+    //                                 try expectActionError(a, "x.(", "identifier or keyword");
+    //                                 try expectActionError(a, "x. 1234", "identifier or keyword");
+    //                                 try expectActionError(a, "x.\"foo\"", "identifier or keyword");
+    //                                 try expectActionError(a, "x.#privateField", "Private identifiers");
+    //                             
 }
 
 test "parser: should parse safe field access" {
@@ -440,13 +454,13 @@ test "parser: should parse safe field access" {
 }
 
 test "parser: should parse incomplete safe field accesses" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             const a = std.testing.allocator;
-    //                             try expectActionError(a, "a?.a.", "identifier or keyword");
-    //                             try expectActionError(a, "a.a?.a.", "identifier or keyword");
-    //                             try expectActionError(a, "a.a?.a?. 1234", "identifier or keyword");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 const a = std.testing.allocator;
+    //                                 try expectActionError(a, "a?.a.", "identifier or keyword");
+    //                                 try expectActionError(a, "a.a?.a.", "identifier or keyword");
+    //                                 try expectActionError(a, "a.a?.a?. 1234", "identifier or keyword");
+    //                             
 }
 
 // ─── property write ────────────────────────────────────────
@@ -459,10 +473,9 @@ test "parser: should parse property writes" {
 }
 
 test "parser: should recover on empty rvalues" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a.a = ", "Unexpected end");
-    //                         
+                            
+                                try expectActionError(std.testing.allocator, "a.a = ", "Unexpected end");
+                            
 }
 
 test "parser: should recover on incomplete rvalues" {
@@ -472,17 +485,17 @@ test "parser: should recover on incomplete rvalues" {
 }
 
 test "parser: should recover on missing properties" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a. = 1", "Expected identifier");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "a. = 1", "Expected identifier");
+    //                             
 }
 
 test "parser: should error on writes after a property write" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a.a = 1 = 2", "Unexpected token");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "a.a = 1 = 2", "Unexpected token");
+    //                             
 }
 
 // ─── calls ─────────────────────────────────────────────────
@@ -565,10 +578,10 @@ test "parser: should recover on incomplete expression keys" {
 }
 
 test "parser: should recover on unterminated keys" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a[", "Unexpected end");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "a[", "Unexpected end");
+    //                             
 }
 
 test "parser: should recover on incomplete and unterminated keys" {
@@ -591,10 +604,10 @@ test "parser: should report on safe keyed writes" {
 }
 
 test "parser: should error on writes after a keyed write" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a[0] = 1 = 2", "Unexpected token");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "a[0] = 1 = 2", "Unexpected token");
+    //                             
 }
 
 test "parser: should recover on parenthesized empty rvalues" {
@@ -681,13 +694,13 @@ test "parser: should parse template literals in objects literals" {
 }
 
 test "parser: should parse tagged template literals with no interpolations" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkAction(std.testing.allocator, "tag`hello world`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkAction(std.testing.allocator, "tag`hello world`");
 }
 
 test "parser: should parse tagged template literals with interpolations" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkAction(std.testing.allocator, "tag`hello ${name}`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkAction(std.testing.allocator, "tag`hello ${name}`");
 }
 
 test "parser: should not mistake operator for tagged literal tag" {
@@ -719,24 +732,21 @@ test "parser: should parse a regular expression that is a part of other expressi
 }
 
 test "parser: should report invalid regular expression flag" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "/abc/x", "regular expression flag");
-    //                         
+                            
+                                try expectActionError(std.testing.allocator, "/abc/x", "regular expression flag");
+                            
 }
 
 test "parser: should report regular expression flags" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "/abc/ii", "regular expression flag");
-    //                         
+                            
+                                try expectActionError(std.testing.allocator, "/abc/ii", "regular expression flag");
+                            
 }
 
 test "parser: should report error if interpolation is empty" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "{{}}", "empty");
-    //                         
+                            
+                                try expectActionError(std.testing.allocator, "{{}}", "empty");
+                            
 }
 
 // ─── error reporting ───────────────────────────────────────
@@ -754,10 +764,10 @@ test "parser: should report reasonable error for unconsumed tokens" {
 }
 
 test "parser: should report a missing expected token" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "(1", "Unexpected end");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "(1", "Unexpected end");
+    //                             
 }
 
 test "parser: should report a single error for an as expression inside a parenthesized expression" {
@@ -771,15 +781,13 @@ test "parser: should parse pipes (binding)" {
 }
 
 test "parser: should report chain expressions (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkBinding(std.testing.allocator, "a; b");
+                try expectBindingError(std.testing.allocator, "a; b", "Unexpected token");
 }
 
 test "parser: should report assignment (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a = b", "Unexpected token");
-    //                         
+                            
+                                try expectBindingError(std.testing.allocator, "a = b", "assignment");
+                            
 }
 
 test "parser: should report when encountering interpolation (binding)" {
@@ -845,8 +853,8 @@ test "parser: should parse an arrow function that returns an object literal" {
 }
 
 test "parser: should parse an arrow function containing an assignment" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkBinding(std.testing.allocator, "(a, b) => { a = b }");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkBinding(std.testing.allocator, "(a, b) => { a = b }");
 }
 
 test "parser: should be able to pass an arrow function through a pipe" {
@@ -858,10 +866,10 @@ test "parser: should parse an arrow function that returns an array" {
 }
 
 test "parser: should not allow pipe to be used inside an arrow function" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a => a | b", "pipe");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "a => a | b", "pipe");
+    //                             
 }
 
 test "parser: should report an error for an arrow function with a body" {
@@ -932,10 +940,10 @@ test "parser: should parse pipes" {
 }
 
 test "parser: should parse missing pipe names: end" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a | b | ", "Unexpected end");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "a | b | ", "Unexpected end");
+    //                             
 }
 
 test "parser: should parse missing pipe names: middle" {
@@ -949,10 +957,10 @@ test "parser: should parse missing pipe names: start" {
 }
 
 test "parser: should parse missing pipe args: end" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a | b | c: ", "Unexpected end");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "a | b | c: ", "Unexpected end");
+    //                             
 }
 
 test "parser: should parse missing pipe args: middle" {
@@ -964,10 +972,10 @@ test "parser: should parse incomplete pipe args" {
 }
 
 test "parser: should parse an incomplete pipe with a source span that includes trailing whitespace" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a |", "Unexpected end");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "a |", "Unexpected end");
+    //                             
 }
 
 test "parser: should parse pipes with the correct type when supportsDirectPipeReferences is enabled" {
@@ -981,14 +989,14 @@ test "parser: should parse pipes with the correct type when supportsDirectPipeRe
 }
 
 test "parser: should only allow identifier or keyword as formatter names" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             const a = std.testing.allocator;
-    //                             try expectBindingError(a, "\"Foo\"|(", "identifier or keyword");
-    //                             try expectBindingError(a, "\"Foo\"|1234", "identifier or keyword");
-    //                             try expectBindingError(a, "\"Foo\"|\"uppercase\"", "identifier or keyword");
-    //                             try expectBindingError(a, "\"Foo\"|#privateIdentifier\"", "identifier or keyword");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 const a = std.testing.allocator;
+    //                                 try expectBindingError(a, "\"Foo\"|(", "identifier or keyword");
+    //                                 try expectBindingError(a, "\"Foo\"|1234", "identifier or keyword");
+    //                                 try expectBindingError(a, "\"Foo\"|\"uppercase\"", "identifier or keyword");
+    //                                 try expectBindingError(a, "\"Foo\"|#privateIdentifier\"", "identifier or keyword");
+    //                             
 }
 
 test "parser: should not crash when prefix part is not tokenizable" {
@@ -1135,10 +1143,9 @@ test "parser: should report interpolation with missing closing braces" {
 }
 
 test "parser: should report empty interpolation" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "{{}}", "empty");
-    //                         
+                            
+                                try expectActionError(std.testing.allocator, "{{}}", "empty");
+                            
 }
 
 test "parser: should parse interpolations with custom interpolation config" {
@@ -1192,13 +1199,13 @@ test "parser: should record spans for untagged template literals with interpolat
 }
 
 test "parser: should record spans for tagged template literal with no interpolations" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkAction(std.testing.allocator, "tag`text`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkAction(std.testing.allocator, "tag`text`");
 }
 
 test "parser: should record spans for tagged template literal with interpolations" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkAction(std.testing.allocator, "tag`before ${one} - ${two} - ${three} after`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkAction(std.testing.allocator, "tag`before ${one} - ${two} - ${three} after`");
 }
 
 test "parser: should record spans for binary assignment operations" {
@@ -1210,30 +1217,30 @@ test "parser: should record spans for binary assignment operations" {
 }
 
 test "parser: should include parenthesis in spans" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                 const a = std.testing.allocator;
-    //                 try checkBinding(a, "(foo) && (bar)");
-    //                 try checkBinding(a, "(foo) || (bar)");
-    //                 try checkBinding(a, "(foo) == (bar)");
-    //                 try checkBinding(a, "(foo) === (bar)");
-    //                 try checkBinding(a, "(foo) != (bar)");
-    //                 try checkBinding(a, "(foo) !== (bar)");
-    //                 try checkBinding(a, "(foo) > (bar)");
-    //                 try checkBinding(a, "(foo) >= (bar)");
-    //                 try checkBinding(a, "(foo) < (bar)");
-    //                 try checkBinding(a, "(foo) <= (bar)");
-    //                 try checkBinding(a, "(foo) + (bar)");
-    //                 try checkBinding(a, "(foo) - (bar)");
-    //                 try checkBinding(a, "(foo) * (bar)");
-    //                 try checkBinding(a, "(foo) / (bar)");
-    //                 try checkBinding(a, "(foo) % (bar)");
-    //                 try checkBinding(a, "(foo) | pipe");
-    //                 try checkBinding(a, "(foo)()");
-    //                 try checkBinding(a, "(foo).bar");
-    //                 try checkBinding(a, "(foo)?.bar");
-    //                 try checkBinding(a, "(foo).bar = (baz)");
-    //                 try checkBinding(a, "(foo | pipe) == false");
-    //                 try checkBinding(a, "(((foo) && bar) || baz) === true");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                     const a = std.testing.allocator;
+    //                     try checkBinding(a, "(foo) && (bar)");
+    //                     try checkBinding(a, "(foo) || (bar)");
+    //                     try checkBinding(a, "(foo) == (bar)");
+    //                     try checkBinding(a, "(foo) === (bar)");
+    //                     try checkBinding(a, "(foo) != (bar)");
+    //                     try checkBinding(a, "(foo) !== (bar)");
+    //                     try checkBinding(a, "(foo) > (bar)");
+    //                     try checkBinding(a, "(foo) >= (bar)");
+    //                     try checkBinding(a, "(foo) < (bar)");
+    //                     try checkBinding(a, "(foo) <= (bar)");
+    //                     try checkBinding(a, "(foo) + (bar)");
+    //                     try checkBinding(a, "(foo) - (bar)");
+    //                     try checkBinding(a, "(foo) * (bar)");
+    //                     try checkBinding(a, "(foo) / (bar)");
+    //                     try checkBinding(a, "(foo) % (bar)");
+    //                     try checkBinding(a, "(foo) | pipe");
+    //                     try checkBinding(a, "(foo)()");
+    //                     try checkBinding(a, "(foo).bar");
+    //                     try checkBinding(a, "(foo)?.bar");
+    //                     try checkBinding(a, "(foo).bar = (baz)");
+    //                     try checkBinding(a, "(foo | pipe) == false");
+    //                     try checkBinding(a, "(((foo) && bar) || baz) === true");
 }
 
 test "parser: should produce correct span for typeof expression" {
@@ -1257,10 +1264,10 @@ test "parser: should record span for a regex with flags" {
 }
 
 test "parser: should record span for literal map keys" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try checkBinding(std.testing.allocator, "{one: 1, two: \"the number two\", three, \"four\": 4, ...five}");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try checkBinding(std.testing.allocator, "{one: 1, two: \"the number two\", three, \"four\": 4, ...five}");
+    //                             
 }
 
 test "parser: should record span for spread elements" {
@@ -1297,10 +1304,9 @@ test "parser: should not report interpolation inside a string (simple binding)" 
 }
 
 test "parser: should report when encountering field write (simple binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a = b", "Unexpected token");
-    //                         
+                            
+                                try expectBindingError(std.testing.allocator, "a = b", "assignment");
+                            
 }
 
 test "parser: should throw if a pipe is used inside a conditional" {
@@ -1384,31 +1390,31 @@ test "parser: should be able to recover from an extra bracket" {
 }
 
 test "parser: should be able to recover from a missing )" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "(a;b", "Unexpected");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "(a;b", "Unexpected");
+    //                             
 }
 
 test "parser: should be able to recover from a missing ]" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "[a,b", "Unexpected");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "[a,b", "Unexpected");
+    //                             
 }
 
 test "parser: should be able to recover from a missing selector" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "a.", "identifier");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "a.", "identifier");
+    //                             
 }
 
 test "parser: should be able to recover from a missing selector in a array literal" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectActionError(std.testing.allocator, "[[a.], b, c]", "identifier");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectActionError(std.testing.allocator, "[[a.], b, c]", "identifier");
+    //                             
 }
 
 test "parser: should recover from parenthesized `as` expressions" {
@@ -1479,8 +1485,8 @@ test "parser: should retain // in nested, unterminated strings" {
 }
 
 test "parser: should ignore quotes inside a comment" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkAction(std.testing.allocator, "\"{{name // \" }}\"");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkAction(std.testing.allocator, "\"{{name // \" }}\"");
 }
 
 test "parser: should parse a field access (binding)" {
@@ -1567,29 +1573,25 @@ test "parser: should parse a regular expression that is a part of other expressi
 }
 
 test "parser: should report invalid regular expression flag (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "\"foo\".match(/abc/O)", "regular expression flag");
-    //                         
+                            
+                                try expectBindingError(std.testing.allocator, "\"foo\".match(/abc/O)", "regular expression flag");
+                            
 }
 
 test "parser: should report regular expression flags (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "\"foo\".match(/abc/gig)", "regular expression flag");
-    //                         
+                            
+                                try expectBindingError(std.testing.allocator, "\"foo\".match(/abc/gig)", "regular expression flag");
+                            
 }
 
 test "parser: should report chain expressions (binding) 2" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkBinding(std.testing.allocator, "1;2");
+                try expectBindingError(std.testing.allocator, "1;2", "Unexpected token");
 }
 
 test "parser: should report assignment (binding) 2" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "a=2", "Unexpected token");
-    //                         
+                            
+                                try expectBindingError(std.testing.allocator, "a=2", "assignment");
+                            
 }
 
 test "parser: should parse conditional expression (binding) 2" {
@@ -1625,8 +1627,8 @@ test "parser: should parse an arrow function that returns an object literal (bin
 }
 
 test "parser: should parse an arrow function containing an assignment (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             try checkBinding(std.testing.allocator, "(a, b) => c = a + b");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 try checkBinding(std.testing.allocator, "(a, b) => c = a + b");
 }
 
 test "parser: should be able to pass an arrow function through a pipe (binding)" {
@@ -1638,17 +1640,17 @@ test "parser: should parse an arrow function that returns an array (binding)" {
 }
 
 test "parser: should not allow pipe to be used inside an arrow function (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "(a, b) => (a + b | pipe)", "pipe");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "(a, b) => (a + b | pipe)", "pipe");
+    //                             
 }
 
 test "parser: should report an error for an arrow function with a body (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try expectBindingError(std.testing.allocator, "() => {}", "Multi-line");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try expectBindingError(std.testing.allocator, "() => {}", "Multi-line");
+    //                             
 }
 
 test "parser: should report missing comma between arrow function parameters (binding)" {
@@ -1668,10 +1670,10 @@ test "parser: should report arrow function parameter with a trailing comma (bind
 }
 
 test "parser: should report an arrow function without a closing paren (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                     
-    //                         try expectBindingError(std.testing.allocator, "(a => a + 1", "Unexpected token");
-    //                     
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                         
+    //                             try expectBindingError(std.testing.allocator, "(a => a + 1", "Unexpected token");
+    //                         
 }
 
 test "parser: should report an arrow function without an opening paren (binding)" {
@@ -1735,33 +1737,33 @@ test "parser: should parse template literals in objects literals (binding)" {
 }
 
 test "parser: should report error if interpolation is empty (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //                         
-    //                             try checkBinding(std.testing.allocator, "`hello ${}`");
-    //                             try expectBindingError(std.testing.allocator, "`hello ${}`", "empty");
-    //                         
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                             
+    //                                 try checkBinding(std.testing.allocator, "`hello ${}`");
+    //                                 try expectBindingError(std.testing.allocator, "`hello ${}`", "empty");
+    //                             
 }
 
 test "parser: should parse tagged template literals with no interpolations (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             const a = std.testing.allocator;
-    //             try checkBinding(a, "tag`hello!`");
-    //             try checkBinding(a, "tags.first`hello!`");
-    //             try checkBinding(a, "tags[0]`hello!`");
-    //             try checkBinding(a, "tag()`hello!`");
-    //             try checkBinding(a, "(tag ?? otherTag)`hello!`");
-    //             try checkBinding(a, "tag!`hello!`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 const a = std.testing.allocator;
+    //                 try checkBinding(a, "tag`hello!`");
+    //                 try checkBinding(a, "tags.first`hello!`");
+    //                 try checkBinding(a, "tags[0]`hello!`");
+    //                 try checkBinding(a, "tag()`hello!`");
+    //                 try checkBinding(a, "(tag ?? otherTag)`hello!`");
+    //                 try checkBinding(a, "tag!`hello!`");
 }
 
 test "parser: should parse tagged template literals with interpolations (binding)" {
-    return error.SkipZigTest; // TODO: Lexer gap
-    //             const a = std.testing.allocator;
-    //             try checkBinding(a, "tag`hello ${name}!`");
-    //             try checkBinding(a, "tags.first`hello ${name}!`");
-    //             try checkBinding(a, "tags[0]`hello ${name}!`");
-    //             try checkBinding(a, "tag()`hello ${name}!`");
-    //             try checkBinding(a, "(tag ?? otherTag)`hello ${name}!`");
-    //             try checkBinding(a, "tag!`hello ${name}!`");
+    return error.SkipZigTest; // TODO: Parser/lexer gap
+    //                 const a = std.testing.allocator;
+    //                 try checkBinding(a, "tag`hello ${name}!`");
+    //                 try checkBinding(a, "tags.first`hello ${name}!`");
+    //                 try checkBinding(a, "tags[0]`hello ${name}!`");
+    //                 try checkBinding(a, "tag()`hello ${name}!`");
+    //                 try checkBinding(a, "(tag ?? otherTag)`hello ${name}!`");
+    //                 try checkBinding(a, "tag!`hello ${name}!`");
 }
 
 test "parser: should not mistake operator for tagged literal tag (binding) 2" {
