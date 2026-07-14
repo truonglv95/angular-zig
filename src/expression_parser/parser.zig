@@ -273,7 +273,7 @@ pub const Parser = struct {
                     // Return the target as-is (recovery)
                     return result;
                 }
-                const value = try self.parseAssignment();
+                const value = try self.parseConditional();
                 const assign_op = matchAssignOp(op_str) orelse .Assign;
                 const node = try self.arena.create(Ast);
                 node.* = .{
@@ -338,8 +338,11 @@ pub const Parser = struct {
             const pipe_abs_start = result.abs_span.start;
             _ = self.next(); // skip |
 
-            // Pipe name
+            // Pipe name — must be identifier or keyword
             const name_tok = self.next();
+            if (name_tok.type != .Identifier and name_tok.type != .Keyword) {
+                try self.errorAt(name_tok.index, "Unexpected token, expected identifier or keyword");
+            }
             const name = name_tok.slice(self.source);
 
             // Optional args
@@ -562,6 +565,12 @@ pub const Parser = struct {
                     };
                     result = node;
                 } else {
+                    const next_tok = self.current();
+                    if (next_tok.type == .PrivateIdentifier) {
+                        try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
+                    } else {
+                        try self.errorAt(next_tok.index, "identifier or keyword");
+                    }
                     self.pos -= 1;
                     break;
                 }
@@ -625,7 +634,14 @@ pub const Parser = struct {
                     };
                     result = node;
                 } else {
-                    // stray dot, put it back
+                    // Check for private identifier
+                    const next_tok = self.current();
+                    if (next_tok.type == .PrivateIdentifier) {
+                        try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
+                    } else {
+                        try self.errorAt(next_tok.index, "identifier or keyword");
+                    }
+                    // Put the dot back for recovery
                     self.pos -= 1;
                     break;
                 }
@@ -1211,6 +1227,25 @@ pub const Parser = struct {
     }
 
     fn parseMapEntry(self: *Parser) !ast.MapEntry {
+        // Check for spread element: ...foo
+        if (self.atOperator("...")) {
+            _ = self.next(); // skip ...
+            const value = try self.parsePipe();
+            return .{ .key = "...", .value = value, .quoted = false };
+        }
+
+        // Map key must be identifier, string, or keyword
+        const current_tok = self.current();
+        if (current_tok.type != .Identifier and current_tok.type != .String and
+            current_tok.type != .Keyword)
+        {
+            if (current_tok.type == .PrivateIdentifier) {
+                try self.errorAt(current_tok.index, "expected identifier, keyword or string");
+            } else {
+                try self.errorAt(current_tok.index, "expected identifier, keyword, or string");
+            }
+        }
+
         const tok = self.next();
         const key = tok.slice(self.source);
 
@@ -1240,6 +1275,10 @@ pub const Parser = struct {
             // If the key is a number or other non-identifier, report error
             if (tok.type == .Number) {
                 try self.errorAt(tok.index, "expected identifier, keyword, or string");
+            }
+            // If next token is . or [, the shorthand is invalid (e.g. {a.b}, {a["b"]})
+            if (self.atOperator(".") or self.atOperator("[")) {
+                try self.errorAt(self.current().index, "expected }");
             }
             // Shorthand: key = value = identifier name
             // Create a PropertyRead with implicit receiver
