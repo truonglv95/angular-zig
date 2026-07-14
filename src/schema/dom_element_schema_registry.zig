@@ -504,6 +504,8 @@ pub const ATTR_TO_PROP = std.StaticStringMap([]const u8).initComptime(.{
     .{ "datetime", "dateTime" },
     .{ "colspan", "colSpan" },
     .{ "rowspan", "rowSpan" },
+    .{ "cellpadding", "cellPadding" },
+    .{ "cellspacing", "cellSpacing" },
     .{ "usemap", "useMap" },
     .{ "hreflang", "hrefLang" },
     .{ "srcset", "srcSet" },
@@ -525,11 +527,11 @@ pub const ATTR_TO_PROP = std.StaticStringMap([]const u8).initComptime(.{
 /// Direct port of `SCHEMA` array in the TS source.
 pub const SCHEMA = [_][]const u8{
     "a", "abbr", "address", "area", "article", "aside", "audio",
-    "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button",
+    "b", "base", "basefont", "bdi", "bdo", "blockquote", "body", "br", "button",
     "canvas", "caption", "cite", "code", "col", "colgroup",
     "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt",
     "em", "embed",
-    "fieldset", "figcaption", "figure", "footer", "form",
+    "fieldset", "figcaption", "figure", "footer", "form", "frame", "frameset",
     "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html",
     "i", "iframe", "img", "input", "ins",
     "kbd",
@@ -545,6 +547,13 @@ pub const SCHEMA = [_][]const u8{
     "u", "ul",
     "var", "video",
     "wbr",
+    // SVG elements
+    "svg", "circle", "rect", "path", "line", "ellipse", "polyline", "polygon",
+    "g", "defs", "use", "text", "tspan", "linearGradient", "radialGradient",
+    "stop", "pattern", "clipPath", "mask", "filter", "foreignObject",
+    "animate", "animateMotion", "animateTransform", "set",
+    // MathML elements
+    "math", "mi", "mo", "mn", "ms", "mtext", "mfrac", "msqrt", "mroot",
 };
 
 /// Check if a tag name is a known HTML element.
@@ -597,7 +606,9 @@ pub fn validateAttribute(name: []const u8) ValidationResult {
 
 /// Normalize an animation style property name.
 /// Direct port of `normalizeAnimationStyleProperty(propName)` in the TS source.
+/// Converts `float` to `cssFloat` (JavaScript reserved word).
 pub fn normalizeAnimationStyleProperty(prop_name: []const u8) []const u8 {
+    if (std.mem.eql(u8, prop_name, "float")) return "cssFloat";
     return prop_name;
 }
 
