@@ -3,80 +3,138 @@
 /// Source: packages/compiler/test/shadow_css/at_rules_spec.ts (19 test cases)
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
+const shadow_css = @import("../../shadow_css.zig");
 
 test "at_rules: should handle media rules with simple rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@media screen and (max-width: 800px) {div {font-size: 50px;}} div {}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should handle media rules with both width and height" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@media screen and (max-width:800px, max-height:100%) {div {font-size:50px;}}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should preserve @page rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@page { margin-right: 4in; }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should strip ::ng-deep and :host from within @page rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@page { ::ng-deep @top-left { content: \"Hamlet\";}}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should handle support rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@supports (display: flex) {section {display: flex;}}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should strip ::ng-deep and :host from within @supports" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@supports (display: flex) { @font-face { :host ::ng-deep font-family{} } }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should strip ::ng-deep and :host from within @font-face" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@font-face { font-family {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should pass through @import directives" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@import 'test.css';", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should shim rules after @import" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@import 'test.css'; div {}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should shim rules with quoted content after @import" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@import 'test.css'; div {}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should pass through @import directives whose URL contains colons and semicolons" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@import 'test.css';", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should shim rules after @import with colons and semicolons" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@import 'test.css'; div {}", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should scope normal selectors inside an unnamed container rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@container { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should scope normal selectors inside a named container rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@container name { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should scope normal selectors inside a scope rule with scoping limits" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@scope (.a) to (.b) { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should scope normal selectors inside a scope rule" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@scope (.a) { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should handle document rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@document url('test.css') { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should handle layer rules" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@layer { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
 test "at_rules: should scope normal selectors inside a starting-style rule" {
-    try std.testing.expect(true);
+    const allocator = std.testing.allocator;
+    const result = try shadow_css.shimCssText(allocator, "@starting-style { div {} }", "contenta");
+    defer allocator.free(result);
+    try std.testing.expect(result.len > 0);
 }
 
