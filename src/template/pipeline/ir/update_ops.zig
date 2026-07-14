@@ -8,7 +8,7 @@
 ///   - SlotHandle for slot references
 ///   - Contiguous OpList for cache-friendly iteration
 const std = @import("std");
-const ir_enums = @import("../enums.zig");
+const ir_enums = @import("enums.zig");
 const OpKind = ir_enums.OpKind;
 const BindingKind = ir_enums.BindingKind;
 const create_ops = @import("create_ops.zig");

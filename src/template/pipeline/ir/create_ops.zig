@@ -9,7 +9,7 @@
 ///   - Zero-copy strings ([]const u8 slices)
 ///   - Contiguous OpList for cache-friendly iteration
 const std = @import("std");
-const ir_enums = @import("../enums.zig");
+const ir_enums = @import("enums.zig");
 const OpKind = ir_enums.OpKind;
 const Namespace = ir_enums.Namespace;
 const BindingKind = ir_enums.BindingKind;
@@ -464,7 +464,7 @@ pub const ControlCreateOp = struct {
 /// Check if an op kind is an element or container op.
 pub fn isElementOrContainerOp(kind: OpKind) bool {
     return switch (kind) {
-        .ElementStart, .Element, .ContainerStart, .Container,
+        .ElementStart, .ContainerStart,
         .Template, .RepeaterCreate, .ConditionalCreate,
         .ConditionalBranchCreate => true,
         else => false,
@@ -528,12 +528,12 @@ pub fn createEnableBindingsOp(xref: XrefId) EnableBindingsOp {
 }
 
 /// Create a ContentOp.
-pub fn createContentOp(xref: XrefId, slot: u32, selector: ?[]const u8, source_span: ParseSourceSpan) ContentOp {
+pub fn createContentOp(xref: XrefId, slot: u32, selector: ?[]const u8, src_span: ParseSourceSpan) ContentOp {
     return .{
         .xref = xref,
         .slot = slot,
         .selector = selector,
-        .source_span = source_span,
+        .source_span = src_span,
     };
 }
 
@@ -592,8 +592,8 @@ pub fn createSourceLocationOp(xref: XrefId, location: ElementSourceLocation) Sou
 }
 
 /// Create a ControlCreateOp.
-pub fn createControlCreateOp(source_span: ParseSourceSpan) ControlCreateOp {
-    return .{ .source_span = source_span };
+pub fn createControlCreateOp(src_span: ParseSourceSpan) ControlCreateOp {
+    return .{ .source_span = src_span };
 }
 
 /// Create a NamespaceOp.
@@ -693,7 +693,7 @@ pub fn createConditionalBranchCreateOp(xref: XrefId, tag: ?[]const u8, namespace
 
 test "isElementOrContainerOp" {
     try std.testing.expect(isElementOrContainerOp(.ElementStart));
-    try std.testing.expect(isElementOrContainerOp(.Container));
+    try std.testing.expect(isElementOrContainerOp(.ContainerStart));
     try std.testing.expect(!isElementOrContainerOp(.Text));
 }
 

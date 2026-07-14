@@ -203,6 +203,8 @@ test {
     _ = @import("render3/r3_identifiers.zig");
     _ = @import("render3/view/query_generation.zig");
     _ = @import("template/pipeline/ir/reify.zig");
+    _ = @import("template/pipeline/ir/ops/create.zig");
+    _ = @import("template/pipeline/ir/ops/update.zig");
     _ = @import("directive_matching.zig");
     _ = @import("render3/view/t2_binder.zig");
 }
