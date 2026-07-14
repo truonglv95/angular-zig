@@ -24,6 +24,40 @@ pub const I18N_ATTR = "i18n";
 /// I18N_ATTR_PREFIX — the `i18n-` attribute prefix.
 pub const I18N_ATTR_PREFIX = "i18n-";
 
+/// Parse i18n meta string into I18nMeta.
+/// Direct port of `parseI18nMeta(meta)` in the TS source.
+/// Trims the whole value first, then splits by @@ and |.
+/// Empty strings are stored as null (matching TS undefined behavior).
+pub fn parseI18nMeta(value: []const u8) I18nMeta {
+    var meta = I18nMeta{};
+
+    // Trim the whole value first (TS: meta = meta.trim())
+    const trimmed = std.mem.trim(u8, value, " \t\n\r");
+    if (trimmed.len == 0) return meta;
+
+    var remaining = trimmed;
+
+    // Check for custom ID: @@custom-id
+    if (std.mem.indexOf(u8, remaining, "@@")) |sep_pos| {
+        meta.custom_id = remaining[sep_pos + 2 ..];
+        remaining = remaining[0..sep_pos];
+    }
+
+    // Check for meaning: meaning|description
+    if (std.mem.indexOf(u8, remaining, "|")) |sep_pos| {
+        meta.meaning = remaining[0..sep_pos];
+        if (remaining[sep_pos + 1 ..].len > 0) {
+            meta.description = remaining[sep_pos + 1 ..];
+        }
+    } else {
+        if (remaining.len > 0) {
+            meta.description = remaining;
+        }
+    }
+
+    return meta;
+}
+
 /// I18nMetaVisitor — walks HTML AST and processes i18n attributes.
 /// Direct port of `I18nMetaVisitor` class in the TS source.
 pub const I18nMetaVisitor = struct {
@@ -53,25 +87,10 @@ pub const I18nMetaVisitor = struct {
     /// Direct port of the i18n attribute parsing in the TS source.
     ///
     /// Format: `meaning|description@@custom-id`
-    pub fn parseI18nValue(value: []const u8) I18nMeta {
-        var meta = I18nMeta{};
-        var remaining = value;
-
-        // Check for custom ID: @@custom-id
-        if (std.mem.indexOf(u8, remaining, "@@")) |sep_pos| {
-            meta.custom_id = std.mem.trim(u8, remaining[sep_pos + 2 ..], " \t\n\r");
-            remaining = remaining[0..sep_pos];
-        }
-
-        // Check for meaning: meaning|description
-        if (std.mem.indexOf(u8, remaining, "|")) |sep_pos| {
-            meta.meaning = std.mem.trim(u8, remaining[0..sep_pos], " \t\n\r");
-            meta.description = std.mem.trim(u8, remaining[sep_pos + 1 ..], " \t\n\r");
-        } else {
-            meta.description = std.mem.trim(u8, remaining, " \t\n\r");
-        }
-
-        return meta;
+    /// Direct port of `parseI18nMeta(meta)` in the TS source.
+    /// Trims the whole value first, then splits by @@ and |.
+    pub fn parseI18nValue(_: *const I18nMetaVisitor, value: []const u8) I18nMeta {
+        return parseI18nMeta(value);
     }
 
     /// Check if an element has i18n attributes.
@@ -111,14 +130,14 @@ pub const I18nMetaVisitor = struct {
 // ─── Tests ──────────────────────────────────────────────────
 
 test "parseI18nValue with all parts" {
-    const meta = I18nMetaVisitor.parseI18nValue("greeting|A greeting@@custom-id");
+    const meta = parseI18nMeta("greeting|A greeting@@custom-id");
     try std.testing.expectEqualStrings("greeting", meta.meaning.?);
     try std.testing.expectEqualStrings("A greeting", meta.description.?);
     try std.testing.expectEqualStrings("custom-id", meta.custom_id.?);
 }
 
 test "parseI18nValue with meaning only" {
-    const meta = I18nMetaVisitor.parseI18nValue("greeting");
+    const meta = parseI18nMeta("greeting");
     try std.testing.expectEqualStrings("greeting", meta.description.?);
     try std.testing.expect(meta.meaning == null);
 }
