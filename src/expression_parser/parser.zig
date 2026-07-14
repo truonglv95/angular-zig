@@ -970,12 +970,9 @@ pub const Parser = struct {
                 // We set is_action=false for the body so pipes are allowed, but we need
                 // to check if the body contains a BindingPipe and report it.
                 const saved_is_action = self.is_action;
-                // Arrow body: pipes not allowed inside arrow body.
-                // Use parsePipe so the pipe IS parsed (and error reported by is_action=true),
-                // but the pipe expression itself becomes the body AST.
-                // For (a => a + 1) | pipe: the outer | is NOT inside arrow body —
-                // the arrow function is parsed inside parens, then | pipe applies to the
-                // parenthesized expression.
+                // Arrow body: pipes not allowed, but assignments ARE allowed.
+                // Use is_action=true so parsePipe rejects pipes, but parseAssignment
+                // allows assignments within the arrow body.
                 self.is_action = true; // Reject pipes in arrow body
                 const body = try self.parsePipe();
                 self.is_action = saved_is_action;
@@ -1092,7 +1089,7 @@ pub const Parser = struct {
         if (is_arrow) {
             const saved_is_action = self.is_action;
             self.is_action = true; // Arrow body rejects pipes like action context
-            const body = try self.parsePipe();
+            const body = try self.parseAssignment();
             self.is_action = saved_is_action;
             const params_slice = try self.arena.alloc(ArrowParam, params.items.len);
             @memcpy(params_slice, params.items);
