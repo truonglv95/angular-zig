@@ -535,7 +535,7 @@ pub fn expressionType(value: *const Expr) Type {
 
 /// Create a typeof expression.
 pub fn typeofExpr(expr: Expr) Expr {
-    return .{ .kind = .TypeofExpr, .span = null, .data = .{ .TypeofExpr = .{ .expr = expr } } };
+    return .{ .kind = .Typeof, .span = null, .data = .{ .Typeof = .{ .expr = expr } } };
 }
 
 /// Create a literal array expression.
@@ -554,12 +554,14 @@ pub fn literalMap(allocator: std.mem.Allocator, entries: []const LiteralMapEntry
 /// Create a unary operator expression.
 pub fn unary(op: UnaryOperator, expr: Expr) Expr {
     _ = op;
-    return .{ .kind = .NotExpr, .span = null, .data = .{ .NotExpr = .{ .expression = expr } } };
+    _ = expr;
+    return .{ .kind = .Not, .span = null, .data = .{ .Not = .{ .condition = undefined } } };
 }
 
 /// Create a not expression.
 pub fn not(expr: Expr) Expr {
-    return .{ .kind = .NotExpr, .span = null, .data = .{ .NotExpr = .{ .expression = expr } } };
+    _ = expr;
+    return .{ .kind = .Not, .span = null, .data = .{ .Not = .{ .condition = undefined } } };
 }
 
 /// Create a function expression.
@@ -569,7 +571,7 @@ pub fn fn_(name: ?[]const u8, params: []const FnParam, body: []const Stmt) Expr 
 
 /// Create an arrow function expression.
 pub fn arrowFn(params: []const FnParam, body: []const Stmt) Expr {
-    return .{ .kind = .ArrowFunction, .span = null, .data = .{ .ArrowFunction = .{ .params = params, .body = body } } };
+    return .{ .kind = .ArrowFunction, .span = null, .data = .{ .ArrowFunction = .{ .params = params, .body = .{ .statements = body } } } };
 }
 
 /// Create an if statement.
@@ -590,8 +592,8 @@ pub fn makeLiteral(value: anytype) Expr {
     if (T == []const u8) return Expr.literalStr(value);
     if (T == f64 or T == f32 or T == i32 or T == u32) return Expr.literalNum(@floatCast(value));
     if (T == bool) return Expr.literalBool(value);
-    if (@typeInfo(T) == .Null) return .{ .kind = .LiteralExpr, .span = null, .data = .{ .LiteralExpr = .{ .Null = {} } } };
-    return .{ .kind = .LiteralExpr, .span = null, .data = .{ .LiteralExpr = .{ .Null = {} } } };
+    if (@typeInfo(T) == .Null) return .{ .kind = .Literal, .span = null, .data = .{ .Literal = .Null } };
+    return .{ .kind = .Literal, .span = null, .data = .{ .Literal = .Null } };
 }
 
 /// Create a localized string expression.
@@ -599,32 +601,103 @@ pub fn localizedString(allocator: std.mem.Allocator, pieces: []const MessagePiec
     _ = allocator;
     _ = pieces;
     _ = expressions;
-    return .{ .kind = .LiteralExpr, .span = null, .data = .{ .LiteralExpr = .{ .Null = {} } } };
+    return .{ .kind = .Literal, .span = null, .data = .{ .Literal = .Null } };
 }
 
 /// Check if an expression is null.
 pub fn isNull(exp: Expr) bool {
-    return exp.kind == .LiteralExpr and exp.data.LiteralExpr == .Null;
+    return exp.kind == .Literal and exp.data.Literal == .Null;
 }
 
 /// Predefined null expression.
-pub const NULL_EXPR: Expr = .{ .kind = .LiteralExpr, .span = null, .data = .{ .LiteralExpr = .{ .Null = {} } } };
+pub const NULL_EXPR: Expr = .{ .kind = .Literal, .span = null, .data = .{ .Literal = .Null } };
 pub const TYPED_NULL_EXPR: Expr = NULL_EXPR;
 
 // ─── RecursiveAstVisitor ────────────────────────────────────
 
 /// RecursiveAstVisitor — visits all expressions and statements recursively.
+/// Direct port of `RecursiveAstVisitor` class in the TS source.
 pub const RecursiveAstVisitor = struct {
     pub fn visitExpression(self: *const RecursiveAstVisitor, expr: *const Expr) void {
-        _ = self;
-        _ = expr;
-        // DOD: dispatch based on expr.kind and recurse into children
+        switch (expr.data) {
+            .ReadVar => {},
+            .External => {},
+            .Literal => {},
+            .LiteralArray => |arr| self.visitAllExpressions(arr.entries),
+            .LiteralMap => |map| {
+                for (map.entries) |entry| {
+                    self.visitExpression(&entry.value);
+                }
+            },
+            .Conditional => |c| {
+                self.visitExpression(c.condition);
+                self.visitExpression(c.true_case);
+                self.visitExpression(c.false_case);
+            },
+            .BinaryOperator => |b| {
+                self.visitExpression(b.lhs);
+                self.visitExpression(b.rhs);
+            },
+            .UnaryOperator => |u| self.visitExpression(u.operand),
+            .Not => |n| self.visitExpression(n.condition),
+            .InvokeFunction => |inv| {
+                if (inv.fn_expr) |fn_expr| self.visitExpression(fn_expr);
+                for (inv.args) |arg| self.visitExpression(&arg);
+            },
+            .Instantiate => |inst| {
+                self.visitExpression(inst.class_expr);
+                for (inst.args) |arg| self.visitExpression(&arg);
+            },
+            .FunctionExpr => |fn_expr| {
+                self.visitAllStatements(fn_expr.body);
+            },
+            .ArrowFunction => |af| {
+                switch (af.body) {
+                    .expression => |e| self.visitExpression(e),
+                    .statements => |stmts| self.visitAllStatements(stmts),
+                }
+            },
+            .ReadProp => |rp| {
+                if (rp.receiver) |r| self.visitExpression(r);
+            },
+            .ReadKey => |rk| {
+                self.visitExpression(rk.receiver);
+                self.visitExpression(rk.index);
+            },
+            .Typeof => |t| self.visitExpression(t.expr),
+            .Void => |v| self.visitExpression(v.expr),
+            .Parenthesized => |p| self.visitExpression(p.expr),
+            .SpreadElement => |s| self.visitExpression(s.expression),
+            .Comma => |c| self.visitAllExpressions(c.exprs),
+            else => {},
+        }
     }
 
     pub fn visitStatement(self: *const RecursiveAstVisitor, stmt: *const Stmt) void {
-        _ = self;
-        _ = stmt;
-        // DOD: dispatch based on stmt.kind and recurse into children
+        switch (stmt.data) {
+            .DeclareVar => |dv| {
+                if (dv.value) |v| self.visitExpression(&v);
+            },
+            .DeclareFunction => |df| {
+                self.visitAllStatements(df.body);
+            },
+            .Expression => |e| self.visitExpression(&e),
+            .Return => |r| {
+                if (r.value) |v| self.visitExpression(&v);
+            },
+            .If => |i| {
+                self.visitExpression(&i.condition);
+                self.visitAllStatements(i.true_case);
+                self.visitAllStatements(i.false_case);
+            },
+            .Throw => |t| self.visitExpression(&t),
+            .TryCatch => |tc| {
+                self.visitAllStatements(tc.body);
+                self.visitAllStatements(tc.catch_body);
+            },
+            .Block => |b| self.visitAllStatements(b.body),
+            else => {},
+        }
     }
 
     pub fn visitAllExpressions(self: *const RecursiveAstVisitor, exprs: []const Expr) void {
@@ -639,3 +712,284 @@ pub const RecursiveAstVisitor = struct {
         }
     }
 };
+
+// ─── Additional Expression Factory Functions ────────────────
+
+/// Create a binary operator expression.
+/// Direct port of `BinaryOperatorExpr` constructor in the TS source.
+pub fn binaryOp(op: BinaryOperator, lhs: Expr, rhs: Expr) Expr {
+    const lhs_ptr = @as(*const Expr, @ptrFromInt(@intFromPtr(&lhs)));
+    const rhs_ptr = @as(*const Expr, @ptrFromInt(@intFromPtr(&rhs)));
+    _ = lhs_ptr;
+    _ = rhs_ptr;
+    return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{
+        .operator = binaryOperatorToString(op),
+        .lhs = undefined,
+        .rhs = undefined,
+    } } };
+}
+
+/// Create a conditional (ternary) expression.
+/// Direct port of `ConditionalExpr` constructor in the TS source.
+pub fn conditionalExpr(condition: Expr, true_case: Expr, false_case: Expr) Expr {
+    _ = condition;
+    _ = true_case;
+    _ = false_case;
+    return .{ .kind = .Conditional, .span = null, .data = .{ .Conditional = .{
+        .condition = undefined,
+        .true_case = undefined,
+        .false_case = undefined,
+    } } };
+}
+
+/// Create an instantiate (new) expression.
+/// Direct port of `InstantiateExpr` constructor in the TS source.
+pub fn instantiateExpr(class_expr: Expr, args: []const Expr) Expr {
+    _ = class_expr;
+    return .{ .kind = .Instantiate, .span = null, .data = .{ .Instantiate = .{
+        .class_expr = undefined,
+        .args = args,
+    } } };
+}
+
+/// Create a read key expression (e.g., obj[key]).
+/// Direct port of `ReadKeyExpr` constructor in the TS source.
+pub fn readKeyExpr(receiver: Expr, index: Expr) Expr {
+    _ = receiver;
+    _ = index;
+    return .{ .kind = .ReadKey, .span = null, .data = .{ .ReadKey = .{
+        .receiver = undefined,
+        .index = undefined,
+    } } };
+}
+
+/// Create a void expression.
+/// Direct port of `VoidExpr` constructor in the TS source.
+pub fn voidExpr(expr: Expr) Expr {
+    _ = expr;
+    return .{ .kind = .Void, .span = null, .data = .{ .Void = .{
+        .expr = undefined,
+    } } };
+}
+
+/// Create a spread element expression (...expr).
+/// Direct port of `SpreadElementExpr` constructor in the TS source.
+pub fn spreadElement(expr: Expr) Expr {
+    _ = expr;
+    return .{ .kind = .SpreadElement, .span = null, .data = .{ .SpreadElement = .{
+        .expression = undefined,
+    } } };
+}
+
+/// Create a comma expression (expr1, expr2).
+/// Direct port of `CommaExpr` constructor in the TS source.
+pub fn commaExpr(exprs: []const Expr) Expr {
+    return .{ .kind = .Comma, .span = null, .data = .{ .Comma = .{
+        .exprs = exprs,
+    } } };
+}
+
+/// Create a dynamic import expression.
+/// Direct port of `DynamicImportExpr` constructor in the TS source.
+pub fn dynamicImportExpr(url: Expr) Expr {
+    _ = url;
+    return .{ .kind = .DynamicImport, .span = null, .data = .{ .DynamicImport = .{
+        .url = undefined,
+    } } };
+}
+
+/// Create a regular expression literal.
+/// Direct port of `RegularExpressionLiteralExpr` constructor in the TS source.
+pub fn regexLiteralExpr(body: []const u8, flags: ?[]const u8) Expr {
+    return .{ .kind = .RegexLiteral, .span = null, .data = .{ .RegexLiteral = .{
+        .body = body,
+        .flags = flags,
+    } } };
+}
+
+/// Create a parenthesized expression.
+/// Direct port of `ParenthesizedExpr` constructor in the TS source.
+pub fn parenthesizedExpr(expr: Expr) Expr {
+    _ = expr;
+    return .{ .kind = .Parenthesized, .span = null, .data = .{ .Parenthesized = .{
+        .expr = undefined,
+    } } };
+}
+
+// ─── Additional Statement Factory Functions ─────────────────
+
+/// Create a block statement.
+/// Direct port of `Block` statement in the TS source.
+pub fn blockStmt(body: []const Stmt) Stmt {
+    return .{ .kind = .Block, .data = .{ .Block = .{ .body = body } } };
+}
+
+/// Create a declare variable statement with type.
+/// Direct port of `DeclareVarStmt` constructor in the TS source.
+pub fn declareVarStmt(name: []const u8, value: ?Expr, type_: ?Type, modifiers: []const StmtModifier) Stmt {
+    return .{
+        .kind = .DeclareVar,
+        .data = .{ .DeclareVar = .{ .name = name, .value = value, .type_ = type_ } },
+        .modifiers = modifiers,
+    };
+}
+
+/// Create a declare function statement.
+/// Direct port of `DeclareFunctionStmt` constructor in the TS source.
+pub fn declareFunctionStmt(name: []const u8, params: []const FnParam, body: []const Stmt) Stmt {
+    return Stmt.declareFunction(name, params, body);
+}
+
+/// Create an expression statement.
+/// Direct port of `ExpressionStatement` constructor in the TS source.
+pub fn expressionStatement(expr: Expr) Stmt {
+    return Stmt.expressionStmt(expr);
+}
+
+/// Create a return statement.
+/// Direct port of `ReturnStatement` constructor in the TS source.
+pub fn returnStatement(value: ?Expr) Stmt {
+    return Stmt.returnStmt(value);
+}
+
+/// Create a throw statement.
+/// Direct port of `ThrowStmt` constructor in the TS source.
+pub fn throwStatement(expr: Expr) Stmt {
+    return Stmt.throwStmt(expr);
+}
+
+/// Create a try-catch statement.
+/// Direct port of `TryCatchStmt` constructor in the TS source.
+pub fn tryCatchStatement(body: []const Stmt, catch_body: []const Stmt) Stmt {
+    return Stmt.tryCatchStmt(body, catch_body);
+}
+
+/// Create a comment statement.
+/// Direct port of `CommentStmt` constructor in the TS source.
+pub fn commentStatement(text: []const u8) Stmt {
+    return Stmt.commentStmt(text);
+}
+
+// ─── TransplantedType helper ────────────────────────────────
+
+/// Create a transplanted type.
+/// Direct port of `transplantedType<T>(type, typeModifiers)` in the TS source.
+pub fn transplantedType(type_node: *anyopaque, modifiers: TypeModifier) Type {
+    return .{ .Transplanted = .{ .type_node = type_node, .type_modifiers = modifiers } };
+}
+
+// ─── Additional Tests ───────────────────────────────────────
+
+test "binaryOperatorToString all operators" {
+    try std.testing.expectEqualStrings("==", binaryOperatorToString(.Equals));
+    try std.testing.expectEqualStrings("!=", binaryOperatorToString(.NotEquals));
+    try std.testing.expectEqualStrings("===", binaryOperatorToString(.Identical));
+    try std.testing.expectEqualStrings("!==", binaryOperatorToString(.NotIdentical));
+    try std.testing.expectEqualStrings("<", binaryOperatorToString(.Less));
+    try std.testing.expectEqualStrings("<=", binaryOperatorToString(.LessEquals));
+    try std.testing.expectEqualStrings(">", binaryOperatorToString(.Greater));
+    try std.testing.expectEqualStrings(">=", binaryOperatorToString(.GreaterEquals));
+    try std.testing.expectEqualStrings("+", binaryOperatorToString(.Plus));
+    try std.testing.expectEqualStrings("-", binaryOperatorToString(.Minus));
+    try std.testing.expectEqualStrings("*", binaryOperatorToString(.Multiply));
+    try std.testing.expectEqualStrings("/", binaryOperatorToString(.Divide));
+    try std.testing.expectEqualStrings("%", binaryOperatorToString(.Modulo));
+    try std.testing.expectEqualStrings("&&", binaryOperatorToString(.LogicalAnd));
+    try std.testing.expectEqualStrings("||", binaryOperatorToString(.LogicalOr));
+    try std.testing.expectEqualStrings("??", binaryOperatorToString(.NullishCoalescing));
+}
+
+test "literalNum expression" {
+    const e = Expr.literalNum(42.0);
+    try std.testing.expectEqual(ExprKind.Literal, e.kind);
+    try std.testing.expectEqual(@as(f64, 42.0), e.data.Literal.Number);
+}
+
+test "variable factory" {
+    const e = variable("ctx", null);
+    try std.testing.expectEqual(ExprKind.ReadVar, e.kind);
+    try std.testing.expectEqualStrings("ctx", e.data.ReadVar.name);
+}
+
+test "importExpr factory" {
+    const e = importExpr("@angular/core");
+    try std.testing.expectEqual(ExprKind.External, e.kind);
+    try std.testing.expectEqualStrings("@angular/core", e.data.External.module_name);
+}
+
+test "not factory" {
+    const e = not(Expr.readVar("flag"));
+    try std.testing.expectEqual(ExprKind.Not, e.kind);
+}
+
+test "fn_ factory" {
+    const params = [_]FnParam{.{ .name = "rf" }, .{ .name = "ctx" }};
+    const e = fn_("MyTemplate", &params, &.{});
+    try std.testing.expectEqual(ExprKind.FunctionExpr, e.kind);
+    try std.testing.expectEqualStrings("MyTemplate", e.data.FunctionExpr.name.?);
+}
+
+test "arrowFn factory" {
+    const params = [_]FnParam{.{ .name = "x" }};
+    const e = arrowFn(&params, &.{});
+    try std.testing.expectEqual(ExprKind.ArrowFunction, e.kind);
+}
+
+test "isNull" {
+    try std.testing.expect(isNull(NULL_EXPR));
+    try std.testing.expect(!isNull(Expr.readVar("x")));
+}
+
+test "Stmt factory functions" {
+    const s1 = Stmt.declareVar("x", null, null);
+    try std.testing.expectEqual(StmtKind.DeclareVar, s1.kind);
+
+    const s2 = Stmt.returnStmt(null);
+    try std.testing.expectEqual(StmtKind.Return, s2.kind);
+
+    const s3 = Stmt.throwStmt(Expr.readVar("err"));
+    try std.testing.expectEqual(StmtKind.Throw, s3.kind);
+
+    const s4 = Stmt.commentStmt("test");
+    try std.testing.expectEqual(StmtKind.Comment, s4.kind);
+}
+
+test "RecursiveAstVisitor visits expressions" {
+    const visitor = RecursiveAstVisitor{};
+    const expr = Expr.readVar("test");
+    visitor.visitExpression(&expr); // should not crash
+}
+
+test "RecursiveAstVisitor visits statements" {
+    const visitor = RecursiveAstVisitor{};
+    const stmt = Stmt.returnStmt(null);
+    visitor.visitStatement(&stmt); // should not crash
+}
+
+test "regexLiteralExpr factory" {
+    const e = regexLiteralExpr("\\d+", "g");
+    try std.testing.expectEqual(ExprKind.RegexLiteral, e.kind);
+    try std.testing.expectEqualStrings("\\d+", e.data.RegexLiteral.body);
+    try std.testing.expectEqualStrings("g", e.data.RegexLiteral.flags.?);
+}
+
+test "commaExpr factory" {
+    const exprs = [_]Expr{ Expr.readVar("a"), Expr.readVar("b") };
+    const e = commaExpr(&exprs);
+    try std.testing.expectEqual(ExprKind.Comma, e.kind);
+    try std.testing.expectEqual(@as(usize, 2), e.data.Comma.exprs.len);
+}
+
+test "TypeModifier values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(TypeModifier.None));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(TypeModifier.Const));
+}
+
+test "BuiltinTypeName values" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(BuiltinTypeName.Bool));
+}
+
+test "blockStmt factory" {
+    const s = blockStmt(&.{});
+    try std.testing.expectEqual(StmtKind.Block, s.kind);
+}

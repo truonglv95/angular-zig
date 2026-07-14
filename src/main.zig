@@ -116,7 +116,10 @@ test {
     _ = @import("template/pipeline/ir/job.zig");
     _ = @import("output/output_ast.zig");
     _ = @import("output/abstract_emitter.zig");
+    _ = @import("output/abstract_js_emitter.zig");
     _ = @import("output/source_map.zig");
+    _ = @import("output/output_jit.zig");
+    _ = @import("output/output_jit_trusted_types.zig");
     _ = @import("template/transform.zig");
     _ = @import("template_parser/template_preparser.zig");
     _ = @import("template/pipeline/ir/ingest.zig");
