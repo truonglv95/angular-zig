@@ -163,12 +163,13 @@ fn transformElement(ctx: *TransformContext, html_node: *const HtmlNode, elem: El
         return try transformNgContainer(ctx, html_node, elem);
     }
 
-    // Check for style/script tags
+    // Check for style/script tags — these are treated as regular elements in R3
+    // (their content is raw text, but they still appear as Element nodes)
     if (std.mem.eql(u8, name, "style")) {
-        return try transformStyleElement(ctx, html_node, elem);
+        return try transformRegularElement(ctx, html_node, elem);
     }
     if (std.mem.eql(u8, name, "script")) {
-        return null; // Skip script tags
+        return try transformRegularElement(ctx, html_node, elem);
     }
 
     // Regular element — classify all attributes and build R3 Element
@@ -794,15 +795,11 @@ fn transformStyleElement(ctx: *TransformContext, _: *const HtmlNode, elem: Eleme
 }
 
 fn transformComment(ctx: *TransformContext, html_node: *const HtmlNode, comment: html_ast.CommentNode) error{OutOfMemory}!?*R3Node {
-    const r3 = try ctx.arena.create(R3Node);
-    r3.* = .{
-        .kind = .Comment,
-        .source_span = html_node.source_span,
-        .data = .{ .Comment = .{
-            .value = comment.value,
-        } },
-    };
-    return r3;
+    _ = ctx;
+    _ = html_node;
+    _ = comment;
+    // Comments are not included in R3 AST by default (TS behavior)
+    return null;
 }
 
 fn transformCdata(ctx: *TransformContext, html_node: *const HtmlNode, cdata: html_ast.CdataNode) error{OutOfMemory}!?*R3Node {

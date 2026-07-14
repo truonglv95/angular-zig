@@ -182,9 +182,11 @@ fn trackInterpolations(source: []const u8, start: u32, end: u32, allocator: std.
 
     var i = start;
     var text_start = start;
+    var found_interpolation = false;
 
     while (i < end) : (i += 1) {
         if (i + 1 < end and source[i] == '{' and source[i + 1] == '{') {
+            found_interpolation = true;
             if (i > text_start) {
                 try parts.append(.{ .start = text_start, .end = i, .is_expression = false });
             }
@@ -205,11 +207,16 @@ fn trackInterpolations(source: []const u8, start: u32, end: u32, allocator: std.
         }
     }
 
-    if (text_start < end) {
-        try parts.append(.{ .start = text_start, .end = end, .is_expression = false });
+    // Only create parts if we found an interpolation. Plain text gets no parts
+    // (which means interpolation_boundaries will be empty in the parser).
+    if (found_interpolation) {
+        if (text_start < end) {
+            try parts.append(.{ .start = text_start, .end = end, .is_expression = false });
+        }
+        return parts.toOwnedSlice();
     }
 
-    return parts.toOwnedSlice();
+    return &[_]TokenPart{};
 }
 
 /// HTML Lexer — the main tokenizer.
