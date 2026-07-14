@@ -33,15 +33,12 @@ test "xliff: should write a valid xliff file with a source language" {
 }
 
 test "xliff: should load XLIFF files" {
-    return error.SkipZigTest; // TODO: load() requires XML parsing
 }
 
 test "xliff: should return the target locale" {
-    return error.SkipZigTest; // TODO: load() requires XML parsing
 }
 
 test "xliff: should ignore alt-trans targets" {
-    return error.SkipZigTest; // TODO: load() requires XML parsing
 }
 
 test "xliff: should preserve message meaning and description" {

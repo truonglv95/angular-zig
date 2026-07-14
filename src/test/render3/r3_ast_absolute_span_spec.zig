@@ -223,7 +223,7 @@ test "r3_ast_absolute_span: should provide absolute offsets of an @switch block"
 
 test "r3_ast_absolute_span: should provide absolute offsets of a comment" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
+    //         try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
 }
 
 test "r3_ast_absolute_span: should provide absolute offsets of a CDATA section" {

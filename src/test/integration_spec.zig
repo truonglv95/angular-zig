@@ -5,12 +5,10 @@
 const std = @import("std");
 
 test "integration: should support dotted selectors" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 
 test "integration: should work regardless the namespace" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 

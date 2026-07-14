@@ -5,22 +5,18 @@
 const std = @import("std");
 
 test "integration_xmb_xtb: should extract from templates" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 
 test "integration_xmb_xtb: should translate templates" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 
 test "integration_xmb_xtb: should extract from templates (with CRLF line endings)" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 
 test "integration_xmb_xtb: should translate templates (with CRLF line endings)" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 

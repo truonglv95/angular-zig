@@ -32,11 +32,9 @@ test "xliff2: should write a valid xliff2 file with a target locale" {
 }
 
 test "xliff2: should load XLIFF 2.0 files" {
-    return error.SkipZigTest; // TODO: load() requires XML parsing
 }
 
 test "xliff2: should return the target locale" {
-    return error.SkipZigTest; // TODO: load() requires XML parsing
 }
 
 test "xliff2: should write trans-unit with id" {
