@@ -148,7 +148,8 @@ pub const Parser = struct {
 
         // Parse tag end
         const end_tok = self.next();
-        const self_closing = end_tok.type == .TagOpenEnd and end_tok.self_closing;
+        const self_closing = (end_tok.type == .TagOpenEnd and end_tok.self_closing) or
+            end_tok.type == .TagOpenEndVoid;
 
         // Parse children (if not void and not self-closing)
         var children = std.array_list.Managed(*const Node).init(self.allocator);
