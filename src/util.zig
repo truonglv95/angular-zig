@@ -115,3 +115,42 @@ pub fn indent(allocator: std.mem.Allocator, s: []const u8, level: u32) ![]const 
     }
     return result.toOwnedSlice();
 }
+
+/// Split a string at the first colon.
+/// Returns [before, after] if colon found, otherwise `default_value`.
+/// Direct port of `splitAtColon(input, defaultValue)` in the TS source.
+pub fn splitAtColon(allocator: std.mem.Allocator, input: []const u8, default_value: [2][]const u8) ![2][]const u8 {
+    const colon_idx = std.mem.indexOfScalar(u8, input, ':') orelse {
+        return default_value;
+    };
+    const before = std.mem.trim(u8, input[0..colon_idx], " \t");
+    const after = std.mem.trim(u8, input[colon_idx + 1 ..], " \t");
+    // Allocate copies to match the API (returns owned strings)
+    const before_owned = try allocator.dupe(u8, before);
+    const after_owned = try allocator.dupe(u8, after);
+    return .{ before_owned, after_owned };
+}
+
+/// Escape a string for use in a RegExp.
+/// Direct port of `escapeRegExp(text)` in the TS source.
+pub fn escapeRegExp(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
+    var result = std.array_list.Managed(u8).init(allocator);
+    defer result.deinit();
+    for (text) |ch| {
+        switch (ch) {
+            '-', '[', ']', '/', '{', '}', '(', ')', '*', '+', '?', '.', '\\', '^', '$', '|' => {
+                try result.append('\\');
+                try result.append(ch);
+            },
+            else => try result.append(ch),
+        }
+    }
+    return result.toOwnedSlice();
+}
+
+/// Encode a string to UTF-8 bytes.
+/// Direct port of `utf8Encode(str)` in the TS source.
+pub fn utf8Encode(allocator: std.mem.Allocator, str: []const u8) ![]const u8 {
+    // Already UTF-8 in Zig — just dupe
+    return allocator.dupe(u8, str);
+}
