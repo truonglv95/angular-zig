@@ -638,6 +638,9 @@ pub const Parser = struct {
                     const next_tok = self.current();
                     if (next_tok.type == .PrivateIdentifier) {
                         try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
+                    } else if (next_tok.type == .Operator and isAssignOp(next_tok.slice(self.source))) {
+                        // a. = 1 → "Expected identifier for property access"
+                        try self.errorAt(next_tok.index, "Expected identifier for property access");
                     } else {
                         try self.errorAt(next_tok.index, "identifier or keyword");
                     }
