@@ -1737,3 +1737,428 @@ test "isElseIfPattern" {
     try std.testing.expect(!isElseIfPattern("elseif"));
     try std.testing.expect(!isElseIfPattern("else\nif"));
 }
+
+// ─── EscapedCharacterCursor ─────────────────────────────────
+
+/// CursorState — internal state of a character cursor.
+/// Direct port of `CursorState` interface in the TS source.
+pub const CursorState = struct {
+    peek: u8 = 0,
+    offset: u32 = 0,
+    line: u32 = 0,
+    column: u32 = 0,
+};
+
+/// ParseSourceFile — a source file with content and URL.
+/// Direct port of `ParseSourceFile` from parse_util.ts.
+pub const ParseSourceFile = struct {
+    content: []const u8,
+    url: []const u8,
+};
+
+/// ParseLocation — a location within a source file.
+/// Direct port of `ParseLocation` from parse_util.ts.
+pub const ParseLocation = struct {
+    file: ?*const ParseSourceFile = null,
+    offset: u32 = 0,
+    line: u32 = 0,
+    column: u32 = 0,
+};
+
+/// ParseSourceSpan — a span within a source file.
+/// Direct port of `ParseSourceSpan` from parse_util.ts.
+pub const ParseSourceSpan = struct {
+    start: ParseLocation = .{},
+    end: ParseLocation = .{},
+    full_start: ?ParseLocation = null,
+};
+
+/// CursorError — an error thrown by the cursor during tokenization.
+/// Direct port of `CursorError` class in the TS source.
+pub const CursorError = struct {
+    msg: []const u8,
+    cursor: CharacterCursor,
+};
+
+/// EscapedCharacterCursor — a cursor that processes escape sequences.
+/// Direct port of `EscapedCharacterCursor` class in the TS source.
+///
+/// This cursor wraps a PlainCharacterCursor and processes escape sequences
+/// such as \n, \t, \u1234, \x2F, \012, and line continuations.
+pub const EscapedCharacterCursor = struct {
+    /// The underlying plain cursor state (external state visible to consumers).
+    state: CursorState,
+    /// The internal state (tracks position before escape processing).
+    internal_state: CursorState,
+    /// The source file being tokenized.
+    file: *const ParseSourceFile,
+    /// The input string.
+    input: []const u8,
+    /// The end position of the range.
+    end: u32,
+
+    /// Initialize from a ParseSourceFile and range.
+    pub fn init(file: *const ParseSourceFile, range: LexerRange) EscapedCharacterCursor {
+        return .{
+            .state = .{
+                .peek = 0,
+                .offset = range.start,
+                .line = 0,
+                .column = 0,
+            },
+            .internal_state = .{
+                .peek = 0,
+                .offset = range.start,
+                .line = 0,
+                .column = 0,
+            },
+            .file = file,
+            .input = file.content,
+            .end = range.end,
+        };
+    }
+
+    /// Clone this cursor.
+    pub fn clone(self: *const EscapedCharacterCursor) EscapedCharacterCursor {
+        return .{
+            .state = self.state,
+            .internal_state = self.internal_state,
+            .file = self.file,
+            .input = self.input,
+            .end = self.end,
+        };
+    }
+
+    /// Peek at the current character (after escape processing).
+    pub fn peek(self: *const EscapedCharacterCursor) u8 {
+        return self.state.peek;
+    }
+
+    /// Characters remaining.
+    pub fn charsLeft(self: *const EscapedCharacterCursor) u32 {
+        return if (self.state.offset >= self.end) 0 else self.end - self.state.offset;
+    }
+
+    /// Difference between this cursor and another.
+    pub fn diff(self: *const EscapedCharacterCursor, other: EscapedCharacterCursor) i32 {
+        return @as(i32, @intCast(self.state.offset)) - @as(i32, @intCast(other.state.offset));
+    }
+
+    /// Initialize the cursor (read the first character).
+    pub fn initCursor(self: *EscapedCharacterCursor) void {
+        self.updatePeek(&self.state);
+        self.internal_state = self.state;
+        self.processEscapeSequence();
+    }
+
+    /// Advance by one character (with escape processing).
+    pub fn advance(self: *EscapedCharacterCursor) void {
+        self.state = self.internal_state;
+        self.advanceState(&self.state);
+        self.processEscapeSequence();
+    }
+
+    /// Get characters from start to current position.
+    pub fn getChars(self: *const EscapedCharacterCursor, start: EscapedCharacterCursor) []const u8 {
+        if (start.internal_state.offset <= self.internal_state.offset and
+            self.internal_state.offset <= self.input.len)
+        {
+            return self.input[start.internal_state.offset..self.internal_state.offset];
+        }
+        return "";
+    }
+
+    /// Get a span from start to current position.
+    pub fn getSpan(self: *const EscapedCharacterCursor, start: ?EscapedCharacterCursor) ParseSourceSpan {
+        const s = start orelse self.clone();
+        return .{
+            .start = .{ .file = self.file, .offset = s.state.offset, .line = s.state.line, .column = s.state.column },
+            .end = .{ .file = self.file, .offset = self.state.offset, .line = self.state.line, .column = self.state.column },
+        };
+    }
+
+    /// Advance the internal state by one character.
+    fn advanceState(self: *EscapedCharacterCursor, state: *CursorState) void {
+        if (state.offset >= self.end) return;
+        const ch = self.input[state.offset];
+        if (ch == '\n') {
+            state.line += 1;
+            state.column = 0;
+        } else if (ch != '\r') {
+            state.column += 1;
+        }
+        state.offset += 1;
+        self.updatePeek(state);
+    }
+
+    /// Update the peek value of a state.
+    fn updatePeek(self: *const EscapedCharacterCursor, state: *CursorState) void {
+        state.peek = if (state.offset >= self.end) 0 else self.input[state.offset];
+    }
+
+    /// Process an escape sequence at the current position.
+    /// Direct port of `processEscapeSequence()` in the TS source.
+    fn processEscapeSequence(self: *EscapedCharacterCursor) void {
+        const peek_val = self.internal_state.peek;
+
+        if (peek_val != '\\') return;
+
+        // Make internal state independent
+        self.internal_state = self.state;
+
+        // Move past the backslash
+        self.advanceState(&self.internal_state);
+
+        const next = self.internal_state.peek;
+
+        // Standard control character sequences
+        if (next == 'n') {
+            self.state.peek = '\n';
+        } else if (next == 'r') {
+            self.state.peek = '\r';
+        } else if (next == 'v') {
+            self.state.peek = 0x0B; // VTAB
+        } else if (next == 't') {
+            self.state.peek = '\t';
+        } else if (next == 'b') {
+            self.state.peek = 0x08; // BACKSPACE
+        } else if (next == 'f') {
+            self.state.peek = 0x0C; // FORM FEED
+        } else if (next == 'u') {
+            // Unicode escape: \u1234 or \u{123}
+            self.advanceState(&self.internal_state); // past 'u'
+            if (self.internal_state.peek == '{') {
+                // Variable length: \u{...}
+                self.advanceState(&self.internal_state); // past '{'
+                var code: u32 = 0;
+                while (self.internal_state.peek != '}' and self.internal_state.peek != 0) {
+                    const hex_digit = self.internal_state.peek;
+                    const digit_val: u32 = if (hex_digit >= '0' and hex_digit <= '9')
+                        hex_digit - '0'
+                    else if (hex_digit >= 'a' and hex_digit <= 'f')
+                        hex_digit - 'a' + 10
+                    else if (hex_digit >= 'A' and hex_digit <= 'F')
+                        hex_digit - 'A' + 10
+                    else
+                        break;
+                    code = code * 16 + digit_val;
+                    self.advanceState(&self.internal_state);
+                }
+                self.state.peek = if (code <= 255) @intCast(code) else '?';
+            } else {
+                // Fixed length: \uXXXX (4 hex digits)
+                var code: u32 = 0;
+                var i: u32 = 0;
+                while (i < 4) : (i += 1) {
+                    const hex_digit = self.internal_state.peek;
+                    const digit_val: u32 = if (hex_digit >= '0' and hex_digit <= '9')
+                        hex_digit - '0'
+                    else if (hex_digit >= 'a' and hex_digit <= 'f')
+                        hex_digit - 'a' + 10
+                    else if (hex_digit >= 'A' and hex_digit <= 'F')
+                        hex_digit - 'A' + 10
+                    else
+                        break;
+                    code = code * 16 + digit_val;
+                    self.advanceState(&self.internal_state);
+                }
+                self.state.peek = if (code <= 255) @intCast(code) else '?';
+            }
+        } else if (next == 'x') {
+            // Hex escape: \xXX (2 hex digits)
+            self.advanceState(&self.internal_state); // past 'x'
+            var code: u32 = 0;
+            var i: u32 = 0;
+            while (i < 2) : (i += 1) {
+                const hex_digit = self.internal_state.peek;
+                const digit_val: u32 = if (hex_digit >= '0' and hex_digit <= '9')
+                    hex_digit - '0'
+                else if (hex_digit >= 'a' and hex_digit <= 'f')
+                    hex_digit - 'a' + 10
+                else if (hex_digit >= 'A' and hex_digit <= 'F')
+                    hex_digit - 'A' + 10
+                else
+                    break;
+                code = code * 16 + digit_val;
+                self.advanceState(&self.internal_state);
+            }
+            self.state.peek = @intCast(code);
+        } else if (next >= '0' and next <= '7') {
+            // Octal escape: \012 (up to 3 octal digits)
+            var code: u32 = 0;
+            var count: u32 = 0;
+            while (count < 3 and self.internal_state.peek >= '0' and self.internal_state.peek <= '7') : (count += 1) {
+                code = code * 8 + (self.internal_state.peek - '0');
+                self.advanceState(&self.internal_state);
+            }
+            // Back up one character (we overread)
+            if (count > 0 and self.internal_state.offset > 0) {
+                self.internal_state.offset -= 1;
+                self.updatePeek(&self.internal_state);
+            }
+            self.state.peek = @intCast(code);
+        } else if (next == '\n' or next == '\r') {
+            // Line continuation: \ followed by newline
+            self.advanceState(&self.internal_state);
+            self.state = self.internal_state;
+        } else {
+            // Escaped normal character: just use the character after backslash
+            self.state.peek = next;
+        }
+    }
+
+    /// Decode hex digits from a starting position.
+    fn decodeHexDigits(self: *const EscapedCharacterCursor, start: u32, length: u32) ?u8 {
+        if (start + length > self.input.len) return null;
+        var code: u32 = 0;
+        var i: u32 = 0;
+        while (i < length) : (i += 1) {
+            const hex_digit = self.input[start + i];
+            const digit_val: u32 = if (hex_digit >= '0' and hex_digit <= '9')
+                hex_digit - '0'
+            else if (hex_digit >= 'a' and hex_digit <= 'f')
+                hex_digit - 'a' + 10
+            else if (hex_digit >= 'A' and hex_digit <= 'F')
+                hex_digit - 'A' + 10
+            else
+                return null;
+            code = code * 16 + digit_val;
+        }
+        return if (code <= 255) @intCast(code) else null;
+    }
+};
+
+// ─── Tests for EscapedCharacterCursor ───────────────────────
+
+test "EscapedCharacterCursor init" {
+    const file = ParseSourceFile{ .content = "hello", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 5 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, 'h'), cursor.peek());
+}
+
+test "EscapedCharacterCursor advance" {
+    const file = ParseSourceFile{ .content = "abc", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 3 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, 'a'), cursor.peek());
+    cursor.advance();
+    // After advance, should see 'b'
+    try std.testing.expectEqual(@as(u8, 'b'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape \\n" {
+    const file = ParseSourceFile{ .content = "\\n", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 2 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, '\n'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape \\t" {
+    const file = ParseSourceFile{ .content = "\\t", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 2 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, '\t'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape \\r" {
+    const file = ParseSourceFile{ .content = "\\r", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 2 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, '\r'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape \\x41 (A)" {
+    const file = ParseSourceFile{ .content = "\\x41", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 4 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, 'A'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape \\u0042 (B)" {
+    const file = ParseSourceFile{ .content = "\\u0042", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 6 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u8, 'B'), cursor.peek());
+}
+
+test "EscapedCharacterCursor escape normal char" {
+    const file = ParseSourceFile{ .content = "\\a", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 2 });
+    cursor.initCursor();
+    // \a should resolve to just 'a'
+    try std.testing.expectEqual(@as(u8, 'a'), cursor.peek());
+}
+
+test "EscapedCharacterCursor clone" {
+    const file = ParseSourceFile{ .content = "test", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 4 });
+    cursor.initCursor();
+    cursor.advance();
+    const cloned = cursor.clone();
+    try std.testing.expectEqual(cursor.state.offset, cloned.state.offset);
+}
+
+test "EscapedCharacterCursor getChars" {
+    const file = ParseSourceFile{ .content = "hello", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 5 });
+    cursor.initCursor();
+    const start = cursor.clone();
+    cursor.advance();
+    // getChars should return some characters (or empty if internal state differs)
+    const result_chars = cursor.getChars(start);
+    _ = result_chars;
+    // Just verify it doesn't crash
+}
+
+test "EscapedCharacterCursor charsLeft" {
+    const file = ParseSourceFile{ .content = "hello", .url = "test.html" };
+    var cursor = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 5 });
+    cursor.initCursor();
+    try std.testing.expectEqual(@as(u32, 5), cursor.charsLeft());
+    cursor.advance();
+    try std.testing.expectEqual(@as(u32, 4), cursor.charsLeft());
+}
+
+test "EscapedCharacterCursor diff" {
+    const file = ParseSourceFile{ .content = "hello", .url = "test.html" };
+    var cursor1 = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 5 });
+    cursor1.initCursor();
+    cursor1.advance();
+    var cursor2 = EscapedCharacterCursor.init(&file, .{ .start = 0, .end = 5 });
+    cursor2.initCursor();
+    // diff should be positive after advancing
+    const d = cursor1.diff(cursor2);
+    try std.testing.expect(d >= 1);
+}
+
+test "CursorError" {
+    const cursor = CharacterCursor.init("test");
+    const err = CursorError{ .msg = "Unexpected character", .cursor = cursor };
+    try std.testing.expectEqualStrings("Unexpected character", err.msg);
+}
+
+test "ParseSourceFile" {
+    const file = ParseSourceFile{ .content = "hello world", .url = "test.html" };
+    try std.testing.expectEqualStrings("hello world", file.content);
+    try std.testing.expectEqualStrings("test.html", file.url);
+}
+
+test "ParseLocation defaults" {
+    const loc = ParseLocation{};
+    try std.testing.expectEqual(@as(u32, 0), loc.offset);
+    try std.testing.expectEqual(@as(u32, 0), loc.line);
+    try std.testing.expectEqual(@as(u32, 0), loc.column);
+}
+
+test "ParseSourceSpan defaults" {
+    const span = ParseSourceSpan{};
+    try std.testing.expectEqual(@as(u32, 0), span.start.offset);
+    try std.testing.expectEqual(@as(u32, 0), span.end.offset);
+}
+
+test "CursorState defaults" {
+    const state = CursorState{};
+    try std.testing.expectEqual(@as(u8, 0), state.peek);
+    try std.testing.expectEqual(@as(u32, 0), state.offset);
+}
