@@ -190,7 +190,7 @@ pub const Parser = struct {
             } else null;
             try bindings.append(.{ .key = key, .value = value });
 
-            if (!self.expect(.Operator, ";") catch false) break;
+            if (!(self.expect(.Operator, ";") catch false)) break;
         }
 
         return .{
@@ -1003,9 +1003,12 @@ pub fn checkSimpleExpression(ast_node: *const Ast) []const []const u8 {
 
 /// Split an interpolation string into strings and expressions.
 pub fn splitInterpolation(allocator: std.mem.Allocator, input: []const u8) !SplitInterpolation {
-    var strings = std.ArrayList([]const u8).init(allocator);
-    var expressions = std.ArrayList([]const u8).init(allocator);
-    var offsets = std.ArrayList(u32).init(allocator);
+    var strings = std.array_list.Managed([]const u8).init(allocator);
+    defer strings.deinit();
+    var expressions = std.array_list.Managed([]const u8).init(allocator);
+    defer expressions.deinit();
+    var offsets = std.array_list.Managed(u32).init(allocator);
+    defer offsets.deinit();
 
     var i: usize = 0;
     var text_start: usize = 0;
