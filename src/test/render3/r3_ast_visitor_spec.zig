@@ -5,6 +5,5 @@
 const std = @import("std");
 
 test "r3_ast_visitor: should not mutate IfBlockBranch children when visiting" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 

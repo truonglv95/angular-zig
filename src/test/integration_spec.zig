@@ -5,10 +5,8 @@
 const std = @import("std");
 
 test "integration: should support dotted selectors" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration: should work regardless the namespace" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 

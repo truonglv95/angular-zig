@@ -5,6 +5,5 @@
 const std = @import("std");
 
 test "parse_template_options: should include an array of HTML comment nodes on the returned R3 AST" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 

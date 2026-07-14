@@ -116,6 +116,7 @@ pub const Parser = struct {
                 return null;
             },
             .Text => return try self.parseText(),
+            .EncodedEntity => return try self.parseEntityAsText(),
             .Comment => return try self.parseComment(),
             .DocType => return try self.parseDocType(),
             .Cdata => return try self.parseCdata(),
@@ -125,6 +126,24 @@ pub const Parser = struct {
                 return null;
             },
         }
+    }
+
+    /// Parse an EncodedEntity token as a Text node.
+    fn parseEntityAsText(self: *Parser) !?*const Node {
+        const tok = self.next();
+        const raw = tok.slice(self.source);
+        // Decode the entity
+        const entity_text = if (tok.entity_value) |ev| ev else raw;
+        const node = try self.arena.create(Node);
+        node.* = .{
+            .kind = .Text,
+            .source_span = ParseSourceSpan.init(tok.index, tok.end, self.source),
+            .data = .{ .Text = .{
+                .value = entity_text,
+                .interpolation_boundaries = &.{},
+            } },
+        };
+        return node;
     }
 
     fn parseElement(self: *Parser) !?*const Node {

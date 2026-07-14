@@ -424,8 +424,9 @@ fn transformRegularElement(ctx: *TransformContext, html_node: *const HtmlNode, e
 // ─── Text Transform ───────────────────────────────────────────
 
 fn transformText(ctx: *TransformContext, html_node: *const HtmlNode, text: TextNode) error{OutOfMemory}!?*R3Node {
-    const trimmed = std.mem.trim(u8, text.value, " \t\n\r");
-    if (trimmed.len == 0 and text.interpolation_boundaries.len == 0) return null;
+    // Don't trim — preserve whitespace text nodes (TS preserves them too)
+    // Only skip truly empty strings
+    if (text.value.len == 0 and text.interpolation_boundaries.len == 0) return null;
 
     // Check for interpolations
     if (text.interpolation_boundaries.len > 0) {

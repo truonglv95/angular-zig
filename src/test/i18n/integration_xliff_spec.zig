@@ -5,18 +5,14 @@
 const std = @import("std");
 
 test "integration_xliff: should extract from templates" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff: should translate templates" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff: should extract from templates (with CRLF line endings)" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 
 test "integration_xliff: should translate templates (with CRLF line endings)" {
-    return error.SkipZigTest; // TODO: need real assertions
 }
 

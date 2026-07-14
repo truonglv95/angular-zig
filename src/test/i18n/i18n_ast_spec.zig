@@ -51,16 +51,16 @@ test "i18n_ast: should serialize text with interpolations" {
 
 test "i18n_ast: should serialize HTML elements" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //     // TS: 'abc <span>foo</span><span>bar</span> def'
-    //     //     → 'abc {$START_TAG_SPAN}foo{$CLOSE_TAG_SPAN}{$START_TAG_SPAN}bar{$CLOSE_TAG_SPAN} def'
-    //     const messages = try extractMessages("<div i18n>abc <span>foo</span><span>bar</span> def</div>");
-    //     try std.testing.expectEqual(@as(usize, 1), messages.len);
-    //     const serialized = try serializeMsg(messages[0]);
-    //     defer allocator.free(serialized);
-    //     try std.testing.expect(std.mem.indexOf(u8, serialized, "abc") != null);
-    //     try std.testing.expect(std.mem.indexOf(u8, serialized, "foo") != null);
-    //     try std.testing.expect(std.mem.indexOf(u8, serialized, "bar") != null);
-    //     try std.testing.expect(std.mem.indexOf(u8, serialized, "def") != null);
+    //         // TS: 'abc <span>foo</span><span>bar</span> def'
+    //         //     → 'abc {$START_TAG_SPAN}foo{$CLOSE_TAG_SPAN}{$START_TAG_SPAN}bar{$CLOSE_TAG_SPAN} def'
+    //         const messages = try extractMessages("<div i18n>abc <span>foo</span><span>bar</span> def</div>");
+    //         try std.testing.expectEqual(@as(usize, 1), messages.len);
+    //         const serialized = try serializeMsg(messages[0]);
+    //         defer allocator.free(serialized);
+    //         try std.testing.expect(std.mem.indexOf(u8, serialized, "abc") != null);
+    //         try std.testing.expect(std.mem.indexOf(u8, serialized, "foo") != null);
+    //         try std.testing.expect(std.mem.indexOf(u8, serialized, "bar") != null);
+    //         try std.testing.expect(std.mem.indexOf(u8, serialized, "def") != null);
 }
 
 test "i18n_ast: should serialize ICU placeholders" {
