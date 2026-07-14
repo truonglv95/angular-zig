@@ -5,34 +5,42 @@
 const std = @import("std");
 
 test "digest: must return the ID if it" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should work on empty strings" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should returns the sha1 of " {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should returns the sha1 of unicode strings" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should support arbitrary string size" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should work on well known inputs w/o meaning" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should work on well known inputs with meaning" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "digest: should support arbitrary string size (dup 1)" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 

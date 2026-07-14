@@ -5,6 +5,7 @@
 const std = @import("std");
 
 test "i18n_html_parser: should parse the translations only once" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 

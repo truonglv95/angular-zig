@@ -5,46 +5,57 @@
 const std = @import("std");
 
 test "translation_bundle: should translate a plain text" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should translate html-like plain text" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should translate a message with placeholder" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should translate a message with placeholder referencing messages" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should use the original message or throw when a translation is not found" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should report unknown placeholders" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should report missing translation" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should report missing translation with MissingTranslationStrategy.Warning" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should not report missing translation with MissingTranslationStrategy.Ignore" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should report missing referenced message" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
 test "translation_bundle: should report invalid translated html" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 

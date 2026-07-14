@@ -5,6 +5,7 @@
 const std = @import("std");
 
 test "r3_ast_visitor: should not mutate IfBlockBranch children when visiting" {
-    try std.testing.expect(true);
+    return error.SkipZigTest; // TODO: Module API not yet fully ported
+    // try std.testing.expect(true);
 }
 
