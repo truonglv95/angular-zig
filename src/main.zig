@@ -164,6 +164,9 @@ test {
     _ = @import("render3/view/api.zig");
     _ = @import("render3/view/util.zig");
     _ = @import("render3/view/template.zig");
+    _ = @import("render3/view/i18n/meta.zig");
+    _ = @import("render3/view/i18n/localize_utils.zig");
+    _ = @import("render3/view/i18n/get_msg_utils.zig");
     _ = @import("render3/partial/api.zig");
     _ = @import("render3/partial/directive.zig");
     _ = @import("render3/partial/component.zig");
