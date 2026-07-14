@@ -130,19 +130,19 @@ test "html_whitespaces: should replace multiple whitespaces with one space" {
 }
 
 test "html_whitespaces: should remove whitespace inside of blocks" {
-    return error.SkipZigTest; // TODO: Block parsing not fully supported
-    // const allocator = std.testing.allocator;
-    // var arena = arena_mod.AstArena.init(allocator);
-    // defer arena.deinit();
-    // const result = try parseHtml(allocator, &arena, "@if (cond) {<br>  <br>\t<br>\n<br>}");
-    // var found_block = false;
-    // for (result.root_nodes) |node| {
-    //     if (node.kind == .Block) {
-    //         found_block = true;
-    //         break;
+    return error.SkipZigTest; // TODO: Lexer gap
+    //     const allocator = std.testing.allocator;
+    //     var arena = arena_mod.AstArena.init(allocator);
+    //     defer arena.deinit();
+    //     const result = try parseHtml(allocator, &arena, "@if (cond) {<br>  <br>\t<br>\n<br>}");
+    //     var found_block = false;
+    //     for (result.root_nodes) |node| {
+    //         if (node.kind == .Block) {
+    //             found_block = true;
+    //             break;
+    //         }
     //     }
-    // }
-    // try std.testing.expect(found_block);
+    //     try std.testing.expect(found_block);
 }
 
 test "html_whitespaces: should not replace &nbsp;" {

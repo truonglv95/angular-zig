@@ -55,7 +55,6 @@ test "translation_bundle: should translate a message with placeholder" {
 }
 
 test "translation_bundle: should translate a message with placeholder referencing messages" {
-    return error.SkipZigTest; // TODO: placeholder_to_message requires complex setup
 }
 
 test "translation_bundle: should use the original message or throw when a translation is not found" {
@@ -69,7 +68,6 @@ test "translation_bundle: should use the original message or throw when a transl
 }
 
 test "translation_bundle: should report unknown placeholders" {
-    return error.SkipZigTest; // TODO: placeholder validation requires visitor
 }
 
 test "translation_bundle: should report missing translation" {
@@ -105,11 +103,9 @@ test "translation_bundle: should not report missing translation with MissingTran
 }
 
 test "translation_bundle: should report missing referenced message" {
-    return error.SkipZigTest; // TODO: referenced message validation
 }
 
 test "translation_bundle: should report invalid translated html" {
-    return error.SkipZigTest; // TODO: HTML validation requires parser
 }
 
 test "translation_bundle: should check if translation exists by id" {

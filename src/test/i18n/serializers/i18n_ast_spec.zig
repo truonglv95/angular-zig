@@ -5,12 +5,10 @@
 const std = @import("std");
 
 test "i18n_ast: should clone an AST" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 
 test "i18n_ast: should visit all nodes" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 

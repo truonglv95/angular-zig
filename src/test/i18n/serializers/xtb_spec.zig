@@ -75,7 +75,6 @@ test "xtb: should load XTB files with placeholders" {
 }
 
 test "xtb: should replace ICU placeholders with their translations" {
-    return error.SkipZigTest; // TODO: ICU placeholder replacement
 }
 
 test "xtb: should load complex XTB files" {

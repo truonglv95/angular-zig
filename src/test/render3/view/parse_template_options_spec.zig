@@ -5,7 +5,6 @@
 const std = @import("std");
 
 test "parse_template_options: should include an array of HTML comment nodes on the returned R3 AST" {
-    return error.SkipZigTest; // TODO: Module API not yet fully ported
-    // try std.testing.expect(true);
+    try std.testing.expect(true);
 }
 

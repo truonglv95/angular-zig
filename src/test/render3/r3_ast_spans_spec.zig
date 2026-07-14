@@ -51,8 +51,8 @@ fn expectFirstNodeKind(allocator: Allocator, source: []const u8, kind: r3_ast.No
 
 test "r3_ast_spans: is correct for text nodes" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     try expectNodeCount(std.testing.allocator, "a", 1);
-    //     try expectFirstNodeKind(std.testing.allocator, "a", .Text);
+    //         try expectNodeCount(std.testing.allocator, "a", 1);
+    //         try expectFirstNodeKind(std.testing.allocator, "a", .Text);
 }
 
 test "r3_ast_spans: is correct for elements with attributes" {
@@ -155,7 +155,7 @@ test "r3_ast_spans: is correct for self-closing elements" {
 
 test "r3_ast_spans: is correct for comments" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
+    //         try expectNodeCount(std.testing.allocator, "<!-- comment -->", 0);
 }
 
 test "r3_ast_spans: is correct for ng-content" {
@@ -204,7 +204,7 @@ test "r3_ast_spans: is correct for @if with @else if" {
 
 test "r3_ast_spans: is correct for text with interpolation" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     try expectNodeCount(std.testing.allocator, "before {{a}} after", 3);
+    //         try expectNodeCount(std.testing.allocator, "before {{a}} after", 3);
 }
 
 test "r3_ast_spans: is correct for element with text" {
@@ -233,7 +233,7 @@ test "r3_ast_spans: is correct for deeply nested structure" {
 
 test "r3_ast_spans: is correct for text with entities" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     try expectNodeCount(std.testing.allocator, "&amp;", 1);
+    //         try expectNodeCount(std.testing.allocator, "&amp;", 1);
 }
 
 test "r3_ast_spans: is correct for CDATA" {
@@ -302,9 +302,9 @@ test "r3_ast_spans: is correct for multiple templates" {
 
 test "r3_ast_spans: is correct for text node spans" {
     return error.SkipZigTest; // TODO: Lexer gap
-    //     var arena = arena_mod.AstArena.init(std.testing.allocator);
-    //     defer arena.deinit();
-    //     const result = try parseR3(std.testing.allocator, &arena, "abc");
-    //     try std.testing.expectEqual(@as(usize, 1), result.nodes.len);
-    //     try std.testing.expectEqual(r3_ast.NodeKind.Text, result.nodes[0].kind);
+    //         var arena = arena_mod.AstArena.init(std.testing.allocator);
+    //         defer arena.deinit();
+    //         const result = try parseR3(std.testing.allocator, &arena, "abc");
+    //         try std.testing.expectEqual(@as(usize, 1), result.nodes.len);
+    //         try std.testing.expectEqual(r3_ast.NodeKind.Text, result.nodes[0].kind);
 }
