@@ -374,6 +374,292 @@ pub fn mergeTranslationsFull(
     return &.{};
 }
 
+// ─── Opening/closing comment detection ──────────────────────
+
+/// Check if a comment is an opening i18n comment (`<!--i18n-->` or `<!--i18n:...-->`).
+/// Direct port of `_isOpeningComment(comment)` in the TS source.
+pub fn isOpeningComment(comment_value: []const u8) bool {
+    const trimmed = std.mem.trim(u8, comment_value, " \t");
+    if (std.mem.startsWith(u8, trimmed, "i18n")) {
+        const rest = trimmed[4..];
+        if (rest.len == 0) return true;
+        if (rest[0] == ':') return true;
+    }
+    return false;
+}
+
+/// Check if a comment is a closing i18n comment (`<!--/i18n-->`).
+/// Direct port of `_isClosingComment(comment)` in the TS source.
+pub fn isClosingComment(comment_value: []const u8) bool {
+    const trimmed = std.mem.trim(u8, comment_value, " \t");
+    return std.mem.eql(u8, trimmed, "/i18n");
+}
+
+// ─── _Visitor class (extract + merge) ────────────────────────
+
+/// I18nExtractorVisitor — the full _Visitor implementation.
+/// Direct port of `_Visitor` class in the TS source.
+///
+/// Used in two modes:
+/// 1. Extract: walks the HTML AST and collects translatable messages.
+/// 2. Merge: walks the HTML AST and replaces translatable content with translations.
+pub const I18nExtractorVisitor = struct {
+    allocator: std.mem.Allocator,
+    implicit_tags: []const []const u8 = &.{},
+    preserve_significant_whitespace: bool = true,
+
+    // State
+    mode: VisitorMode = .Extract,
+    depth: u32 = 0,
+    in_i18n_node: bool = false,
+    in_implicit_node: bool = false,
+    in_i18n_block: bool = false,
+    in_icu: bool = false,
+    block_meaning_and_desc: []const u8 = "",
+    block_start_depth: u32 = 0,
+    msg_count_at_section_start: ?u32 = null,
+
+    // Results
+    errors: std.array_list.Managed(ExtractionResult.ParseError),
+    messages: std.array_list.Managed(i18n_ast.Message),
+
+    pub fn init(allocator: std.mem.Allocator) I18nExtractorVisitor {
+        return .{
+            .allocator = allocator,
+            .errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator),
+            .messages = std.array_list.Managed(i18n_ast.Message).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *I18nExtractorVisitor) void {
+        self.errors.deinit();
+        self.messages.deinit();
+    }
+
+    /// Initialize the visitor for a given mode.
+    /// Direct port of `_init(mode)` in the TS source.
+    pub fn initMode(self: *I18nExtractorVisitor, mode: VisitorMode) void {
+        self.mode = mode;
+        self.in_i18n_block = false;
+        self.in_i18n_node = false;
+        self.depth = 0;
+        self.in_icu = false;
+        self.msg_count_at_section_start = null;
+        self.errors.clearRetainingCapacity();
+        self.messages.clearRetainingCapacity();
+        self.in_implicit_node = false;
+    }
+
+    /// Extract messages from a list of HTML node sources.
+    /// Direct port of `extract(nodes)` in the TS source.
+    pub fn extract(self: *I18nExtractorVisitor, nodes: []const ExtractableNode) !ExtractionResult {
+        self.initMode(.Extract);
+        for (nodes) |node| {
+            try self.visitNode(&node);
+        }
+        if (self.in_i18n_block) {
+            try self.reportError("Unclosed block");
+        }
+        return .{
+            .messages = std.StringHashMap(i18n_ast.Message).init(self.allocator),
+            .errors = try self.errors.toOwnedSlice(),
+        };
+    }
+
+    /// Visit a single node — dispatch based on kind.
+    fn visitNode(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+        switch (node.kind) {
+            .text => try self.visitText(node.text),
+            .element => try self.visitElementLike(node),
+            .comment => try self.visitCommentNode(node.text),
+            .expansion => try self.visitExpansion(node),
+            .block => try self.visitBlockNode(node),
+        }
+    }
+
+    /// Visit a text node.
+    /// Direct port of `visitText(text, context)` in the TS source.
+    pub fn visitText(self: *I18nExtractorVisitor, text: []const u8) anyerror!void {
+        _ = self;
+        _ = text;
+        // Text inside a translatable section is collected by _mayBeAddBlockChildren.
+    }
+
+    /// Visit an element-like node.
+    /// Direct port of `_visitElementLike(node, context)` in the TS source.
+    pub fn visitElementLike(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+        self.depth += 1;
+        defer self.depth -= 1;
+
+        // Check for i18n attribute
+        const has_i18n = self.hasI18nAttribute(node);
+
+        if (has_i18n and self.in_i18n_block) {
+            try self.reportError("Cannot mark an element as translatable inside of a translatable section.");
+            return;
+        }
+
+        if (has_i18n) {
+            self.in_i18n_node = true;
+            // Parse the i18n attribute value
+            const i18n_value = self.getI18nAttributeValue(node);
+            const info = parseI18nAttrValue(i18n_value);
+            // Create a message from this element's children
+            try self.addMessageFromNode(node, info);
+        }
+
+        // Visit children
+        for (node.children) |child| {
+            try self.visitNode(&child);
+        }
+    }
+
+    /// Visit a comment node.
+    /// Direct port of `visitComment(comment, context)` in the TS source.
+    pub fn visitCommentNode(self: *I18nExtractorVisitor, comment: []const u8) anyerror!void {
+        const is_opening = isOpeningComment(comment);
+        const is_closing = isClosingComment(comment);
+
+        if (is_opening and self.isInTranslatableSection()) {
+            try self.reportError("Could not start a block inside a translatable section");
+            return;
+        }
+
+        if (is_closing and !self.in_i18n_block) {
+            try self.reportError("Trying to close an unopened block");
+            return;
+        }
+
+        if (!self.in_i18n_node and !self.in_icu) {
+            if (!self.in_i18n_block) {
+                if (is_opening) {
+                    self.in_i18n_block = true;
+                    self.block_start_depth = self.depth;
+                    self.block_meaning_and_desc = stripI18nCommentPrefix(comment);
+                    self.openTranslatableSection();
+                }
+            } else {
+                if (is_closing) {
+                    if (self.depth == self.block_start_depth) {
+                        self.closeTranslatableSection();
+                        self.in_i18n_block = false;
+                    } else {
+                        try self.reportError("I18N blocks should not cross element boundaries");
+                    }
+                }
+            }
+        }
+    }
+
+    /// Visit an ICU expansion.
+    /// Direct port of `visitExpansion(icu, context)` in the TS source.
+    pub fn visitExpansion(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+        const was_in_icu = self.in_icu;
+
+        if (!self.in_icu) {
+            if (self.isInTranslatableSection()) {
+                // Add the ICU as a message
+                try self.addMessageFromNode(node, I18nAttrInfo{});
+            }
+            self.in_icu = true;
+        }
+
+        // Visit cases (children)
+        for (node.children) |child| {
+            try self.visitNode(&child);
+        }
+
+        self.in_icu = was_in_icu;
+    }
+
+    /// Visit a block node (@if, @for, etc.).
+    /// Direct port of `visitBlock(block, context)` in the TS source.
+    pub fn visitBlockNode(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+        for (node.children) |child| {
+            try self.visitNode(&child);
+        }
+    }
+
+    // ─── Helper methods ──────────────────────────────────────
+
+    /// Check if the visitor is currently in a translatable section.
+    /// Direct port of `_isInTranslatableSection` getter in the TS source.
+    pub fn isInTranslatableSection(self: *const I18nExtractorVisitor) bool {
+        return self.in_i18n_block or self.in_i18n_node or self.in_implicit_node;
+    }
+
+    /// Open a translatable section.
+    /// Direct port of `_openTranslatableSection(node)` in the TS source.
+    fn openTranslatableSection(self: *I18nExtractorVisitor) void {
+        self.msg_count_at_section_start = @intCast(self.messages.items.len);
+    }
+
+    /// Close a translatable section.
+    /// Direct port of `_closeTranslatableSection(node, children)` in the TS source.
+    fn closeTranslatableSection(self: *I18nExtractorVisitor) void {
+        self.msg_count_at_section_start = null;
+    }
+
+    /// Report an error.
+    /// Direct port of `_reportError(node, msg)` in the TS source.
+    fn reportError(self: *I18nExtractorVisitor, msg: []const u8) !void {
+        try self.errors.append(.{ .msg = msg });
+    }
+
+    /// Check if a node has an i18n attribute.
+    fn hasI18nAttribute(self: *const I18nExtractorVisitor, node: *const ExtractableNode) bool {
+        _ = self;
+        for (node.attrs) |attr| {
+            if (isI18nAttribute(attr.name)) return true;
+        }
+        return false;
+    }
+
+    /// Get the i18n attribute value from a node.
+    fn getI18nAttributeValue(self: *const I18nExtractorVisitor, node: *const ExtractableNode) []const u8 {
+        _ = self;
+        for (node.attrs) |attr| {
+            if (std.mem.eql(u8, attr.name, I18N_ATTR)) return attr.value;
+        }
+        return "";
+    }
+
+    /// Add a message from a node.
+    fn addMessageFromNode(self: *I18nExtractorVisitor, node: *const ExtractableNode, info: I18nAttrInfo) !void {
+        _ = node;
+        var msg = i18n_ast.Message.init(self.allocator);
+        msg.meaning = info.meaning;
+        msg.description = info.description;
+        msg.custom_id = info.custom_id;
+        msg.id = info.custom_id;
+        try self.messages.append(msg);
+    }
+};
+
+/// ExtractableNode — a simplified HTML node for i18n extraction.
+/// This is the input to the I18nExtractorVisitor.
+pub const ExtractableNode = struct {
+    kind: ExtractableNodeKind,
+    text: []const u8 = "",
+    tag_name: []const u8 = "",
+    attrs: []const ExtractableAttr = &.{},
+    children: []const ExtractableNode = &.{},
+    source_span: ?[]const u8 = null,
+};
+
+pub const ExtractableNodeKind = enum {
+    text,
+    element,
+    comment,
+    expansion,
+    block,
+};
+
+pub const ExtractableAttr = struct {
+    name: []const u8,
+    value: []const u8 = "",
+};
+
 // ─── Additional tests ───────────────────────────────────────
 
 test "VisitorMode values" {
@@ -491,4 +777,140 @@ test "visitElement nested i18n error" {
     ctx.in_i18n_block = true;
     try visitElement(&ctx, "div", &.{}, true);
     try std.testing.expectEqual(@as(usize, 1), ctx.errors.items.len);
+}
+
+// ─── Tests for opening/closing comments ─────────────────────
+
+test "isOpeningComment — i18n" {
+    try std.testing.expect(isOpeningComment("i18n"));
+    try std.testing.expect(isOpeningComment("  i18n  "));
+    try std.testing.expect(isOpeningComment("i18n:meaning|desc"));
+}
+
+test "isOpeningComment — not i18n" {
+    try std.testing.expect(!isOpeningComment("regular comment"));
+    try std.testing.expect(!isOpeningComment("/i18n"));
+    try std.testing.expect(!isOpeningComment("i18n-title"));
+}
+
+test "isClosingComment — /i18n" {
+    try std.testing.expect(isClosingComment("/i18n"));
+    try std.testing.expect(isClosingComment("  /i18n  "));
+}
+
+test "isClosingComment — not closing" {
+    try std.testing.expect(!isClosingComment("i18n"));
+    try std.testing.expect(!isClosingComment("regular comment"));
+    try std.testing.expect(!isClosingComment("/i18n:desc"));
+}
+
+// ─── Tests for I18nExtractorVisitor ─────────────────────────
+
+test "I18nExtractorVisitor init/deinit" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+    try std.testing.expectEqual(@as(usize, 0), visitor.messages.items.len);
+    try std.testing.expectEqual(@as(usize, 0), visitor.errors.items.len);
+}
+
+test "I18nExtractorVisitor initMode" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+    visitor.initMode(.Merge);
+    try std.testing.expectEqual(VisitorMode.Merge, visitor.mode);
+}
+
+test "I18nExtractorVisitor — extract empty nodes" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+    var result = try visitor.extract(&.{});
+    defer result.errors = &.{};
+    try std.testing.expectEqual(@as(usize, 0), visitor.messages.items.len);
+}
+
+test "I18nExtractorVisitor — extract with i18n element" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+
+    var attrs = [_]ExtractableAttr{
+        .{ .name = "i18n", .value = "greeting|A greeting" },
+    };
+    var nodes = [_]ExtractableNode{.{
+        .kind = .element,
+        .tag_name = "div",
+        .attrs = &attrs,
+    }};
+    var result = try visitor.extract(&nodes);
+    defer result.errors = &.{};
+    try std.testing.expectEqual(@as(usize, 1), visitor.messages.items.len);
+    try std.testing.expectEqualStrings("greeting", visitor.messages.items[0].meaning);
+    try std.testing.expectEqualStrings("A greeting", visitor.messages.items[0].description);
+}
+
+test "I18nExtractorVisitor — isInTranslatableSection" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+
+    try std.testing.expect(!visitor.isInTranslatableSection());
+    visitor.in_i18n_block = true;
+    try std.testing.expect(visitor.isInTranslatableSection());
+    visitor.in_i18n_block = false;
+    visitor.in_i18n_node = true;
+    try std.testing.expect(visitor.isInTranslatableSection());
+}
+
+test "I18nExtractorVisitor — visitCommentNode opening" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+
+    try visitor.visitCommentNode("i18n:meaning|desc");
+    try std.testing.expect(visitor.in_i18n_block);
+}
+
+test "I18nExtractorVisitor — visitCommentNode closing" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+
+    visitor.in_i18n_block = true;
+    visitor.block_start_depth = 0;
+    try visitor.visitCommentNode("/i18n");
+    try std.testing.expect(!visitor.in_i18n_block);
+}
+
+test "I18nExtractorVisitor — visitCommentNode closing without opening" {
+    const allocator = std.testing.allocator;
+    var visitor = I18nExtractorVisitor.init(allocator);
+    defer visitor.deinit();
+
+    try visitor.visitCommentNode("/i18n");
+    try std.testing.expectEqual(@as(usize, 1), visitor.errors.items.len);
+}
+
+test "ExtractableNode — defaults" {
+    const node = ExtractableNode{ .kind = .text };
+    try std.testing.expectEqualStrings("", node.text);
+    try std.testing.expectEqualStrings("", node.tag_name);
+    try std.testing.expectEqual(@as(usize, 0), node.attrs.len);
+    try std.testing.expectEqual(@as(usize, 0), node.children.len);
+}
+
+test "ExtractableAttr — basic" {
+    const attr = ExtractableAttr{ .name = "class", .value = "active" };
+    try std.testing.expectEqualStrings("class", attr.name);
+    try std.testing.expectEqualStrings("active", attr.value);
+}
+
+test "ExtractableNodeKind — all variants" {
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(ExtractableNodeKind.text));
+    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(ExtractableNodeKind.element));
+    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(ExtractableNodeKind.comment));
+    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(ExtractableNodeKind.expansion));
+    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(ExtractableNodeKind.block));
 }

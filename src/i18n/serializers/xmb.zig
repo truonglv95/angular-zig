@@ -154,9 +154,9 @@ fn writeNode(buf: *std.array_list.Managed(u8), node: *const i18n_ast.Node) !void
             try buf.appendSlice("<ph name=\"");
             try xml_helper.writeEscaped(buf, ph.name);
             try buf.appendSlice("\">");
-            if (ph.expression.len > 0) {
+            if (ph.value.len > 0) {
                 try buf.appendSlice("<ex>");
-                try xml_helper.writeEscaped(buf, ph.expression);
+                try xml_helper.writeEscaped(buf, ph.value);
                 try buf.appendSlice("</ex>");
             }
             try buf.appendSlice("</ph>");
