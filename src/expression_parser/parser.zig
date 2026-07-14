@@ -1245,7 +1245,12 @@ pub const Parser = struct {
         const got_paren = self.expect(.Operator, ")") catch false;
         if (!got_paren) {
             // Missing closing paren — report error
-            try self.errorAt(self.current().index, "Unexpected end of expression");
+            // Check if we hit EOF or another token
+            if (self.at(.EOF)) {
+                try self.errorAt(self.current().index, "Unexpected end of expression");
+            } else {
+                try self.errorAt(self.current().index, "Unexpected token");
+            }
         }
         const node = try self.arena.create(Ast);
         node.* = .{
