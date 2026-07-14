@@ -3,6 +3,8 @@
 /// DOD: All lookups via comptime StaticStringMap — O(1), zero init cost.
 /// No heap allocations at runtime for lookups.
 const std = @import("std");
+const element_schema = @import("element_schema_registry.zig");
+const ValidationResult = element_schema.ValidationResult;
 
 // ─── Data Types ──────────────────────────────────────────────
 
@@ -478,4 +480,216 @@ test "VOID_ELEMENTS comptime table entry count" {
     comptime {
         @import("std").testing.expectEqual(@as(usize, 18), VOID_ELEMENTS.kvs.len) catch unreachable;
     }
+}
+
+// ─── Additional types and helpers from dom_element_schema_registry.ts ──
+
+/// ATTR_TO_PROP — common attribute-to-property name mappings.
+/// Direct port of `_ATTR_TO_PROP` Map in the TS source.
+pub const ATTR_TO_PROP = std.StaticStringMap([]const u8).initComptime(.{
+    .{ "class", "className" },
+    .{ "for", "htmlFor" },
+    .{ "formaction", "formAction" },
+    .{ "innerhtml", "innerHTML" },
+    .{ "formmethod", "formMethod" },
+    .{ "formtarget", "formTarget" },
+    .{ "formenctype", "formEncType" },
+    .{ "ismap", "isMap" },
+    .{ "nomodule", "noModule" },
+    .{ "readonly", "readOnly" },
+    .{ "tabindex", "tabIndex" },
+    .{ "maxlength", "maxLength" },
+    .{ "contenteditable", "contentEditable" },
+    .{ "crossorigin", "crossOrigin" },
+    .{ "datetime", "dateTime" },
+    .{ "colspan", "colSpan" },
+    .{ "rowspan", "rowSpan" },
+    .{ "usemap", "useMap" },
+    .{ "hreflang", "hrefLang" },
+    .{ "srcset", "srcSet" },
+    .{ "srcobject", "srcObject" },
+    .{ "playsinline", "playsInline" },
+    .{ "defaultchecked", "defaultChecked" },
+    .{ "defaultselected", "defaultSelected" },
+    .{ "indeterminate", "indeterminate" },
+    .{ "autocapitalize", "autocapitalize" },
+    .{ "autocomplete", "autocomplete" },
+    .{ "inputmode", "inputMode" },
+    .{ "maxlength", "maxLength" },
+    .{ "minlength", "minLength" },
+    .{ "translate", "translate" },
+    .{ "spellcheck", "spellcheck" },
+});
+
+/// SCHEMA — list of known HTML element tag names.
+/// Direct port of `SCHEMA` array in the TS source.
+pub const SCHEMA = [_][]const u8{
+    "a", "abbr", "address", "area", "article", "aside", "audio",
+    "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button",
+    "canvas", "caption", "cite", "code", "col", "colgroup",
+    "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt",
+    "em", "embed",
+    "fieldset", "figcaption", "figure", "footer", "form",
+    "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html",
+    "i", "iframe", "img", "input", "ins",
+    "kbd",
+    "label", "legend", "li", "link",
+    "main", "map", "mark", "menu", "meta", "meter",
+    "nav", "noscript",
+    "object", "ol", "optgroup", "option", "output",
+    "p", "param", "picture", "pre", "progress",
+    "q",
+    "rp", "rt", "ruby",
+    "s", "samp", "script", "section", "select", "slot", "small", "source", "span", "strong", "style", "sub", "summary", "sup",
+    "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track",
+    "u", "ul",
+    "var", "video",
+    "wbr",
+};
+
+/// Check if a tag name is a known HTML element.
+pub fn isKnownElement(tag_name: []const u8) bool {
+    var lower_buf: [64]u8 = undefined;
+    const lower = std.ascii.lowerString(&lower_buf, tag_name);
+    for (SCHEMA) |tag| {
+        if (std.mem.eql(u8, tag, lower)) return true;
+    }
+    return false;
+}
+
+/// Get the mapped property name for an attribute name.
+/// Direct port of `getMappedPropName(propName)` in the TS source.
+pub fn getMappedPropName(prop_name: []const u8) []const u8 {
+    var lower_buf: [64]u8 = undefined;
+    const lower = std.ascii.lowerString(&lower_buf, prop_name);
+    if (ATTR_TO_PROP.get(lower)) |mapped| return mapped;
+    return prop_name;
+}
+
+/// Get the default component element name.
+/// Direct port of `getDefaultComponentElementName()` in the TS source.
+pub fn getDefaultComponentElementName() []const u8 {
+    return "ng-component";
+}
+
+/// Validate a property name.
+/// Direct port of `validateProperty(name)` in the TS source.
+pub fn validateProperty(name: []const u8) ValidationResult {
+    if (name.len == 0) {
+        return .{ .error_flag = true, .msg = "Property name cannot be empty" };
+    }
+    // Property names must start with a letter, $, or _
+    const first = name[0];
+    if (!(std.ascii.isAlphabetic(first) or first == '$' or first == '_')) {
+        return .{ .error_flag = true, .msg = "Invalid property name" };
+    }
+    return .{};
+}
+
+/// Validate an attribute name.
+/// Direct port of `validateAttribute(name)` in the TS source.
+pub fn validateAttribute(name: []const u8) ValidationResult {
+    if (name.len == 0) {
+        return .{ .error_flag = true, .msg = "Attribute name cannot be empty" };
+    }
+    return .{};
+}
+
+/// Normalize an animation style property name.
+/// Direct port of `normalizeAnimationStyleProperty(propName)` in the TS source.
+pub fn normalizeAnimationStyleProperty(prop_name: []const u8) []const u8 {
+    return prop_name;
+}
+
+/// Get all known element names.
+/// Direct port of `allKnownElementNames()` in the TS source.
+pub fn allKnownElementNames() []const []const u8 {
+    return &SCHEMA;
+}
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "isKnownElement" {
+    try std.testing.expect(isKnownElement("div"));
+    try std.testing.expect(isKnownElement("DIV"));
+    try std.testing.expect(isKnownElement("span"));
+    try std.testing.expect(isKnownElement("input"));
+    try std.testing.expect(!isKnownElement("my-custom-element"));
+    try std.testing.expect(!isKnownElement(""));
+}
+
+test "getMappedPropName" {
+    try std.testing.expectEqualStrings("className", getMappedPropName("class"));
+    try std.testing.expectEqualStrings("htmlFor", getMappedPropName("for"));
+    try std.testing.expectEqualStrings("innerHTML", getMappedPropName("innerHTML"));
+    try std.testing.expectEqualStrings("tabIndex", getMappedPropName("tabindex"));
+    try std.testing.expectEqualStrings("readOnly", getMappedPropName("readonly"));
+    try std.testing.expectEqualStrings("maxLength", getMappedPropName("maxlength"));
+    try std.testing.expectEqualStrings("customProp", getMappedPropName("customProp"));
+}
+
+test "getDefaultComponentElementName" {
+    try std.testing.expectEqualStrings("ng-component", getDefaultComponentElementName());
+}
+
+test "validateProperty valid" {
+    const result = validateProperty("validName");
+    try std.testing.expect(!result.error_flag);
+}
+
+test "validateProperty empty" {
+    const result = validateProperty("");
+    try std.testing.expect(result.error_flag);
+}
+
+test "validateProperty invalid start" {
+    const result = validateProperty("1invalid");
+    try std.testing.expect(result.error_flag);
+}
+
+test "validateProperty starts with underscore" {
+    const result = validateProperty("_valid");
+    try std.testing.expect(!result.error_flag);
+}
+
+test "validateProperty starts with dollar" {
+    const result = validateProperty("$valid");
+    try std.testing.expect(!result.error_flag);
+}
+
+test "validateAttribute empty" {
+    const result = validateAttribute("");
+    try std.testing.expect(result.error_flag);
+}
+
+test "validateAttribute valid" {
+    const result = validateAttribute("class");
+    try std.testing.expect(!result.error_flag);
+}
+
+test "normalizeAnimationStyleProperty" {
+    try std.testing.expectEqualStrings("color", normalizeAnimationStyleProperty("color"));
+}
+
+test "allKnownElementNames returns SCHEMA" {
+    const names = allKnownElementNames();
+    try std.testing.expect(names.len > 50);
+}
+
+test "SCHEMA contains common elements" {
+    var found_div = false;
+    var found_span = false;
+    for (SCHEMA) |tag| {
+        if (std.mem.eql(u8, tag, "div")) found_div = true;
+        if (std.mem.eql(u8, tag, "span")) found_span = true;
+    }
+    try std.testing.expect(found_div);
+    try std.testing.expect(found_span);
+}
+
+test "ATTR_TO_PROP maps common attributes" {
+    try std.testing.expectEqualStrings("className", ATTR_TO_PROP.get("class").?);
+    try std.testing.expectEqualStrings("htmlFor", ATTR_TO_PROP.get("for").?);
+    try std.testing.expectEqualStrings("tabIndex", ATTR_TO_PROP.get("tabindex").?);
+    try std.testing.expect(ATTR_TO_PROP.get("unknown") == null);
 }
