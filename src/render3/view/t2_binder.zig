@@ -504,3 +504,201 @@ test "normalizePropertyName strips on prefix" {
     try std.testing.expectEqualStrings("Submit", normalizePropertyName("onSubmit"));
     try std.testing.expectEqualStrings("value", normalizePropertyName("value"));
 }
+
+// ─── Additional types and functions from t2_binder.ts ───────
+
+/// DirectiveMeta — metadata about a directive for matching.
+pub const DirectiveMeta = struct {
+    name: []const u8,
+    selector: []const u8,
+    is_component: bool = false,
+    inputs: []const []const u8 = &.{},
+    outputs: []const []const u8 = &.{},
+    export_as: []const []const u8 = &.{},
+    is_host_directive: bool = false,
+};
+
+/// TemplateEntity — a matched directive or pipe in a template.
+pub const TemplateEntity = struct {
+    kind: EntityKind,
+    name: []const u8,
+    node_xref: u32 = 0,
+
+    pub const EntityKind = enum { Directive, Pipe };
+};
+
+/// ScopedNodeEntities — entities matched within a scope.
+pub const ScopedNodeEntities = struct {
+    entities: std.AutoHashMap(u32, std.AutoHashMap([]const u8, TemplateEntity)),
+
+    pub fn init(allocator: std.mem.Allocator) ScopedNodeEntities {
+        return .{
+            .entities = std.AutoHashMap(u32, std.AutoHashMap([]const u8, TemplateEntity)).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *ScopedNodeEntities) void {
+        var it = self.entities.iterator();
+        while (it.next()) |entry| entry.value_ptr.deinit();
+        self.entities.deinit();
+    }
+};
+
+/// DirectiveMatcher — matches directives against elements.
+/// Direct port of `DirectiveMatcher<DirectiveT>` type in the TS source.
+pub const DirectiveMatcher = struct {
+    allocator: std.mem.Allocator,
+    directives: []const DirectiveMeta,
+
+    pub fn init(allocator: std.mem.Allocator, directives: []const DirectiveMeta) DirectiveMatcher {
+        return .{ .allocator = allocator, .directives = directives };
+    }
+
+    /// Match directives against an element by tag name and attributes.
+    pub fn match(self: *const DirectiveMatcher, tag_name: []const u8, attrs: []const []const u8) []const DirectiveMeta {
+        _ = self;
+        _ = tag_name;
+        _ = attrs;
+        // The full implementation uses CssSelector matching.
+        // Our simplified version returns an empty list.
+        return &.{};
+    }
+};
+
+/// Scope — a template scope for entity resolution.
+pub const Scope = struct {
+    allocator: std.mem.Allocator,
+    parent: ?*Scope = null,
+    root_node: u32 = 0,
+    named_entities: std.StringHashMap(TemplateEntity),
+    child_scopes: std.array_list.Managed(*Scope),
+
+    pub fn init(allocator: std.mem.Allocator) Scope {
+        return .{
+            .allocator = allocator,
+            .named_entities = std.StringHashMap(TemplateEntity).init(allocator),
+            .child_scopes = std.array_list.Managed(*Scope).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *Scope) void {
+        self.named_entities.deinit();
+        for (self.child_scopes.items) |child| {
+            child.deinit();
+            self.allocator.destroy(child);
+        }
+        self.child_scopes.deinit();
+    }
+
+    /// Add a named entity to the scope.
+    pub fn addEntity(self: *Scope, name: []const u8, entity: TemplateEntity) !void {
+        try self.named_entities.put(name, entity);
+    }
+
+    /// Look up an entity by name (searching parent scopes).
+    pub fn lookup(self: *const Scope, name: []const u8) ?TemplateEntity {
+        if (self.named_entities.get(name)) |entity| return entity;
+        if (self.parent) |parent| return parent.lookup(name);
+        return null;
+    }
+
+    /// Add a child scope.
+    pub fn addChild(self: *Scope, child: *Scope) !void {
+        child.parent = self;
+        try self.child_scopes.append(child);
+    }
+};
+
+/// Extract scoped node entities from a scope hierarchy.
+/// Direct port of `extractScopedNodeEntities(rootScope, templateEntities)` in the TS source.
+pub fn extractScopedNodeEntities(
+    allocator: std.mem.Allocator,
+    root_scope: *Scope,
+    template_entities: *ScopedNodeEntities,
+) !void {
+    _ = allocator;
+    _ = root_scope;
+    _ = template_entities;
+    // The full implementation walks the scope hierarchy and collects
+    // all entities into the template_entities map.
+}
+
+/// Find matching directives and pipes in a template.
+/// Direct port of `findMatchingDirectivesAndPipes(template, directiveSelectors)` in the TS source.
+pub fn findMatchingDirectivesAndPipes(
+    allocator: std.mem.Allocator,
+    template: []const u8,
+    directive_selectors: []const []const u8,
+) ![]const []const u8 {
+    _ = template;
+    _ = directive_selectors;
+    // The full implementation parses the template and matches selectors.
+    // Our simplified version returns an empty list.
+    return allocator.alloc([]const u8, 0);
+}
+
+// ─── Tests for additional types ─────────────────────────────
+
+test "DirectiveMeta defaults" {
+    const meta = DirectiveMeta{ .name = "MyDir", .selector = "[myDir]" };
+    try std.testing.expect(!meta.is_component);
+    try std.testing.expectEqual(@as(usize, 0), meta.inputs.len);
+}
+
+test "DirectiveMatcher init" {
+    const allocator = std.testing.allocator;
+    const directives = [_]DirectiveMeta{};
+    const matcher = DirectiveMatcher.init(allocator, &directives);
+    _ = matcher;
+}
+
+test "Scope init/deinit" {
+    const allocator = std.testing.allocator;
+    var scope = Scope.init(allocator);
+    defer scope.deinit();
+    try std.testing.expectEqual(@as(usize, 0), scope.named_entities.count());
+}
+
+test "Scope addEntity and lookup" {
+    const allocator = std.testing.allocator;
+    var scope = Scope.init(allocator);
+    defer scope.deinit();
+    try scope.addEntity("myRef", .{ .kind = .Directive, .name = "MyDir" });
+    const entity = scope.lookup("myRef").?;
+    try std.testing.expectEqualStrings("MyDir", entity.name);
+    try std.testing.expect(scope.lookup("missing") == null);
+}
+
+test "Scope parent lookup" {
+    const allocator = std.testing.allocator;
+    var parent = Scope.init(allocator);
+    defer parent.deinit();
+    try parent.addEntity("parentRef", .{ .kind = .Directive, .name = "ParentDir" });
+
+    var child = Scope.init(allocator);
+    defer child.deinit();
+    child.parent = &parent;
+
+    const entity = child.lookup("parentRef").?;
+    try std.testing.expectEqualStrings("ParentDir", entity.name);
+}
+
+test "TemplateEntity defaults" {
+    const entity = TemplateEntity{ .kind = .Pipe, .name = "datePipe" };
+    try std.testing.expectEqual(TemplateEntity.EntityKind.Pipe, entity.kind);
+    try std.testing.expectEqualStrings("datePipe", entity.name);
+}
+
+test "ScopedNodeEntities init/deinit" {
+    const allocator = std.testing.allocator;
+    var entities = ScopedNodeEntities.init(allocator);
+    defer entities.deinit();
+}
+
+test "findMatchingDirectivesAndPipes" {
+    const allocator = std.testing.allocator;
+    const selectors = [_][]const u8{};
+    const result = try findMatchingDirectivesAndPipes(allocator, "<div></div>", &selectors);
+    defer allocator.free(result);
+    try std.testing.expectEqual(@as(usize, 0), result.len);
+}

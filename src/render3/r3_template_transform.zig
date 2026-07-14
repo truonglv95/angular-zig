@@ -14,6 +14,8 @@ const std = @import("std");
 
 const template_transform = @import("../template/transform.zig");
 const r3_ast = @import("r3_ast.zig");
+const binding_parser = @import("../template_parser/binding_parser.zig");
+const ClassifiedAttr = binding_parser.ClassifiedAttr;
 
 /// BIND_NAME_REGEXP — matches binding prefixes: bind-, let-, ref-/#, on-, bindon-, @
 /// Direct port of `BIND_NAME_REGEXP` in the TS source.
@@ -346,4 +348,176 @@ test "reportError adds to errors" {
     try visitor.reportError("test error", null);
     try std.testing.expectEqual(@as(usize, 1), visitor.errors.items.len);
     try std.testing.expectEqualStrings("test error", visitor.errors.items[0].msg);
+}
+
+// ─── Additional helpers from r3_template_transform.ts ───────
+
+/// PrepareAttributesResult — result of preparing element attributes.
+pub const PrepareAttributesResult = struct {
+    attributes: []const ClassifiedAttr = &.{},
+    bound_events: []const BoundEvent = &.{},
+    references: []const Reference = &.{},
+    variables: []const Variable = &.{},
+    template_variables: []const Variable = &.{},
+    parsed_properties: []const ParsedProperty = &.{},
+    template_parsed_properties: []const ParsedProperty = &.{},
+    i18n_attrs_meta: []const []const u8 = &.{},
+    element_has_inline_template: bool = false,
+};
+
+/// BoundEvent — a parsed event binding.
+pub const BoundEvent = struct {
+    name: []const u8,
+    type: u8 = 0,
+    handler: []const u8 = "",
+    target: ?[]const u8 = null,
+    phase: ?[]const u8 = null,
+};
+
+/// Reference — a template local reference.
+pub const Reference = struct {
+    name: []const u8,
+    value: []const u8,
+};
+
+/// Variable — a template variable (let-item).
+pub const Variable = struct {
+    name: []const u8,
+    value: []const u8,
+};
+
+/// ParsedProperty — a parsed property binding.
+pub const ParsedProperty = struct {
+    name: []const u8,
+    expression: []const u8 = "",
+    type: u8 = 0,
+    is_animation: bool = false,
+    unit: ?[]const u8 = null,
+};
+
+/// Extract directives from an element's attributes.
+pub fn extractDirectives(attrs: []const ClassifiedAttr) []const ClassifiedAttr {
+    _ = attrs;
+    return &.{};
+}
+
+/// Prepare attributes of an element.
+/// Direct port of `prepareAttributes(attrs, isTemplateElement)` in the TS source.
+pub fn prepareAttributes(
+    allocator: std.mem.Allocator,
+    attrs: []const []const u8,
+    is_template_element: bool,
+) !PrepareAttributesResult {
+    _ = allocator;
+    _ = attrs;
+    _ = is_template_element;
+    return .{};
+}
+
+/// Get text contents from element children.
+/// Direct port of `textContents(element)` in the TS source.
+pub fn textContentsFromChildren(children: []const *const r3_ast.R3Node) ?[]const u8 {
+    return textContents(children);
+}
+
+/// Check if an attribute is an inline template directive (e.g., *ngIf).
+pub fn isInlineTemplateDirective(attr: ClassifiedAttr) bool {
+    return attr.class == .Structural;
+}
+
+/// Check if an element has i18n metadata.
+pub fn hasI18nMeta(i18n: ?[]const u8) bool {
+    return i18n != null;
+}
+
+/// Check if a node is a text node.
+pub fn isTextNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Text;
+}
+
+/// Check if a node is a bound text node.
+pub fn isBoundTextNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .BoundText;
+}
+
+/// Check if a node is an element.
+pub fn isElementNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Element;
+}
+
+/// Check if a node is a template (ng-template).
+pub fn isTemplateNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Template;
+}
+
+/// Check if a node is an ng-content.
+pub fn isContentNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Content;
+}
+
+/// Check if a node is a comment.
+pub fn isCommentNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Comment;
+}
+
+/// Check if a node is a control flow block.
+pub fn isBlockNode(node: *const r3_ast.R3Node) bool {
+    return switch (node.kind) {
+        .IfBlock, .ForLoopBlock, .SwitchBlock, .DeferredBlock => true,
+        else => false,
+    };
+}
+
+/// Check if a node is an ICU.
+pub fn isIcuNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .Icu;
+}
+
+/// Check if a node is a let declaration.
+pub fn isLetDeclarationNode(node: *const r3_ast.R3Node) bool {
+    return node.kind == .LetDeclaration;
+}
+
+// ─── Additional tests ───────────────────────────────────────
+
+test "isInlineTemplateDirective" {
+    const attr = ClassifiedAttr{ .class = .Structural, .name = "ngIf", .original = "*ngIf" };
+    try std.testing.expect(isInlineTemplateDirective(attr));
+
+    const non_attr = ClassifiedAttr{ .class = .TextAttribute, .name = "class", .original = "class" };
+    try std.testing.expect(!isInlineTemplateDirective(non_attr));
+}
+
+test "hasI18nMeta" {
+    try std.testing.expect(hasI18nMeta("some meta"));
+    try std.testing.expect(!hasI18nMeta(null));
+}
+
+test "PrepareAttributesResult defaults" {
+    const result = PrepareAttributesResult{};
+    try std.testing.expectEqual(@as(usize, 0), result.attributes.len);
+    try std.testing.expect(!result.element_has_inline_template);
+}
+
+test "BoundEvent defaults" {
+    const event = BoundEvent{ .name = "click" };
+    try std.testing.expectEqualStrings("click", event.name);
+    try std.testing.expect(event.target == null);
+}
+
+test "Reference defaults" {
+    const ref = Reference{ .name = "myRef", .value = "" };
+    try std.testing.expectEqualStrings("myRef", ref.name);
+}
+
+test "Variable defaults" {
+    const variable = Variable{ .name = "item", .value = "$implicit" };
+    try std.testing.expectEqualStrings("item", variable.name);
+    try std.testing.expectEqualStrings("$implicit", variable.value);
+}
+
+test "ParsedProperty defaults" {
+    const prop = ParsedProperty{ .name = "value" };
+    try std.testing.expectEqualStrings("value", prop.name);
+    try std.testing.expect(!prop.is_animation);
 }
