@@ -164,6 +164,13 @@ pub const Parser = struct {
                 });
             }
         }
+        // Check for empty template literal interpolation: `${}`
+        if (std.mem.indexOf(u8, self.source, "${}") != null) {
+            try self.errors.append(.{
+                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                .msg = "Template literal interpolation cannot be empty",
+            });
+        }
         const result = try self.parsePipe();
         if (self.atOperator(";")) {
             // Chain expression (semicolon-separated)
@@ -208,6 +215,13 @@ pub const Parser = struct {
                     .msg = "Got interpolation ({{}}) where expression was expected",
                 });
             }
+        }
+        // Check for empty template literal interpolation: `${}`
+        if (std.mem.indexOf(u8, self.source, "${}") != null) {
+            try self.errors.append(.{
+                .span = source_span.ParseSourceSpan.init(0, @intCast(self.source.len), self.source),
+                .msg = "Template literal interpolation cannot be empty",
+            });
         }
         const result = try self.parsePipe();
         // Check for unconsumed tokens (only if no errors so far)
