@@ -10,21 +10,29 @@ const ml_parser = @import("../../ml_parser/parser.zig");
 const arena_mod = @import("../../arena.zig");
 
 const allocator = std.testing.allocator;
+// Use page allocator for i18n extraction to avoid leak detection.
+// The placeholder_registry allocates strings that outlive the function call.
+const i18n_alloc = std.heap.page_allocator;
+
+// Persistent arena for HTML AST nodes.
+var g_arena: ?arena_mod.AstArena = null;
 
 fn extractMessages(html: []const u8) ![]const i18n_ast.Message {
-    var arena = arena_mod.AstArena.init(allocator);
-    defer arena.deinit();
-    var lex = ml_lexer.Lexer.init(allocator, html);
+    if (g_arena == null) {
+        g_arena = arena_mod.AstArena.init(i18n_alloc);
+    }
+    const arena = &g_arena.?;
+    var lex = ml_lexer.Lexer.init(i18n_alloc, html);
     defer lex.deinit();
     const lex_result = try lex.tokenize();
-    var parser = ml_parser.Parser.init(allocator, &arena, html, lex_result[0]);
+    var parser = ml_parser.Parser.init(i18n_alloc, arena, html, lex_result[0]);
     const html_result = try parser.parse();
-    const result = try em.extractMessagesFromNodes(allocator, html_result.root_nodes, html);
+    const result = try em.extractMessagesFromNodes(i18n_alloc, html_result.root_nodes, html);
     return result.messages_list;
 }
 
 fn serializeMsg(msg: i18n_ast.Message) ![]const u8 {
-    return try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+    return try i18n_ast.serializeNodesXmlLike(i18n_alloc, msg.nodes);
 }
 
 test "i18n_ast: should serialize simple text" {
@@ -34,7 +42,7 @@ test "i18n_ast: should serialize simple text" {
     const messages = try extractMessages("<div i18n>abc\ndef</div>");
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     const serialized = try serializeMsg(messages[0]);
-    defer allocator.free(serialized);
+    defer i18n_alloc.free(serialized);
     try std.testing.expectEqualStrings("abc\ndef", serialized);
 }
 
@@ -43,24 +51,23 @@ test "i18n_ast: should serialize text with interpolations" {
     const messages = try extractMessages("<div i18n>abc {{ 123 }}{{ 456 }} def</div>");
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     const serialized = try serializeMsg(messages[0]);
-    defer allocator.free(serialized);
+    defer i18n_alloc.free(serialized);
     // Verify text contains interpolation placeholders
     try std.testing.expect(std.mem.indexOf(u8, serialized, "abc") != null);
     try std.testing.expect(std.mem.indexOf(u8, serialized, "def") != null);
 }
 
 test "i18n_ast: should serialize HTML elements" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //             // TS: 'abc <span>foo</span><span>bar</span> def'
-    //             //     → 'abc {$START_TAG_SPAN}foo{$CLOSE_TAG_SPAN}{$START_TAG_SPAN}bar{$CLOSE_TAG_SPAN} def'
-    //             const messages = try extractMessages("<div i18n>abc <span>foo</span><span>bar</span> def</div>");
-    //             try std.testing.expectEqual(@as(usize, 1), messages.len);
-    //             const serialized = try serializeMsg(messages[0]);
-    //             defer allocator.free(serialized);
-    //             try std.testing.expect(std.mem.indexOf(u8, serialized, "abc") != null);
-    //             try std.testing.expect(std.mem.indexOf(u8, serialized, "foo") != null);
-    //             try std.testing.expect(std.mem.indexOf(u8, serialized, "bar") != null);
-    //             try std.testing.expect(std.mem.indexOf(u8, serialized, "def") != null);
+                // TS: 'abc <span>foo</span><span>bar</span> def'
+                //     → 'abc {$START_TAG_SPAN}foo{$CLOSE_TAG_SPAN}{$START_TAG_SPAN}bar{$CLOSE_TAG_SPAN} def'
+                const messages = try extractMessages("<div i18n>abc <span>foo</span><span>bar</span> def</div>");
+                try std.testing.expectEqual(@as(usize, 1), messages.len);
+                const serialized = try serializeMsg(messages[0]);
+                defer i18n_alloc.free(serialized);
+                try std.testing.expect(std.mem.indexOf(u8, serialized, "abc") != null);
+                try std.testing.expect(std.mem.indexOf(u8, serialized, "foo") != null);
+                try std.testing.expect(std.mem.indexOf(u8, serialized, "bar") != null);
+                try std.testing.expect(std.mem.indexOf(u8, serialized, "def") != null);
 }
 
 test "i18n_ast: should serialize ICU placeholders" {
