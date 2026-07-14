@@ -115,7 +115,174 @@ pub const Expr = struct {
     }
 
     pub fn readPropPtr(receiver: *const Expr, name: []const u8) Expr {
-        return .{ .kind = .ReadProp, .span = null, .data = .{ .ReadProp = .{ .receiver = receiver, .name = name } } };
+        return .{ .kind = .ReadProp, .span = null, .data = .{ .ReadProp = .{ .receiver = @constCast(receiver), .name = name } } };
+    }
+
+    // ─── Expression chaining methods (Direct port of Expression class methods) ──
+
+    /// Create a property read: this.prop(name)
+    /// Direct port of `Expression.prop(name)` in the TS source.
+    pub fn prop(self: *const Expr, name: []const u8) Expr {
+        return readPropPtr(self, name);
+    }
+
+    /// Create a keyed read: this[key]
+    /// Direct port of `Expression.key(index)` in the TS source.
+    pub fn key(self: *const Expr, index: *const Expr) Expr {
+        return .{ .kind = .ReadKey, .span = null, .data = .{ .ReadKey = .{ .receiver = @constCast(self), .index = @constCast(index) } } };
+    }
+
+    /// Create a function call: this(args...)
+    /// Direct port of `Expression.callFn(params)` in the TS source.
+    pub fn callFn(self: *const Expr, params: []const Expr) Expr {
+        return .{ .kind = .InvokeFunction, .span = null, .data = .{ .InvokeFunction = .{ .fn_expr = @constCast(self), .args = params } } };
+    }
+
+    /// Create an instantiation: new this(args...)
+    /// Direct port of `Expression.instantiate(params)` in the TS source.
+    pub fn instantiate(self: *const Expr, params: []const Expr) Expr {
+        return .{ .kind = .Instantiate, .span = null, .data = .{ .Instantiate = .{ .class_expr = @constCast(self), .args = params } } };
+    }
+
+    /// Create a conditional: this ? trueCase : falseCase
+    /// Direct port of `Expression.conditional(trueCase, falseCase)` in the TS source.
+    pub fn conditional(self: *const Expr, true_case: *const Expr, false_case: *const Expr) Expr {
+        return .{ .kind = .Conditional, .span = null, .data = .{ .Conditional = .{ .condition = @constCast(self), .true_case = @constCast(true_case), .false_case = @constCast(false_case) } } };
+    }
+
+    /// Create a binary equals: this == rhs
+    pub fn equals(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "==", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary not-equals: this != rhs
+    pub fn notEquals(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "!=", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary identical: this === rhs
+    pub fn identical(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "===", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary not-identical: this !== rhs
+    pub fn notIdentical(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "!==", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary minus: this - rhs
+    pub fn minus(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "-", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary plus: this + rhs
+    pub fn plus(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "+", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary divide: this / rhs
+    pub fn divide(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "/", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary multiply: this * rhs
+    pub fn multiply(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "*", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary modulo: this % rhs
+    pub fn modulo(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "%", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary logical and: this && rhs
+    pub fn andOp(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "&&", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary logical or: this || rhs
+    pub fn orOp(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "||", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary bitwise or: this | rhs
+    pub fn bitwiseOr(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "|", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary bitwise and: this & rhs
+    pub fn bitwiseAnd(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "&", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary lower: this < rhs
+    pub fn lower(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "<", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary lower-equals: this <= rhs
+    pub fn lowerEquals(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "<=", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary bigger: this > rhs
+    pub fn bigger(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = ">", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a binary bigger-equals: this >= rhs
+    pub fn biggerEquals(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = ">=", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Create a nullish coalescing: this ?? rhs
+    pub fn nullishCoalesce(self: *const Expr, rhs: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "??", .lhs = @constCast(self), .rhs = @constCast(rhs) } } };
+    }
+
+    /// Check if this expression is blank (null/undefined).
+    /// Direct port of `Expression.isBlank()` in the TS source.
+    pub fn isBlank(self: *const Expr) Expr {
+        return self.equals(&NULL_EXPR);
+    }
+
+    /// Convert this expression to a statement.
+    /// Direct port of `Expression.toStmt()` in the TS source.
+    pub fn toStmt(self: *const Expr) Stmt {
+        return Stmt.expressionStmt(self.*);
+    }
+
+    /// Set a variable value: this = value
+    /// Direct port of `ReadVarExpr.set(value)` in the TS source.
+    pub fn set(self: *const Expr, value: *const Expr) Expr {
+        return .{ .kind = .BinaryOperator, .span = null, .data = .{ .BinaryOperator = .{ .operator = "=", .lhs = @constCast(self), .rhs = @constCast(value) } } };
+    }
+
+    /// Check if this expression is constant.
+    /// Direct port of `Expression.isConstant()` in the TS source.
+    pub fn isConstant(self: *const Expr) bool {
+        return switch (self.kind) {
+            .Literal => true,
+            .LiteralArray, .LiteralMap => true,
+            else => false,
+        };
+    }
+
+    /// Check if two expressions are equivalent.
+    /// Direct port of `Expression.isEquivalent(e)` in the TS source.
+    pub fn isEquivalent(self: *const Expr, other: *const Expr) bool {
+        if (self.kind != other.kind) return false;
+        return switch (self.data) {
+            .ReadVar => |rv| std.mem.eql(u8, rv.name, other.data.ReadVar.name),
+            .Literal => |lit| switch (lit) {
+                .String => |s| other.data.Literal == .String and std.mem.eql(u8, s, other.data.Literal.String),
+                .Number => |n| other.data.Literal == .Number and n == other.data.Literal.Number,
+                .Boolean => |b| other.data.Literal == .Boolean and b == other.data.Literal.Boolean,
+                .Null => other.data.Literal == .Null,
+                .Undefined => other.data.Literal == .Undefined,
+            },
+            else => false,
+        };
     }
 };
 
@@ -992,4 +1159,193 @@ test "BuiltinTypeName values" {
 test "blockStmt factory" {
     const s = blockStmt(&.{});
     try std.testing.expectEqual(StmtKind.Block, s.kind);
+}
+
+// ─── Expression chaining tests ──────────────────────────────
+
+test "Expr.prop chaining" {
+    const ctx = Expr.readVar("ctx");
+    const prop = ctx.prop("name");
+    try std.testing.expectEqual(ExprKind.ReadProp, prop.kind);
+    try std.testing.expectEqualStrings("name", prop.data.ReadProp.name);
+}
+
+test "Expr.callFn chaining" {
+    const ctx = Expr.readVar("fn");
+    const args = [_]Expr{Expr.literalStr("arg")};
+    const call = ctx.callFn(&args);
+    try std.testing.expectEqual(ExprKind.InvokeFunction, call.kind);
+    try std.testing.expectEqual(@as(usize, 1), call.data.InvokeFunction.args.len);
+}
+
+test "Expr.equals chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const eq = a.equals(&b);
+    try std.testing.expectEqual(ExprKind.BinaryOperator, eq.kind);
+    try std.testing.expectEqualStrings("==", eq.data.BinaryOperator.operator);
+}
+
+test "Expr.identical chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const id = a.identical(&b);
+    try std.testing.expectEqualStrings("===", id.data.BinaryOperator.operator);
+}
+
+test "Expr.minus chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.minus(&b);
+    try std.testing.expectEqualStrings("-", r.data.BinaryOperator.operator);
+}
+
+test "Expr.plus chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.plus(&b);
+    try std.testing.expectEqualStrings("+", r.data.BinaryOperator.operator);
+}
+
+test "Expr.andOp chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.andOp(&b);
+    try std.testing.expectEqualStrings("&&", r.data.BinaryOperator.operator);
+}
+
+test "Expr.orOp chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.orOp(&b);
+    try std.testing.expectEqualStrings("||", r.data.BinaryOperator.operator);
+}
+
+test "Expr.nullishCoalesce chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.nullishCoalesce(&b);
+    try std.testing.expectEqualStrings("??", r.data.BinaryOperator.operator);
+}
+
+test "Expr.isConstant" {
+    const lit = Expr.literalNum(42.0);
+    try std.testing.expect(lit.isConstant());
+
+    const var_expr = Expr.readVar("x");
+    try std.testing.expect(!var_expr.isConstant());
+}
+
+test "Expr.isEquivalent same ReadVar" {
+    const a = Expr.readVar("x");
+    const b = Expr.readVar("x");
+    try std.testing.expect(a.isEquivalent(&b));
+}
+
+test "Expr.isEquivalent different ReadVar" {
+    const a = Expr.readVar("x");
+    const b = Expr.readVar("y");
+    try std.testing.expect(!a.isEquivalent(&b));
+}
+
+test "Expr.isEquivalent same literal" {
+    const a = Expr.literalNum(42.0);
+    const b = Expr.literalNum(42.0);
+    try std.testing.expect(a.isEquivalent(&b));
+}
+
+test "Expr.isEquivalent different kind" {
+    const a = Expr.readVar("x");
+    const b = Expr.literalNum(42.0);
+    try std.testing.expect(!a.isEquivalent(&b));
+}
+
+test "Expr.toStmt" {
+    const e = Expr.readVar("x");
+    const s = e.toStmt();
+    try std.testing.expectEqual(StmtKind.Expression, s.kind);
+}
+
+test "Expr.set chaining" {
+    const var_expr = Expr.readVar("x");
+    const val = Expr.literalNum(42.0);
+    const assign = var_expr.set(&val);
+    try std.testing.expectEqualStrings("=", assign.data.BinaryOperator.operator);
+}
+
+test "Expr.lower chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.lower(&b);
+    try std.testing.expectEqualStrings("<", r.data.BinaryOperator.operator);
+}
+
+test "Expr.bigger chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.bigger(&b);
+    try std.testing.expectEqualStrings(">", r.data.BinaryOperator.operator);
+}
+
+test "Expr.modulo chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.modulo(&b);
+    try std.testing.expectEqualStrings("%", r.data.BinaryOperator.operator);
+}
+
+test "Expr.divide chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.divide(&b);
+    try std.testing.expectEqualStrings("/", r.data.BinaryOperator.operator);
+}
+
+test "Expr.multiply chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.multiply(&b);
+    try std.testing.expectEqualStrings("*", r.data.BinaryOperator.operator);
+}
+
+test "Expr.bitwiseOr chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.bitwiseOr(&b);
+    try std.testing.expectEqualStrings("|", r.data.BinaryOperator.operator);
+}
+
+test "Expr.bitwiseAnd chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.bitwiseAnd(&b);
+    try std.testing.expectEqualStrings("&", r.data.BinaryOperator.operator);
+}
+
+test "Expr.notEquals chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.notEquals(&b);
+    try std.testing.expectEqualStrings("!=", r.data.BinaryOperator.operator);
+}
+
+test "Expr.notIdentical chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.notIdentical(&b);
+    try std.testing.expectEqualStrings("!==", r.data.BinaryOperator.operator);
+}
+
+test "Expr.lowerEquals chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.lowerEquals(&b);
+    try std.testing.expectEqualStrings("<=", r.data.BinaryOperator.operator);
+}
+
+test "Expr.biggerEquals chaining" {
+    const a = Expr.readVar("a");
+    const b = Expr.readVar("b");
+    const r = a.biggerEquals(&b);
+    try std.testing.expectEqualStrings(">=", r.data.BinaryOperator.operator);
 }
