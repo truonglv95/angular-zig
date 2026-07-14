@@ -113,7 +113,7 @@ pub const Lexer = struct {
     /// Tokenize entire input. Returns token slice (borrowed from self.tokens).
     pub fn tokenize(self: *Lexer) !struct { []const Token, []const LexError } {
         while (self.pos < self.source.len) {
-            self.skipWhitespace();
+            self.skipWhitespaceAndComments();
             if (self.pos >= self.source.len) break;
 
             const ch = self.source[self.pos];
@@ -151,6 +151,41 @@ pub const Lexer = struct {
     fn skipWhitespace(self: *Lexer) void {
         while (self.pos < self.source.len and chars.isWhitespace(self.source[self.pos])) {
             self.pos += 1;
+        }
+    }
+
+    /// Skip whitespace and comments (// line comments and /* */ block comments).
+    fn skipWhitespaceAndComments(self: *Lexer) void {
+        while (self.pos < self.source.len) {
+            const ch = self.source[self.pos];
+            if (chars.isWhitespace(ch)) {
+                self.pos += 1;
+                continue;
+            }
+            // Line comment: // ... \n
+            if (ch == '/' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '/') {
+                self.pos += 2;
+                while (self.pos < self.source.len and self.source[self.pos] != '\n') {
+                    self.pos += 1;
+                }
+                continue;
+            }
+            // Block comment: /* ... */
+            if (ch == '/' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '*') {
+                self.pos += 2;
+                while (self.pos + 1 < self.source.len) {
+                    if (self.source[self.pos] == '*' and self.source[self.pos + 1] == '/') {
+                        self.pos += 2;
+                        break;
+                    }
+                    self.pos += 1;
+                } else {
+                    // Unterminated comment — consume to end
+                    self.pos = @intCast(self.source.len);
+                }
+                continue;
+            }
+            break;
         }
     }
 
