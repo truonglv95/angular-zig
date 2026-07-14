@@ -166,14 +166,14 @@ pub fn visit(node: *const Node, visitor: *const Visitor, ctx: *anyopaque) !void 
 /// Serialize message nodes to a string representation.
 /// Used for computing message IDs.
 pub fn serializeMessage(allocator: std.mem.Allocator, nodes: []const Node) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
-    for (nodes) |node| {
+    var buf = std.array_list.Managed(u8).init(allocator);
+    for (nodes) |*node| {
         try serializeNode(&buf, node);
     }
     return buf.toOwnedSlice();
 }
 
-fn serializeNode(buf: *std.ArrayList(u8), node: *const Node) !void {
+fn serializeNode(buf: *std.array_list.Managed(u8), node: *const Node) !void {
     switch (node.data) {
         .text => |t| try buf.appendSlice(t.value),
         .container => |c| {

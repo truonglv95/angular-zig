@@ -22,12 +22,12 @@ pub const XmlAttr = struct {
 
 /// Write an XML node tree to a string.
 pub fn serialize(allocator: std.mem.Allocator, node: *const XmlNode) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
+    var buf = std.array_list.Managed(u8).init(allocator);
     try writeNode(&buf, node);
     return buf.toOwnedSlice();
 }
 
-fn writeNode(buf: *std.ArrayList(u8), node: *const XmlNode) !void {
+fn writeNode(buf: *std.array_list.Managed(u8), node: *const XmlNode) !void {
     switch (node.kind) {
         .declaration => {
             try buf.appendSlice("<?xml");
@@ -61,7 +61,7 @@ fn writeNode(buf: *std.ArrayList(u8), node: *const XmlNode) !void {
     }
 }
 
-fn writeAttrs(buf: *std.ArrayList(u8), attrs: []const XmlAttr) !void {
+fn writeAttrs(buf: *std.array_list.Managed(u8), attrs: []const XmlAttr) !void {
     for (attrs) |attr| {
         try buf.append(' ');
         try buf.appendSlice(attr.name);
@@ -71,7 +71,7 @@ fn writeAttrs(buf: *std.ArrayList(u8), attrs: []const XmlAttr) !void {
     }
 }
 
-fn writeEscaped(buf: *std.ArrayList(u8), text: []const u8) !void {
+pub fn writeEscaped(buf: *std.array_list.Managed(u8), text: []const u8) !void {
     for (text) |ch| {
         switch (ch) {
             '<' => try buf.appendSlice("&lt;"),
@@ -86,7 +86,7 @@ fn writeEscaped(buf: *std.ArrayList(u8), text: []const u8) !void {
 
 /// Escape XML text content.
 pub fn escapeXml(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
-    var buf = std.ArrayList(u8).init(allocator);
+    var buf = std.array_list.Managed(u8).init(allocator);
     try writeEscaped(&buf, text);
     return buf.toOwnedSlice();
 }

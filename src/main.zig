@@ -167,6 +167,13 @@ test {
     _ = @import("i18n/index.zig");
     _ = @import("i18n/i18n_parser.zig");
     _ = @import("i18n/extractor_merger.zig");
+    _ = @import("i18n/translation_bundle.zig");
+    _ = @import("i18n/message_bundle.zig");
+    _ = @import("i18n/digest.zig");
+    _ = @import("i18n/i18n_html_parser.zig");
+    _ = @import("i18n/serializers/xliff2.zig");
+    _ = @import("i18n/serializers/xmb.zig");
+    _ = @import("i18n/serializers/xtb.zig");
     _ = @import("render3/r3_pipe_compiler.zig");
     _ = @import("render3/r3_control_flow.zig");
     _ = @import("render3/r3_deferred_triggers.zig");
