@@ -497,16 +497,83 @@ pub const Parser = struct {
                 const tok = self.next();
                 const node = try self.arena.create(Ast);
                 node.* = .{
-                    .span = self.span(tok.index, tok.end),
-                    .abs_span = self.absSpan(tok.index, tok.end),
+                    .span = .{ .start = result.span.start, .end = tok.end },
+                    .abs_span = .{ .start = result.abs_span.start, .end = tok.end },
                     .data = .{ .NonNullAssert = .{ .expression = result } },
+                };
+                result = node;
+                // After !, there might be more call/member access: a!().b
+                // Re-enter the call/member loop
+                result = try self.parseCallMemberFrom(result);
+            } else {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    /// Continue parsing call/member access from an existing result node.
+    fn parseCallMemberFrom(self: *Parser, initial: *const Ast) !*const Ast {
+        var result = initial;
+        while (true) {
+            const tok = self.current();
+            if (tok.type != .Operator) break;
+            const op_str = tok.slice(self.source);
+
+            // Member access
+            if (std.mem.eql(u8, op_str, ".")) {
+                _ = self.next();
+                if (self.at(.Identifier) or self.at(.Keyword)) {
+                    const name_tok = self.next();
+                    const name = name_tok.slice(self.source);
+                    const node = try self.arena.create(Ast);
+                    node.* = .{
+                        .span = .{ .start = result.span.start, .end = name_tok.end },
+                        .abs_span = .{ .start = result.abs_span.start, .end = name_tok.end },
+                        .data = .{ .PropertyRead = .{ .receiver = result, .name = name } },
+                    };
+                    result = node;
+                } else {
+                    self.pos -= 1;
+                    break;
+                }
+            }
+            // Function call
+            else if (std.mem.eql(u8, op_str, "(")) {
+                const open_tok = self.next();
+                var args = std.array_list.Managed(*const Ast).init(self.allocator);
+                defer args.deinit();
+                if (!self.atOperator(")")) {
+                    try args.append(try self.parsePipe());
+                    while (self.atOperator(",")) {
+                        _ = self.next();
+                        if (self.atOperator(")")) break;
+                        try args.append(try self.parsePipe());
+                    }
+                }
+                const close_tok = self.current();
+                _ = self.expect(.Operator, ")") catch {};
+                const args_slice = if (args.items.len > 0)
+                    try self.arena.alloc(*const Ast, args.items.len)
+                else
+                    &[_]*const Ast{};
+                if (args.items.len > 0) @memcpy(@constCast(args_slice), args.items);
+                const node = try self.arena.create(Ast);
+                node.* = .{
+                    .span = .{ .start = result.span.start, .end = close_tok.index },
+                    .abs_span = .{ .start = result.abs_span.start, .end = close_tok.index },
+                    .data = .{ .Call = .{
+                        .receiver = result,
+                        .args = args_slice,
+                        .argument_span = ParseSpan{ .start = open_tok.index, .end = close_tok.index },
+                    } },
                 };
                 result = node;
             } else {
                 break;
             }
         }
-
         return result;
     }
 
