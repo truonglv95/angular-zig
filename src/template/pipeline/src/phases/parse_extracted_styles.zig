@@ -90,6 +90,19 @@ pub fn parse(allocator: std.mem.Allocator, value: []const u8) ![][]const u8 {
     return styles.toOwnedSlice();
 }
 
+/// Free a result from `parse`. Frees the array AND all property name
+/// strings (at even indices — allocated by `hyphenate`). Value strings
+/// (at odd indices) are zero-copy slices of the input and are NOT freed.
+pub fn freeResult(allocator: std.mem.Allocator, result: []const []const u8) void {
+    // Free property names (even indices).
+    var idx: usize = 0;
+    while (idx < result.len) : (idx += 2) {
+        if (result[idx].len > 0) allocator.free(result[idx]);
+    }
+    // Cast to mutable for free (the allocator needs []T, not []const T).
+    allocator.free(@constCast(result));
+}
+
 /// Hyphenate a camelCase string (e.g., "marginLeft" → "margin-left").
 /// Direct port of `hyphenate(value)` in the TS source.
 pub fn hyphenate(allocator: std.mem.Allocator, value: []const u8) ![]const u8 {

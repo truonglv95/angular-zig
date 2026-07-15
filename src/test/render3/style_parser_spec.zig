@@ -17,7 +17,7 @@ test "style_parser: should parse empty or blank strings" {
 test "style_parser: should parse a string into a key/value map" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "width:100px;height:200px;opacity:0");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 6), result.len);
     try std.testing.expectEqualStrings("width", result[0]);
     try std.testing.expectEqualStrings("100px", result[1]);
@@ -30,7 +30,7 @@ test "style_parser: should parse a string into a key/value map" {
 test "style_parser: should allow empty values" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "width:;height:   ;");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 4), result.len);
     try std.testing.expectEqualStrings("width", result[0]);
     try std.testing.expectEqualStrings("", result[1]);
@@ -41,7 +41,7 @@ test "style_parser: should allow empty values" {
 test "style_parser: should trim values and properties" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "width :333px ; height:666px    ; opacity: 0.5;");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 6), result.len);
     try std.testing.expectEqualStrings("width", result[0]);
     try std.testing.expectEqualStrings("333px", result[1]);
@@ -54,7 +54,7 @@ test "style_parser: should trim values and properties" {
 test "style_parser: should not mess up with quoted strings that contain [:;] values" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "content: \"foo; man: guy\"; width: 100px");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 4), result.len);
     try std.testing.expectEqualStrings("content", result[0]);
     try std.testing.expectEqualStrings("\"foo; man: guy\"", result[1]);
@@ -68,7 +68,7 @@ test "style_parser: should not mess up with quoted strings that contain inner qu
     const input = try std.fmt.allocPrint(allocator, "content: {s}; width: 123px", .{quote_str});
     defer allocator.free(input);
     const result = try style_parser.parse(allocator, input);
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 4), result.len);
     try std.testing.expectEqualStrings("content", result[0]);
     try std.testing.expectEqualStrings(quote_str, result[1]);
@@ -79,7 +79,7 @@ test "style_parser: should not mess up with quoted strings that contain inner qu
 test "style_parser: should respect parenthesis that are placed within a style" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "background-image: url(\"foo.jpg\")");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 2), result.len);
     try std.testing.expectEqualStrings("background-image", result[0]);
     try std.testing.expectEqualStrings("url(\"foo.jpg\")", result[1]);
@@ -88,7 +88,7 @@ test "style_parser: should respect parenthesis that are placed within a style" {
 test "style_parser: should respect multi-level parenthesis that contain special [:;] characters" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "color: rgba(calc(50 * 4), var(--cool), :5;); height: 100px;");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 4), result.len);
     try std.testing.expectEqualStrings("color", result[0]);
     try std.testing.expectEqualStrings("rgba(calc(50 * 4), var(--cool), :5;)", result[1]);
@@ -99,7 +99,7 @@ test "style_parser: should respect multi-level parenthesis that contain special 
 test "style_parser: should hyphenate style properties from camel case" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "borderWidth: 200px");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 2), result.len);
     try std.testing.expectEqualStrings("border-width", result[0]);
     try std.testing.expectEqualStrings("200px", result[1]);
@@ -108,7 +108,7 @@ test "style_parser: should hyphenate style properties from camel case" {
 test "style_parser: should not remove quotes from string data types" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "content: \"foo\"");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 2), result.len);
     try std.testing.expectEqualStrings("content", result[0]);
     try std.testing.expectEqualStrings("\"foo\"", result[1]);
@@ -117,7 +117,7 @@ test "style_parser: should not remove quotes from string data types" {
 test "style_parser: should not remove quotes that changes the value context from invalid to valid" {
     const allocator = std.testing.allocator;
     const result = try style_parser.parse(allocator, "width: \"1px\"");
-    defer allocator.free(result);
+    defer style_parser.freeResult(allocator, result);
     try std.testing.expectEqual(@as(usize, 2), result.len);
     try std.testing.expectEqualStrings("width", result[0]);
     try std.testing.expectEqualStrings("\"1px\"", result[1]);
