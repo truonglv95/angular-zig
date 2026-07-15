@@ -10,15 +10,20 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0 # Update this version if you are using a newer version of Zig
+          version: 0.16.0
 
       - name: Check Formatting
-        run: zig fmt --check .
+        run: zig fmt --check packages/ build.zig
 
       - name: Run Tests
-        run: zig build test
+        run: zig build test --summary all
+
+      - name: Build All
+        run: zig build --summary all
