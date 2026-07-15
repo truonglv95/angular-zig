@@ -596,9 +596,11 @@ pub const Lexer = struct {
         const start = self.pos;
 
         while (self.pos < self.source.len and self.source[self.pos] != '<') {
-            // Check for entity references
-            if (self.source[self.pos] == '&') {
-                // Don't break — entities are part of text
+            // Stop at { when ICU expansion forms are enabled (but not {{)
+            if (self.options.tokenize_icu and self.source[self.pos] == '{' and
+                (self.pos + 1 >= self.source.len or self.source[self.pos + 1] != '{'))
+            {
+                break;
             }
             self.pos += 1;
         }
@@ -706,6 +708,34 @@ pub const Lexer = struct {
         const start = self.pos;
         self.pos += 1; // skip {
 
+        // Check for valid expansion form: {expr, type, ...}
+        // Must have at least one comma for it to be a valid expansion form.
+        // If no comma found before }, it's an unescaped { — report error.
+        var has_comma = false;
+        var brace_depth: u32 = 1;
+        var scan_pos = self.pos;
+        while (scan_pos < self.source.len and brace_depth > 0) {
+            const ch = self.source[scan_pos];
+            if (ch == '{') brace_depth += 1;
+            if (ch == '}') brace_depth -= 1;
+            if (brace_depth == 1 and ch == ',') has_comma = true;
+            if (brace_depth == 0) break;
+            scan_pos += 1;
+        }
+
+        if (!has_comma) {
+            // Not a valid expansion form — report unescaped {
+            try self.reportError(@intCast(start), "Unexpected character");
+            // Treat { as text — advance past it so main loop continues
+            self.pos = start + 1;
+            try self.tokens.append(.{
+                .type = .Text,
+                .index = start,
+                .end = self.pos,
+            });
+            return;
+        }
+
         try self.tokens.append(.{
             .type = .ExpansionFormStart,
             .index = start,
@@ -733,6 +763,9 @@ pub const Lexer = struct {
 
         if (self.pos < self.source.len) {
             self.pos += 1; // skip }
+        } else {
+            // Missing closing } — report error
+            try self.reportError(@intCast(self.pos), "Unexpected character EOF");
         }
 
         try self.tokens.append(.{
