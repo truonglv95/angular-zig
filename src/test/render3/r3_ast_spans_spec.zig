@@ -27,7 +27,9 @@ fn parseR3(allocator: Allocator, arena: *arena_mod.AstArena, source: []const u8)
     const html_result = try html_parser.parse();
 
     var ctx = template_transform.TransformContext.init(allocator, arena, source);
-    return try template_transform.transformHtmlToR3(&ctx, html_result.root_nodes);
+    const result = try template_transform.transformHtmlToR3(&ctx, html_result.root_nodes);
+    html_parser.deinit();
+    return result;
 }
 
 /// Verify that parsing produces exactly `expected_count` root nodes.

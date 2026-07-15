@@ -20,7 +20,11 @@ fn parseR3(allocator: Allocator, arena: *arena_mod.AstArena, source: []const u8)
     var html_parser = ml_parser.Parser.init(allocator, arena, source, lex_tokens);
     const html_result = try html_parser.parse();
     var ctx = template_transform.TransformContext.init(allocator, arena, source);
-    return try template_transform.transformHtmlToR3(&ctx, html_result.root_nodes);
+    const result = try template_transform.transformHtmlToR3(&ctx, html_result.root_nodes);
+    // Free the root_nodes slice (allocated by mergeAdjacentTextNodes).
+    // Must do this AFTER transformHtmlToR3 has finished using root_nodes.
+    html_parser.deinit();
+    return result;
 }
 
 fn expectNodeCount(allocator: Allocator, source: []const u8, expected_count: usize) !void {
