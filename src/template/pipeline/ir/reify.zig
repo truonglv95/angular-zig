@@ -316,15 +316,15 @@ pub const ReifiedView = struct {
     allocator: ?Allocator = null,
 
     /// Free all memory owned by this ReifiedView.
-    /// Note: create_ops/update_ops/function_ops are owned by the ReifyContext
-    /// which is NOT deinited (ownership transferred). These slices point to
-    /// the backing memory of the context's ArrayLists. The caller must ensure
-    /// the context's allocator is still valid when accessing these slices.
-    /// For now, we don't free them (matching original behavior — potential leak).
     pub fn deinit(self: *ReifiedView) void {
-        _ = self;
-        // Intentionally empty — the ops slices are owned by the ReifyContext
-        // which is stack-allocated in reifyJob and not deinited.
+        if (self.allocator) |a| {
+            if (self.create_ops.len > 0) a.free(self.create_ops);
+            if (self.update_ops.len > 0) a.free(self.update_ops);
+            for (self.function_ops) |fo| {
+                if (fo.ops.len > 0) a.free(fo.ops);
+            }
+            if (self.function_ops.len > 0) a.free(self.function_ops);
+        }
     }
 };
 
@@ -402,7 +402,6 @@ pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
     var ctx = ReifyContext.init(job.allocator, job.slots.next_xref);
     // NOTE: do NOT defer deinit — we transfer ownership of the ArrayLists' backing memory to the returned ReifiedView.
     // The xref_to_slot list is internal-only and must be freed manually.
-    var xref_to_slot_owned = ctx.xref_to_slot;
 
     // Pre-populate xref_to_slot from the slot allocator
     // (slots allocated during ingest are already sequential)
@@ -418,17 +417,18 @@ pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
     }
 
     const result = ReifiedView{
-        .create_ops = ctx.create_ops.items,
-        .update_ops = ctx.update_ops.items,
-        .function_ops = ctx.function_ops.items,
+        .create_ops = try ctx.create_ops.toOwnedSlice(),
+        .update_ops = try ctx.update_ops.toOwnedSlice(),
+        .function_ops = try ctx.function_ops.toOwnedSlice(),
         .vars = job.root.vars orelse 0,
         .decls = job.root.decls orelse 0,
         .slots = job.slots.next_slot,
         .allocator = job.allocator,
     };
 
-    // Free only the internal xref_to_slot list; the ops lists' memory is now owned by `result`.
-    xref_to_slot_owned.deinit();
+    // Free the internal xref_to_slot list (its backing memory grew during
+    // reification and is NOT transferred to the result).
+    ctx.xref_to_slot.deinit();
 
     return result;
 }

@@ -226,31 +226,36 @@ pub fn emitView(
     job: *ComponentCompilationJob,
     view: *ViewCompilationUnit,
 ) !EmittedTemplate {
+    // Use the expr_arena for all emit allocations so they're freed when
+    // the job is deinited (single bulk free). This avoids individual leaks
+    // from callRuntime/allocArgs heap allocations.
+    const arena_allocator = job.expr_arena.allocator();
+
     // Generate create-phase statements
-    var create_stmts = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.create.len()) catch unreachable;
+    var create_stmts = std.array_list.Managed(Stmt).initCapacity(arena_allocator, view.create.len()) catch unreachable;
 
     for (view.create.items()) |op| {
-        if (try emitCreateOp(job.allocator, op)) |stmt| {
+        if (try emitCreateOp(arena_allocator, op)) |stmt| {
             try create_stmts.append(stmt);
         }
     }
 
     // Generate update-phase statements
-    var update_stmts = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.update.len()) catch unreachable;
+    var update_stmts = std.array_list.Managed(Stmt).initCapacity(arena_allocator, view.update.len()) catch unreachable;
 
     for (view.update.items()) |op| {
-        if (try emitUpdateOp(job.allocator, op)) |stmt| {
+        if (try emitUpdateOp(arena_allocator, op)) |stmt| {
             try update_stmts.append(stmt);
         }
     }
 
     // Generate function statements
-    var functions = std.array_list.Managed(Stmt).initCapacity(job.allocator, view.functions.items.len) catch unreachable;
+    var functions = std.array_list.Managed(Stmt).initCapacity(arena_allocator, view.functions.items.len) catch unreachable;
 
     for (view.functions.items) |fn_ops| {
         if (fn_ops.items.len > 0) {
             // Each function op list becomes a DeclareFunctionStmt
-            const fn_stmt = try emitFunctionOps(job.allocator, fn_ops.items);
+            const fn_stmt = try emitFunctionOps(arena_allocator, fn_ops.items);
             try functions.append(fn_stmt);
         }
     }
