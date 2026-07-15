@@ -24,8 +24,8 @@ test "xtb: should load XTB files with a doctype" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        // Verify the locale and message map
-        _ = r;
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {
         // Error is acceptable if XML parsing is limited
     }
@@ -55,8 +55,10 @@ test "xtb: should return the target locale" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
+        var r_mut = r;
+        defer r_mut.deinit();
         // Locale may or may not be set depending on parser support
-        _ = r.locale;
+        _ = r_mut.locale;
     } else |_| {}
 }
 

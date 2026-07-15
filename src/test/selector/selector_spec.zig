@@ -160,9 +160,10 @@ test "selector: should error on attr names with unescaped $" {
     // The TS test expects an error. Zig's parser is more lenient.
     // We verify parseSelector handles the input.
     const a = std.testing.allocator;
-    _ = dm.parseSelector(a, "[some$Attr]") catch {
+    var sel = dm.parseSelector(a, "[some$Attr]") catch {
         return; // Expected error
     };
+    defer sel.deinit(a);
     // If no error, that's also acceptable (Zig may handle differently)
 }
 
@@ -201,9 +202,10 @@ test "selector: should detect :not selectors" {
 
 test "selector: should error on a non existing pseudo selector" {
     const a = std.testing.allocator;
-    _ = dm.parseSelector(a, ":nonexistent") catch {
+    var sel = dm.parseSelector(a, ":nonexistent") catch {
         return; // Expected error
     };
+    defer sel.deinit(a);
 }
 
 test "selector: should match attributes with case sensitive values" {
