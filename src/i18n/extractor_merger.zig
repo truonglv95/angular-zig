@@ -196,7 +196,7 @@ pub fn extractMessagesFromNodes(
                 } else {
                     in_i18n_block = true;
                     const stripped = stripI18nCommentPrefix(trimmed);
-                    i18n_block_info = parseI18nAttrValue(stripped);
+                    i18n_block_info = parseI18nAttrValue(std.mem.trim(u8, stripped, " \t\n\r"));
                 }
                 continue;
             }
