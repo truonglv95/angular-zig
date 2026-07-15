@@ -101,6 +101,9 @@ pub const I18nMessageVisitorContext = struct {
     visit_node_fn: ?VisitNodeFn = null,
     visit_node_ctx: ?*anyopaque = null,
     allocator: Allocator,
+    /// Arena allocator for all string allocations (close tag text, etc.).
+    /// Freed when the context is destroyed (via placeholderRegistryDeinit).
+    string_arena: std.heap.ArenaAllocator,
 
     pub fn init(allocator: Allocator) I18nMessageVisitorContext {
         return .{
@@ -108,6 +111,7 @@ pub const I18nMessageVisitorContext = struct {
             .placeholder_to_content = std.StringHashMap(i18n_ast.MessagePlaceholder).init(allocator),
             .placeholder_to_message = std.StringHashMap(*i18n_ast.Message).init(allocator),
             .allocator = allocator,
+            .string_arena = std.heap.ArenaAllocator.init(allocator),
         };
     }
 
@@ -115,6 +119,7 @@ pub const I18nMessageVisitorContext = struct {
         self.placeholder_registry.deinit();
         self.placeholder_to_content.deinit();
         self.placeholder_to_message.deinit();
+        self.string_arena.deinit();
     }
 };
 
@@ -216,10 +221,11 @@ pub const I18nVisitor = struct {
         return msg;
     }
 
-    /// Callback to free the I18nMessageVisitorContext (and its placeholder_registry).
+    /// Callback to free the I18nMessageVisitorContext (and its placeholder_registry + string_arena).
     fn placeholderRegistryDeinit(ctx: *anyopaque) void {
         const context: *I18nMessageVisitorContext = @ptrCast(@alignCast(ctx));
         context.placeholder_registry.deinit();
+        context.string_arena.deinit();
         // The placeholder_to_content and placeholder_to_message maps were
         // moved into the Message, so don't deinit them here.
         // Just free the context struct itself.
@@ -293,7 +299,7 @@ pub const I18nVisitor = struct {
         if (!is_void) {
             close_ph_name = try context.placeholder_registry.getCloseTagPlaceholderName(node_name);
             try context.placeholder_to_content.put(close_ph_name, .{
-                .text = try std.fmt.allocPrint(self.allocator, "</{s}>", .{node_name}),
+                .text = try std.fmt.allocPrint(context.string_arena.allocator(), "</{s}>", .{node_name}),
                 .source_span = .{ .start = node.source_span.full_start.start, .end = node.source_span.full_start.end },
             });
         }
@@ -390,7 +396,7 @@ pub const I18nVisitor = struct {
         defer context.icu_depth -= 1;
 
         // Build ICU cases
-        var cases = try self.allocator.alloc(i18n_ast.IcuCase, icu.icu_cases.len);
+        var cases = try context.string_arena.allocator().alloc(i18n_ast.IcuCase, icu.icu_cases.len);
         for (icu.icu_cases, 0..) |caze, i| {
             var children = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
             defer children.deinit();
@@ -414,7 +420,7 @@ pub const I18nVisitor = struct {
         if (context.is_icu or context.icu_depth > 0) {
             // Nested ICU — return an Icu node with expression placeholder.
             const exp_ph = try context.placeholder_registry.getUniquePlaceholder(
-                try std.fmt.allocPrint(self.allocator, "VAR_{s}", .{icu.icu_type}),
+                try std.fmt.allocPrint(context.string_arena.allocator(), "VAR_{s}", .{icu.icu_type}),
             );
             i18n_icu.expression_placeholder = exp_ph;
             try context.placeholder_to_content.put(exp_ph, .{
@@ -433,7 +439,7 @@ pub const I18nVisitor = struct {
         // Top-level ICU — return an IcuPlaceholder.
         const ph_name = try context.placeholder_registry.getPlaceholderName("ICU", icu.icu_switch_value);
         // Create a nested message for this ICU.
-        const nested_msg = try self.allocator.create(i18n_ast.Message);
+        const nested_msg = try context.string_arena.allocator().create(i18n_ast.Message);
         nested_msg.* = try self.toI18nMessage(
             &[_]HtmlNodeInput{icu.*},
             "",
@@ -443,7 +449,7 @@ pub const I18nVisitor = struct {
         );
         try context.placeholder_to_message.put(ph_name, nested_msg);
 
-        const icu_ptr = try self.allocator.create(i18n_ast.Icu);
+        const icu_ptr = try context.string_arena.allocator().create(i18n_ast.Icu);
         icu_ptr.* = i18n_icu;
 
         const node = i18n_ast.Node{
@@ -544,7 +550,7 @@ pub const I18nVisitor = struct {
                 const ph_name = try context.placeholder_registry.getPlaceholderName(base_name, expression);
 
                 try context.placeholder_to_content.put(ph_name, .{
-                    .text = try std.fmt.allocPrint(self.allocator, "{s}{s}{s}", .{ tokens[i], expression, tokens[i + 2] }),
+                    .text = try std.fmt.allocPrint(context.string_arena.allocator(), "{s}{s}{s}", .{ tokens[i], expression, tokens[i + 2] }),
                     .source_span = .{ .start = source_span_val.full_start.start, .end = source_span_val.full_start.end },
                 });
 
