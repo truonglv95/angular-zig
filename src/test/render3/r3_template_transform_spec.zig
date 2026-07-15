@@ -383,11 +383,13 @@ test "r3_template_transform: should parse SVG with attributes" {
 // ─── Special elements ──────────────────────────────────────
 
 test "r3_template_transform: should parse script element" {
-                    try expectNodeCount(std.testing.allocator, "<script>var x = 1;</script>", 1);
+    // Script elements are filtered out of R3 AST (matching TS behavior).
+                    try expectNodeCount(std.testing.allocator, "<script>var x = 1;</script>", 0);
 }
 
 test "r3_template_transform: should parse style element" {
-                    try expectNodeCount(std.testing.allocator, "<style>.foo { color: red; }</style>", 1);
+    // Style elements are filtered out of R3 AST (matching TS behavior).
+                    try expectNodeCount(std.testing.allocator, "<style>.foo { color: red; }</style>", 0);
 }
 
 test "r3_template_transform: should parse textarea element" {
@@ -649,15 +651,13 @@ test "r3_template_transform: should keep nested children of elements with ngNonB
 // ─── <script>, <style>, <link rel="stylesheet"> ──────────────
 
 test "r3_template_transform: should ignore <script> elements" {
-    // TS test expects only the trailing text node, but the current Zig
-    // implementation keeps <script> as an Element node.
-    try expectNodeCount(std.testing.allocator, "<script></script>a", 2);
+    // Script elements are filtered out — only trailing text remains.
+    try expectNodeCount(std.testing.allocator, "<script></script>a", 1);
 }
 
 test "r3_template_transform: should ignore <style> elements" {
-    // TS test expects only the trailing text node, but the current Zig
-    // implementation keeps <style> as an Element node.
-    try expectNodeCount(std.testing.allocator, "<style></style>a", 2);
+    // Style elements are filtered out — only trailing text remains.
+    try expectNodeCount(std.testing.allocator, "<style></style>a", 1);
 }
 
 test "r3_template_transform: should keep <link rel=\"stylesheet\"> elements if they have an absolute url" {
@@ -669,37 +669,34 @@ test "r3_template_transform: should keep <link rel=\"stylesheet\"> elements if t
 }
 
 test "r3_template_transform: should ignore <link rel=\"stylesheet\"> elements if they have a relative uri" {
-    // TS test expects the element to be filtered out, but the current Zig
-    // implementation keeps it as an Element node.
-    try expectNodeCount(std.testing.allocator, "<link rel=\"stylesheet\" href=\"./other.css\">", 1);
+    // Relative URI stylesheet links are filtered out.
+    try expectNodeCount(std.testing.allocator, "<link rel=\"stylesheet\" href=\"./other.css\">", 0);
 }
 
-// ─── Deferred blocks (current Zig implementation produces 0 top-level nodes
-// for @defer blocks since the @defer handler is not yet wired into the Block
-// transform path). These tests verify parsing does not crash. ─────
+// ─── Deferred blocks ───────────────────────────────────────
 
 test "r3_template_transform: should parse a simple deferred block" {
-    try expectNodeCount(std.testing.allocator, "@defer{hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer{hello}", 1);
 }
 
 test "r3_template_transform: should parse a deferred block with a `when` trigger" {
-    try expectNodeCount(std.testing.allocator, "@defer (when isVisible() && loaded){hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer (when isVisible() && loaded){hello}", 1);
 }
 
 test "r3_template_transform: should parse a deferred block with a single `on` trigger" {
-    try expectNodeCount(std.testing.allocator, "@defer (on idle){hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer (on idle){hello}", 1);
 }
 
 test "r3_template_transform: should parse a deferred block with multiple `on` triggers" {
-    try expectNodeCount(std.testing.allocator, "@defer (on idle, viewport(button)){hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer (on idle, viewport(button)){hello}", 1);
 }
 
 test "r3_template_transform: should parse a deferred block with a hover trigger" {
-    try expectNodeCount(std.testing.allocator, "@defer (on hover(button)){hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer (on hover(button)){hello}", 1);
 }
 
 test "r3_template_transform: should parse a deferred block with an interaction trigger" {
-    try expectNodeCount(std.testing.allocator, "@defer (on interaction(button)){hello}", 0);
+    try expectNodeCount(std.testing.allocator, "@defer (on interaction(button)){hello}", 1);
 }
 
 // ─── Error reporting tests ────────────────────────────────────

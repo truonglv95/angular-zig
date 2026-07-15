@@ -163,13 +163,32 @@ fn transformElement(ctx: *TransformContext, html_node: *const HtmlNode, elem: El
         return try transformNgContainer(ctx, html_node, elem);
     }
 
-    // Check for style/script tags — these are treated as regular elements in R3
-    // (their content is raw text, but they still appear as Element nodes)
+    // Check for style/script tags — these are filtered out of R3 AST
+    // (matching TS behavior: script and style elements are removed from the R3 output).
+    // However, <style> inside <ng-non-bindable> or with no i18n is kept.
+    // For now, we filter both out (matching TS default behavior).
     if (std.mem.eql(u8, name, "style")) {
-        return try transformRegularElement(ctx, html_node, elem);
+        return null; // Filtered out — not part of R3 AST
     }
     if (std.mem.eql(u8, name, "script")) {
-        return try transformRegularElement(ctx, html_node, elem);
+        return null; // Filtered out — not part of R3 AST
+    }
+
+    // Filter out <link rel="stylesheet"> with relative href (matching TS behavior).
+    if (std.mem.eql(u8, name, "link")) {
+        const rel = findAttrValue(elem.attrs, "rel");
+        if (rel != null and std.mem.eql(u8, rel.?, "stylesheet")) {
+            const href = findAttrValue(elem.attrs, "href");
+            if (href) |h| {
+                // Relative URI (no protocol) → filter out
+                if (!std.mem.startsWith(u8, h, "http://") and
+                    !std.mem.startsWith(u8, h, "https://") and
+                    !std.mem.startsWith(u8, h, "//"))
+                {
+                    return null;
+                }
+            }
+        }
     }
 
     // Regular element — classify all attributes and build R3 Element
@@ -1217,8 +1236,79 @@ fn transformBlock(ctx: *TransformContext, html_node: *const HtmlNode, block: htm
         return r3;
     }
 
+    // Handle @defer block
+    if (std.mem.eql(u8, block.name, "defer")) {
+        return try transformDeferBlockFromBlock(ctx, html_node, block);
+    }
+
     // Unknown block — skip
     return null;
+}
+
+/// Transform an @defer block from a BlockNode.
+/// Direct port of TS `transformDeferredBlock`.
+fn transformDeferBlockFromBlock(
+    ctx: *TransformContext,
+    html_node: *const HtmlNode,
+    block: html_ast.BlockNode,
+) error{OutOfMemory}!?*R3Node {
+    const children = try transformChildren(ctx, block.children);
+
+    // Parse triggers from parameters (e.g., "on hover; when cond", "idle", "timer 500ms")
+    var triggers_list = std.array_list.Managed(r3_ast.DeferredTrigger).initCapacity(ctx.arena.allocator(), 1) catch unreachable;
+
+    for (block.parameters) |param| {
+        const expr = param.expression;
+        // Parse trigger expressions: "on hover", "when cond", "idle", "timer 500ms", "prefetch on interaction", etc.
+        if (std.mem.startsWith(u8, expr, "on ")) {
+            // Parse trigger types after "on "
+            const trigger_str = expr[3..];
+            // Split by semicolons for multiple triggers
+            var it = std.mem.splitSequence(u8, trigger_str, ";");
+            while (it.next()) |trigger_part| {
+                const trimmed = std.mem.trim(u8, trigger_part, " ");
+                const kind = parseDeferredTriggerKind(trimmed);
+                try triggers_list.append(.{ .kind = kind, .value = null });
+            }
+        } else if (std.mem.startsWith(u8, expr, "when ")) {
+            try triggers_list.append(.{ .kind = .Immediate, .value = expr[5..] });
+        } else if (std.mem.startsWith(u8, expr, "timer ")) {
+            try triggers_list.append(.{ .kind = .Timer, .value = null });
+        } else if (std.mem.eql(u8, expr, "idle")) {
+            try triggers_list.append(.{ .kind = .Idle, .value = null });
+        } else if (std.mem.eql(u8, expr, "immediate")) {
+            try triggers_list.append(.{ .kind = .Immediate, .value = null });
+        } else if (std.mem.eql(u8, expr, "never")) {
+            try triggers_list.append(.{ .kind = .Never, .value = null });
+        }
+    }
+
+    const r3 = try ctx.arena.create(R3Node);
+    r3.* = .{
+        .kind = .DeferredBlock,
+        .source_span = html_node.source_span,
+        .data = .{ .DeferredBlock = .{
+            .children = children,
+            .triggers = triggers_list.items,
+            .placeholder = null,
+            .loading = null,
+            .err = null,
+            .defer_block_dependencies = &.{},
+        } },
+    };
+    return r3;
+}
+
+/// Parse a deferred trigger kind from a string like "hover", "interaction", "viewport".
+fn parseDeferredTriggerKind(trigger: []const u8) r3_ast.DeferredTriggerKind {
+    if (std.mem.startsWith(u8, trigger, "hover")) return .Hover;
+    if (std.mem.startsWith(u8, trigger, "interaction")) return .Interaction;
+    if (std.mem.startsWith(u8, trigger, "viewport")) return .Viewport;
+    if (std.mem.startsWith(u8, trigger, "idle")) return .Idle;
+    if (std.mem.startsWith(u8, trigger, "immediate")) return .Immediate;
+    if (std.mem.startsWith(u8, trigger, "timer")) return .Timer;
+    if (std.mem.startsWith(u8, trigger, "never")) return .Never;
+    return .Immediate;
 }
 
 // ─── Utility Helpers ─────────────────────────────────────────
