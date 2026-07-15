@@ -24,6 +24,7 @@
 const std = @import("std");
 const chars = @import("../chars.zig");
 const tags = @import("tags.zig");
+const entities = @import("entities.zig");
 
 /// Interpolation delimiters.
 /// Direct port of `INTERPOLATION = {start: '{{', end: '}}'}` in the TS source.
@@ -234,6 +235,8 @@ pub const Lexer = struct {
     in_block: bool = false,
     /// Block name stack.
     block_stack: std.array_list.Managed([]const u8),
+    /// Owned processed source (from carriage return processing).
+    processed_source: ?[]const u8 = null,
 
     pub fn init(allocator: std.mem.Allocator, source: []const u8) Lexer {
         return .{
@@ -263,6 +266,9 @@ pub const Lexer = struct {
                 allocator.free(tok.parts);
             }
         }
+        if (self.processed_source) |ps| {
+            allocator.free(ps);
+        }
         self.tokens.deinit();
         self.errors.deinit();
         self.raw_text_stack.deinit();
@@ -274,9 +280,13 @@ pub const Lexer = struct {
     pub fn tokenize(self: *Lexer) !struct { []const HtmlToken, []const LexError } {
         // Process carriage returns if needed.
         if (!self.options.preserve_line_endings) {
-            const processed = processCarriageReturns(self.tokens.allocator, self.source) catch self.source;
-            if (processed.ptr != self.source.ptr) {
-                self.source = processed;
+            // Only process if source contains \r
+            if (std.mem.indexOfScalar(u8, self.source, '\r') != null) {
+                const processed = processCarriageReturns(self.tokens.allocator, self.source) catch self.source;
+                if (processed.ptr != self.source.ptr) {
+                    self.processed_source = processed;
+                    self.source = processed;
+                }
             }
         }
 
@@ -614,13 +624,17 @@ pub const Lexer = struct {
 
         // Entity includes the # and x prefix for decimal/hex entities
         const entity_start = self.pos;
+        const is_numeric = self.pos < self.source.len and self.source[self.pos] == '#';
+        const is_hex = is_numeric and self.pos + 1 < self.source.len and (self.source[self.pos + 1] == 'x' or self.source[self.pos + 1] == 'X');
+
         // Skip # and optional x/X prefix
-        if (self.pos < self.source.len and self.source[self.pos] == '#') {
+        if (is_numeric) {
             self.pos += 1;
-            if (self.pos < self.source.len and (self.source[self.pos] == 'x' or self.source[self.pos] == 'X')) {
+            if (is_hex) {
                 self.pos += 1;
             }
         }
+
         while (self.pos < self.source.len and self.source[self.pos] != ';') {
             self.pos += 1;
         }
@@ -631,12 +645,57 @@ pub const Lexer = struct {
             break :blk e;
         } else self.pos;
 
+        const entity_text = self.source[entity_start..entity_end];
+
+        // Validate entity
+        var entity_valid = true;
+        if (is_hex) {
+            // Hex entity: must have at least one hex digit
+            const digits = entity_text[2..]; // skip #x
+            if (digits.len == 0) {
+                entity_valid = false;
+                try self.reportError(@intCast(start), "Invalid hex sequence");
+            } else {
+                for (digits) |c| {
+                    if (!std.ascii.isHex(c)) {
+                        entity_valid = false;
+                        try self.reportError(@intCast(start), "Invalid hex sequence");
+                        break;
+                    }
+                }
+            }
+        } else if (is_numeric) {
+            // Decimal entity: must have at least one digit
+            const digits = entity_text[1..]; // skip #
+            if (digits.len == 0) {
+                entity_valid = false;
+                try self.reportError(@intCast(start), "Invalid decimal entity");
+            } else {
+                for (digits) |c| {
+                    if (!std.ascii.isDigit(c)) {
+                        entity_valid = false;
+                        try self.reportError(@intCast(start), "Invalid decimal entity");
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Named entity: check if known
+            if (entity_text.len == 0) {
+                entity_valid = false;
+                try self.reportError(@intCast(start), "Malformed entity");
+            } else if (entities.NAMED_ENTITIES.get(entity_text) == null) {
+                entity_valid = false;
+                try self.reportError(@intCast(start), "Unknown entity");
+            }
+        }
+
         // Emit the entity token
         try self.tokens.append(.{
             .type = .EncodedEntity,
             .index = start,
             .end = self.pos,
-            .entity_value = self.source[entity_start..entity_end],
+            .entity_value = if (entity_valid) entity_text else entity_text,
         });
 
     }
