@@ -171,6 +171,8 @@ pub const Parser = struct {
             .Comment => return try self.parseComment(),
             .DocType => return try self.parseDocType(),
             .Cdata => return try self.parseCdata(),
+            .ExpansionFormStart => return try self.parseExpansionForm(),
+            .ExpansionCaseStart => return try self.parseExpansionCase(),
             .BlockOpenStart, .IncompleteBlockOpen => return try self.parseBlock(),
             .BlockClose => {
                 // Block close handled by parseBlock — skip if seen here.
@@ -488,6 +490,101 @@ pub const Parser = struct {
             .data = .{ .Cdata = .{ .value = value } },
         };
         return node;
+    }
+
+    /// Parse an ICU expansion form: {expression, type, case1{...} case2{...}}.
+    /// Direct port of TS `_visitExpansionForm`.
+    fn parseExpansionForm(self: *Parser) !?*const Node {
+        const start_tok = self.expect(.ExpansionFormStart) catch return null;
+        // The lexer already scanned the entire expansion form into tokens.
+        // We need to extract the switch value, type, and cases.
+        // The lexer emits: ExpansionFormStart, Text(switch_value), Text(type), [ExpansionCaseStart...], ExpansionFormEnd
+        // But our lexer emits a simpler token stream. Let's extract from the source.
+
+        const raw = start_tok.slice(self.source);
+        // raw is like "{count, plural, =0 {none} =1 {one} other {many}}"
+        // Strip { and }
+        const inner = if (raw.len >= 2) raw[1 .. raw.len - 1] else raw;
+
+        // Parse: expression, type, cases
+        var parts = std.mem.splitScalar(u8, inner, ',');
+        const switch_value = std.mem.trim(u8, parts.next() orelse "", " \t\n\r");
+        const exp_type = std.mem.trim(u8, parts.next() orelse "", " \t\n\r");
+        const cases_str = parts.rest();
+
+        // Parse cases: "=0 {none} =1 {one} other {many}"
+        var cases = std.array_list.Managed(*const Node).init(self.allocator);
+        defer cases.deinit();
+
+        var pos: usize = 0;
+        while (pos < cases_str.len) {
+            // Skip whitespace
+            while (pos < cases_str.len and (cases_str[pos] == ' ' or cases_str[pos] == '\t' or cases_str[pos] == '\n')) pos += 1;
+            if (pos >= cases_str.len) break;
+
+            // Read case value (until '{')
+            const val_start = pos;
+            while (pos < cases_str.len and cases_str[pos] != '{') pos += 1;
+            if (pos >= cases_str.len) break;
+            const case_value = std.mem.trim(u8, cases_str[val_start..pos], " \t\n\r");
+
+            // Skip '{'
+            pos += 1;
+            const expr_start = pos;
+            var depth: u32 = 1;
+            while (pos < cases_str.len and depth > 0) {
+                if (cases_str[pos] == '{') depth += 1;
+                if (cases_str[pos] == '}') depth -= 1;
+                if (depth > 0) pos += 1;
+            }
+            const case_expr = cases_str[expr_start..pos];
+            if (pos < cases_str.len) pos += 1; // skip '}'
+
+            const case_node = try self.arena.create(Node);
+            case_node.* = .{
+                .kind = .ExpansionCase,
+                .source_span = ParseSourceSpan.init(0, 0, self.source),
+                .data = .{ .ExpansionCase = .{
+                    .value = case_value,
+                    .expression = case_expr,
+                    .children = &.{},
+                } },
+            };
+            try cases.append(case_node);
+        }
+
+        const cases_slice = if (cases.items.len > 0)
+            try self.arena.alloc(*const Node, cases.items.len)
+        else
+            &[_]*const Node{};
+        if (cases.items.len > 0) @memcpy(@constCast(cases_slice), cases.items);
+
+        const node = try self.arena.create(Node);
+        node.* = .{
+            .kind = .Expansion,
+            .source_span = ParseSourceSpan.init(start_tok.index, start_tok.end, self.source),
+            .data = .{ .Expansion = .{
+                .switch_value = switch_value,
+                .type = exp_type,
+                .cases = cases_slice,
+            } },
+        };
+
+        // Skip remaining expansion tokens (ExpansionCaseStart, ExpansionFormEnd, etc.)
+        while (!self.at(.EOF) and !self.at(.Text) and !self.at(.TagOpenStart) and
+            !self.at(.TagCloseStart) and !self.at(.Comment) and !self.at(.BlockOpenStart) and
+            !self.at(.BlockClose))
+        {
+            _ = self.next();
+        }
+
+        return node;
+    }
+
+    /// Parse an expansion case (if encountered standalone — usually handled by parseExpansionForm).
+    fn parseExpansionCase(self: *Parser) !?*const Node {
+        _ = self.next(); // skip ExpansionCaseStart token
+        return null;
     }
 
     // ─── Additional methods from the TS _TreeBuilder ─────────

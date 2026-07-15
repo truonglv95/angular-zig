@@ -133,7 +133,9 @@ const source_span_mod = @import("../source_span.zig");
 pub fn extract(allocator: std.mem.Allocator, source: []const u8) !ExtractionResult {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
-    var lex = ml_lexer.Lexer.init(allocator, source);
+    // Enable ICU expansion form tokenization for i18n extraction.
+    // Direct port of TS: `htmlParser.parse(html, url, {tokenizeExpansionForms: true})`.
+    var lex = ml_lexer.Lexer.initWithOptions(allocator, source, .{ .tokenize_icu = true });
     defer lex.deinit();
     const lex_result = try lex.tokenize();
     var html_parser = ml_parser.Parser.init(allocator, &arena, source, lex_result[0]);
