@@ -1423,14 +1423,16 @@ test "parser: should be able to recover from a broken expression in a template l
 
 test "parser: should retain the offsets of an interpolation" {
     const allocator = std.testing.allocator;
-    const result = try parser_mod.splitInterpolation(allocator, "{{a}}  {{b}}  {{c}}");
+    var result = try parser_mod.splitInterpolation(allocator, "{{a}}  {{b}}  {{c}}");
+    defer result.deinit(allocator);
     try std.testing.expectEqual(@as(usize, 3), result.expressions.len);
     try std.testing.expectEqual(@as(usize, 3), result.offsets.len);
 }
 
 test "parser: should retain the offsets into the expression AST of interpolations" {
     const allocator = std.testing.allocator;
-    const result = try parser_mod.splitInterpolation(allocator, "{{a}}  {{b}}  {{c}}");
+    var result = try parser_mod.splitInterpolation(allocator, "{{a}}  {{b}}  {{c}}");
+    defer result.deinit(allocator);
     try std.testing.expectEqual(@as(usize, 3), result.expressions.len);
 }
 

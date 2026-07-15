@@ -642,10 +642,7 @@ test "parseQuery with descendant combinator" {
 test "parseQuery group" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div, span");
-    defer {
-        if (query.nodes.len > 0) allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Group, query.nodes[0].kind);
     try std.testing.expectEqual(@as(usize, 2), query.nodes[0].children.len);

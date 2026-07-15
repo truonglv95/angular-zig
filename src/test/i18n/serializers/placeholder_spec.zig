@@ -128,7 +128,9 @@ test "placeholder: should generate unique placeholder names" {
     defer reg.deinit();
 
     const ph1 = try reg.getUniquePlaceholder("ph");
+    defer allocator.free(ph1);
     const ph2 = try reg.getUniquePlaceholder("ph");
+    defer allocator.free(ph2);
     try std.testing.expect(!std.mem.eql(u8, ph1, ph2));
 }
 
