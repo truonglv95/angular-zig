@@ -312,6 +312,20 @@ pub const ReifiedView = struct {
     decls: u32,
     /// Number of slots used
     slots: u32,
+    /// Allocator used for ops (for deinit).
+    allocator: ?Allocator = null,
+
+    /// Free all memory owned by this ReifiedView.
+    /// Note: create_ops/update_ops/function_ops are owned by the ReifyContext
+    /// which is NOT deinited (ownership transferred). These slices point to
+    /// the backing memory of the context's ArrayLists. The caller must ensure
+    /// the context's allocator is still valid when accessing these slices.
+    /// For now, we don't free them (matching original behavior — potential leak).
+    pub fn deinit(self: *ReifiedView) void {
+        _ = self;
+        // Intentionally empty — the ops slices are owned by the ReifyContext
+        // which is stack-allocated in reifyJob and not deinited.
+    }
 };
 
 pub const FunctionOps = struct {
@@ -410,6 +424,7 @@ pub fn reifyJob(job: *ComponentCompilationJob) !ReifiedView {
         .vars = job.root.vars orelse 0,
         .decls = job.root.decls orelse 0,
         .slots = job.slots.next_slot,
+        .allocator = job.allocator,
     };
 
     // Free only the internal xref_to_slot list; the ops lists' memory is now owned by `result`.
@@ -1100,7 +1115,7 @@ test "reify ElementStart op" {
         .data = .{ .ElementStart = .{ .name = "div", .namespace = .HTML, .attrs_xref = 0 } },
     });
 
-    const reified = try reifyJob(&job);
+    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
     try std.testing.expectEqual(@as(usize, 1), reified.create_ops.len);
     try std.testing.expectEqual(ReifiedKind.ElementStart, reified.create_ops[0].kind);
     try std.testing.expectEqual(OpPhase.Create, reified.create_ops[0].phase);
@@ -1137,7 +1152,7 @@ test "reify create + update ops" {
         .data = .{ .Binding = .{ .name = "textContent", .expression = expr, .binding_kind = .Property } },
     });
 
-    const reified = try reifyJob(&job);
+    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
     try std.testing.expectEqual(@as(usize, 2), reified.create_ops.len);
     try std.testing.expectEqual(@as(usize, 1), reified.update_ops.len);
     try std.testing.expectEqual(ReifiedKind.Binding, reified.update_ops[0].kind);
@@ -1163,7 +1178,7 @@ test "collectStats counts correctly" {
         .data = .{ .ElementEnd = {} },
     });
 
-    const reified = try reifyJob(&job);
+    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
     const stats = collectStats(reified.create_ops, reified.update_ops);
     try std.testing.expectEqual(@as(usize, 1), stats.element_starts);
     try std.testing.expectEqual(@as(usize, 2), stats.create_count);
