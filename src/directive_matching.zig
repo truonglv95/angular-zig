@@ -68,6 +68,11 @@ pub const SimpleSelector = struct {
 /// E.g., "div.active[disabled]" → [Element("div"), Class("active"), Attribute("disabled")]
 pub const Selector = struct {
     parts: []const SimpleSelector,
+
+    /// Free the parts slice (allocated via `toOwnedSlice`).
+    pub fn deinit(self: *Selector, allocator: Allocator) void {
+        if (self.parts.len > 0) allocator.free(self.parts);
+    }
 };
 
 /// A selector with combinator and specificity.

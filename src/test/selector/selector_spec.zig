@@ -27,7 +27,8 @@ fn makeCtx(allocator: Allocator, tag: []const u8, attrs: []const [2][]const u8) 
 
 /// Verify that a selector string matches an element with the given tag and attrs.
 fn expectMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attrs: []const [2][]const u8) !void {
-    const sel = try dm.parseSelector(allocator, selector);
+    var sel = try dm.parseSelector(allocator, selector);
+    defer sel.deinit(allocator);
     var ctx = try makeCtx(allocator, tag, attrs);
     defer allocator.free(ctx.attributes);
     defer allocator.free(ctx.classes);
@@ -36,7 +37,8 @@ fn expectMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attr
 
 /// Verify that a selector string does NOT match an element with the given tag and attrs.
 fn expectNoMatch(allocator: Allocator, selector: []const u8, tag: []const u8, attrs: []const [2][]const u8) !void {
-    const sel = try dm.parseSelector(allocator, selector);
+    var sel = try dm.parseSelector(allocator, selector);
+    defer sel.deinit(allocator);
     var ctx = try makeCtx(allocator, tag, attrs);
     defer allocator.free(ctx.attributes);
     defer allocator.free(ctx.classes);
@@ -45,7 +47,8 @@ fn expectNoMatch(allocator: Allocator, selector: []const u8, tag: []const u8, at
 
 /// Verify that parseSelector succeeds and produces at least 1 part.
 fn expectParseOk(allocator: Allocator, selector: []const u8) !void {
-    const sel = try dm.parseSelector(allocator, selector);
+    var sel = try dm.parseSelector(allocator, selector);
+    defer sel.deinit(allocator);
     try std.testing.expect(sel.parts.len >= 1);
 }
 
