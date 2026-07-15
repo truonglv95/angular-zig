@@ -22,8 +22,17 @@ pub const LoadResult = struct {
     locale: ?[]const u8,
     /// Maps message IDs to i18n node arrays.
     i18n_nodes_by_msg_id: std.StringHashMap([]const i18n_ast.Node),
+    /// Allocator used for node arrays (for deinit).
+    allocator: ?std.mem.Allocator = null,
 
     pub fn deinit(self: *LoadResult) void {
+        // Free each node array (allocated via `toOwnedSlice` in `convertHtmlToI18nNodes`).
+        if (self.allocator) |a| {
+            var it = self.i18n_nodes_by_msg_id.iterator();
+            while (it.next()) |entry| {
+                if (entry.value_ptr.*.len > 0) a.free(entry.value_ptr.*);
+            }
+        }
         self.i18n_nodes_by_msg_id.deinit();
     }
 };
@@ -80,6 +89,7 @@ pub const Xtb = struct {
         var result = LoadResult{
             .locale = parse_result.locale,
             .i18n_nodes_by_msg_id = std.StringHashMap([]const i18n_ast.Node).init(allocator),
+            .allocator = allocator,
         };
 
         // For each message ID, convert the HTML to i18n nodes.

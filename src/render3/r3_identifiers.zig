@@ -379,6 +379,7 @@ test "IdentifierGenerator handlerFnName" {
     defer gen.deinit();
 
     const id = try gen.handlerFnName("MyComp", "click", 0);
+    defer allocator.free(id);
     try std.testing.expect(std.mem.startsWith(u8, id, "MyComp_handleClick_"));
 }
 
@@ -388,6 +389,7 @@ test "IdentifierGenerator pipeFactoryName" {
     defer gen.deinit();
 
     const id = try gen.pipeFactoryName("MyComp", "date", 0);
+    defer allocator.free(id);
     try std.testing.expect(std.mem.startsWith(u8, id, "MyComp_pipe_date_"));
 }
 

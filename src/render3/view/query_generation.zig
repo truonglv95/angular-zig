@@ -108,7 +108,7 @@ pub fn parseQuery(allocator: Allocator, source: []const u8) Allocator.Error!Comp
     // Track if we're inside a group (comma-separated selectors)
     var in_group = false;
     var group_children = std.array_list.Managed(QueryNode).init(allocator);
-    errdefer group_children.deinit();
+    defer group_children.deinit(); // safe after toOwnedSlice (no-op)
 
     var i: usize = 0;
     while (i < source.len) {
@@ -690,6 +690,7 @@ test "buildQueryContext" {
         .{ .name = "class", .value = "foo bar" },
     };
     const ctx = try buildQueryContext(allocator, "div", &attrs);
+    defer allocator.free(ctx.classes);
     try std.testing.expectEqual(@as(usize, 2), ctx.classes.len);
     try std.testing.expectEqualStrings("foo", ctx.classes[0]);
     try std.testing.expectEqualStrings("bar", ctx.classes[1]);
