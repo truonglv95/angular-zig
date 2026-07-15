@@ -1143,7 +1143,7 @@ test "reify create + update ops" {
     });
 
     // Update: binding
-    const expr = try job.allocator.create(IrExpr);
+    const expr = try job.allocExpr(IrExpr);
     expr.* = IrExpr.readVariable("title", 0, span);
     try job.root.update.append(.{
         .kind = .Binding,
@@ -1206,13 +1206,18 @@ test "reifyExpression reifies BinaryExpr recursively" {
     const allocator = std.testing.allocator;
     const span = AbsoluteSourceSpan{ .start = 0, .end = 5 };
 
-    const left = try allocator.create(IrExpr);
+    // Use an arena allocator so all IrExpr allocations are freed in bulk.
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const left = try a.create(IrExpr);
     left.* = IrExpr.literalExpr("1", span);
-    const right = try allocator.create(IrExpr);
+    const right = try a.create(IrExpr);
     right.* = IrExpr.literalExpr("2", span);
     const original = IrExpr.binaryExpr(left, '+', right, span);
 
-    const reified = try reifyExpression(allocator, &original);
+    const reified = try reifyExpression(a, &original);
     try std.testing.expectEqual(ExpressionKind.BinaryExpr, reified.kind);
     // The reified should have new pointers (deep copy)
     try std.testing.expect(reified.data.BinaryExpr.left != left);
