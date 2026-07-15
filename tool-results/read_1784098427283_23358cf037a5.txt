@@ -1,0 +1,1068 @@
+     1→/// i18n AST — Message and Node types for internationalization
+     2→///
+     3→/// Port of: compiler/src/i18n/i18n_ast.ts (322 LoC)
+     4→///
+     5→/// Defines the i18n message structure used for translation extraction.
+     6→/// A Message contains a tree of Nodes (Text, Placeholder, TagPlaceholder,
+     7→/// Container, Icu, IcuPlaceholder, BlockPlaceholder).
+     8→///
+     9→/// DOD: tagged union Node thay cho class hierarchy, không vptr.
+    10→/// Visitor được implement qua comptime interface (struct với function pointers).
+    11→const std = @import("std");
+    12→const Allocator = std.mem.Allocator;
+    13→
+    14→const source_span = @import("../source_span.zig");
+    15→const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
+    16→const ParseSourceSpan = source_span.ParseSourceSpan;
+    17→
+    18→// ─── MessageSpan ─────────────────────────────────────────────
+    19→
+    20→/// Source location info for a message (1-based line/col).
+    21→/// Direct port of `MessageSpan` interface in the TS source.
+    22→pub const MessageSpan = struct {
+    23→    file_path: []const u8,
+    24→    start_line: u32,
+    25→    start_col: u32,
+    26→    end_line: u32,
+    27→    end_col: u32,
+    28→};
+    29→
+    30→// ─── MessagePlaceholder ──────────────────────────────────────
+    31→
+    32→/// Describes text contents of a placeholder in an ICU expression.
+    33→/// Direct port of `MessagePlaceholder` interface in the TS source.
+    34→pub const MessagePlaceholder = struct {
+    35→    text: []const u8,
+    36→    source_span: AbsoluteSourceSpan,
+    37→};
+    38→
+    39→// ─── Node types ──────────────────────────────────────────────
+    40→
+    41→/// Tagged union of i18n message node kinds.
+    42→/// Direct port of all `Node` implementations in the TS source:
+    43→/// Text, Container, Icu, TagPlaceholder, Placeholder, IcuPlaceholder, BlockPlaceholder.
+    44→pub const NodeKind = enum(u8) {
+    45→    text,
+    46→    container,
+    47→    icu,
+    48→    tag_placeholder,
+    49→    placeholder,
+    50→    icu_placeholder,
+    51→    block_placeholder,
+    52→};
+    53→
+    54→/// A node in an i18n message tree.
+    55→/// DOD: tagged union + payload (zero vptr, cache-friendly).
+    56→pub const Node = struct {
+    57→    kind: NodeKind,
+    58→    source_span: ParseSourceSpan,
+    59→    data: NodeData,
+    60→
+    61→    pub const NodeData = union(NodeKind) {
+    62→        text: Text,
+    63→        container: Container,
+    64→        icu: Icu,
+    65→        tag_placeholder: TagPlaceholder,
+    66→        placeholder: Placeholder,
+    67→        icu_placeholder: IcuPlaceholder,
+    68→        block_placeholder: BlockPlaceholder,
+    69→    };
+    70→
+    71→    /// Visit this node with the given visitor.
+    72→    /// Direct port of `Node.visit(visitor, context)` in the TS source.
+    73→    pub fn visit(self: *const Node, visitor: *const Visitor, ctx: *anyopaque) anyerror!void {
+    74→        switch (self.data) {
+    75→            .text => try visitor.visit_text(ctx, self),
+    76→            .container => try visitor.visit_container(ctx, self),
+    77→            .icu => try visitor.visit_icu(ctx, self),
+    78→            .tag_placeholder => try visitor.visit_tag_placeholder(ctx, self),
+    79→            .placeholder => try visitor.visit_placeholder(ctx, self),
+    80→            .icu_placeholder => try visitor.visit_icu_placeholder(ctx, self),
+    81→            .block_placeholder => try visitor.visit_block_placeholder(ctx, self),
+    82→        }
+    83→    }
+    84→};
+    85→
+    86→// ─── Text ────────────────────────────────────────────────────
+    87→
+    88→/// Literal text content.
+    89→/// Direct port of `Text` class in the TS source.
+    90→pub const Text = struct {
+    91→    value: []const u8,
+    92→};
+    93→
+    94→// ─── Container ───────────────────────────────────────────────
+    95→
+    96→/// A container for nested nodes (e.g. inside an element).
+    97→/// Direct port of `Container` class in the TS source.
+    98→pub const Container = struct {
+    99→    children: []const Node,
+   100→};
+   101→
+   102→// ─── Icu ─────────────────────────────────────────────────────
+   103→
+   104→/// An ICU expression ({count, plural, =0 {...} other {...}}).
+   105→/// Direct port of `Icu` class in the TS source.
+   106→pub const Icu = struct {
+   107→    expression: []const u8,
+   108→    /// ICU type: "plural", "select", "selectordinal".
+   109→    type: []const u8,
+   110→    /// Cases — list of (case_value, children).
+   111→    cases: []const IcuCase,
+   112→    /// Placeholder name for this ICU (e.g. "VAR_plural" or "ICU").
+   113→    expression_placeholder: []const u8 = "",
+   114→};
+   115→
+   116→/// A case in an ICU expression.
+   117→pub const IcuCase = struct {
+   118→    /// Case value: "=0", "one", "other", etc.
+   119→    value: []const u8,
+   120→    /// The child nodes for this case.
+   121→    children: []const Node,
+   122→};
+   123→
+   124→// ─── TagPlaceholder ──────────────────────────────────────────
+   125→
+   126→/// A placeholder for an element tag (<b>...</b> → START_TAG_B).
+   127→/// Direct port of `TagPlaceholder` class in the TS source.
+   128→pub const TagPlaceholder = struct {
+   129→    /// Tag name: "b", "span", etc.
+   130→    tag: []const u8,
+   131→    /// Attributes serialized as key=value pairs.
+   132→    attrs: []const TagAttr = &.{},
+   133→    /// Placeholder name for the start tag (e.g. "START_TAG_B").
+   134→    start_name: []const u8,
+   135→    /// Placeholder name for the close tag (e.g. "CLOSE_TAG_B").
+   136→    /// Empty for void elements.
+   137→    close_name: []const u8 = "",
+   138→    /// Children nodes (for nested content).
+   139→    children: []const Node = &.{},
+   140→    /// Whether this is a void element (no closing tag).
+   141→    is_void: bool = false,
+   142→    /// Start source span (the `<tag>` part).
+   143→    start_source_span: ?ParseSourceSpan = null,
+   144→    /// End source span (the `</tag>` part).
+   145→    end_source_span: ?ParseSourceSpan = null,
+   146→};
+   147→
+   148→/// A tag attribute (key=value).
+   149→pub const TagAttr = struct {
+   150→    name: []const u8,
+   151→    value: []const u8,
+   152→};
+   153→
+   154→// ─── Placeholder ─────────────────────────────────────────────
+   155→
+   156→/// A placeholder for an interpolated expression ({{ name }} → PH).
+   157→/// Direct port of `Placeholder` class in the TS source.
+   158→pub const Placeholder = struct {
+   159→    /// The expression text (e.g. "name" for {{ name }}).
+   160→    value: []const u8,
+   161→    /// The placeholder name (e.g. "PH", "PH_1").
+   162→    name: []const u8,
+   163→};
+   164→
+   165→// ─── IcuPlaceholder ──────────────────────────────────────────
+   166→
+   167→/// A placeholder for an ICU expression (used when ICU is not the root).
+   168→/// Direct port of `IcuPlaceholder` class in the TS source.
+   169→pub const IcuPlaceholder = struct {
+   170→    /// The ICU expression value.
+   171→    value: *const Icu,
+   172→    /// The placeholder name (e.g. "ICU", "ICU_1").
+   173→    name: []const u8,
+   174→    /// Optional reference to the previous message (for `setI18nRefs()`).
+   175→    previous_message: ?*const Message = null,
+   176→};
+   177→
+   178→// ─── BlockPlaceholder ────────────────────────────────────────
+   179→
+   180→/// A placeholder for a block (@if, @for) in an i18n message.
+   181→/// Direct port of `BlockPlaceholder` class in the TS source.
+   182→pub const BlockPlaceholder = struct {
+   183→    /// Block name: "if", "for", "switch", etc.
+   184→    name: []const u8,
+   185→    /// Block parameters (e.g. ["condition"] for @if(condition)).
+   186→    parameters: []const []const u8 = &.{},
+   187→    /// Placeholder name for the start of the block.
+   188→    start_name: []const u8,
+   189→    /// Placeholder name for the close of the block.
+   190→    close_name: []const u8,
+   191→    /// Children nodes (the block body).
+   192→    children: []const Node = &.{},
+   193→    /// Start source span (the `@if(...)` part).
+   194→    start_source_span: ?ParseSourceSpan = null,
+   195→    /// End source span (the `}` part).
+   196→    end_source_span: ?ParseSourceSpan = null,
+   197→};
+   198→
+   199→// ─── Message ─────────────────────────────────────────────────
+   200→
+   201→/// I18nMeta — either a Message (root) or a Node (part of a message).
+   202→/// Direct port of `I18nMeta` type in the TS source.
+   203→pub const I18nMeta = union(enum) {
+   204→    message: *Message,
+   205→    node: *const Node,
+   206→};
+   207→
+   208→/// A translatable message extracted from a template.
+   209→/// Direct port of `Message` class in the TS source.
+   210→pub const Message = struct {
+   211→    /// AST nodes of the message.
+   212→    nodes: []const Node = &.{},
+   213→    /// Maps placeholder names to static content + source spans.
+   214→    placeholders: std.StringHashMap(MessagePlaceholder),
+   215→    /// Maps placeholder names to nested messages (for ICU).
+   216→    placeholder_to_message: std.StringHashMap(*Message),
+   217→    /// Meaning context (disambiguates identical strings).
+   218→    meaning: []const u8 = "",
+   219→    /// Human-readable description.
+   220→    description: []const u8 = "",
+   221→    /// Custom ID (if provided by user).
+   222→    custom_id: []const u8 = "",
+   223→    /// Unique ID (custom or computed).
+   224→    id: []const u8 = "",
+   225→    /// Legacy IDs for backward compatibility.
+   226→    legacy_ids: []const []const u8 = &.{},
+   227→    /// Serialized message string (computed from nodes via `serializeMessage`).
+   228→    message_string: []const u8 = "",
+   229→    /// Source locations.
+   230→    sources: []const MessageSpan = &.{},
+   231→    /// Allocator used for `message_string` and `sources` (null if not owned).
+   232→    /// Direct port of TS not-needed (V8 GC handles it).
+   233→    allocator: ?Allocator = null,
+   234→    /// Whether `message_string` is owned (allocated by `serializeMessage`).
+   235→    /// If false, the caller is responsible for freeing it.
+   236→    owns_message_string: bool = false,
+   237→    /// Whether `sources` is owned (allocated by `initWithNodes`).
+   238→    owns_sources: bool = false,
+   239→    /// Whether `id` is owned (allocated by `computeDigest`).
+   240→    owns_id: bool = false,
+   241→    /// Whether `nodes` is owned (allocated by `toOwnedSlice` in `initWithNodes`).
+   242→    owns_nodes: bool = false,
+   243→    /// Optional PlaceholderRegistry to free on deinit (transferred from
+   244→    /// `I18nVisitor.toI18nMessage`). The registry owns the placeholder name
+   245→    /// strings referenced by `nodes`.
+   246→    placeholder_registry: ?*anyopaque = null,
+   247→    /// Function pointer to call `PlaceholderRegistry.deinit` (since we can't
+   248→    /// import the type here without a circular dependency).
+   249→    placeholder_registry_deinit: ?*const fn (*anyopaque) void = null,
+   250→
+   251→    /// Full constructor — direct port of `Message` constructor in the TS source.
+   252→    /// Computes `id` (from customId) and `messageString` (from nodes).
+   253→    /// Computes `sources` from the first/last node source spans.
+   254→    pub fn initWithNodes(
+   255→        allocator: Allocator,
+   256→        nodes: []const Node,
+   257→        placeholders: std.StringHashMap(MessagePlaceholder),
+   258→        placeholder_to_message: std.StringHashMap(*Message),
+   259→        meaning: []const u8,
+   260→        description: []const u8,
+   261→        custom_id: []const u8,
+   262→    ) !Message {
+   263→        var msg = Message{
+   264→            .nodes = nodes,
+   265→            .placeholders = placeholders,
+   266→            .placeholder_to_message = placeholder_to_message,
+   267→            .meaning = meaning,
+   268→            .description = description,
+   269→            .custom_id = custom_id,
+   270→            .id = custom_id,
+   271→            .message_string = try serializeMessage(allocator, nodes),
+   272→            .allocator = allocator,
+   273→            .owns_message_string = true,
+   274→            .owns_nodes = true,
+   275→        };
+   276→
+   277→        // Compute sources from first/last node spans (direct port of lines 50-62 in TS).
+   278→        // Note: Zig ParseLocation doesn't carry file.url; file_path is left empty
+   279→        // and callers can patch it later via updateSourceFile().
+   280→        if (nodes.len > 0) {
+   281→            const first = nodes[0];
+   282→            const last = nodes[nodes.len - 1];
+   283→            const src = MessageSpan{
+   284→                .file_path = "",
+   285→                .start_line = first.source_span.start.line + 1,
+   286→                .start_col = first.source_span.start.col + 1,
+   287→                .end_line = last.source_span.end.line + 1,
+   288→                .end_col = first.source_span.start.col + 1,
+   289→            };
+   290→            const sources = try allocator.alloc(MessageSpan, 1);
+   291→            sources[0] = src;
+   292→            msg.sources = sources;
+   293→            msg.owns_sources = true;
+   294→        }
+   295→
+   296→        return msg;
+   297→    }
+   298→
+   299→    /// Simple init — creates empty placeholder maps. Used by tests and simple flows.
+   300→    pub fn init(allocator: Allocator) Message {
+   301→        return .{
+   302→            .placeholders = std.StringHashMap(MessagePlaceholder).init(allocator),
+   303→            .placeholder_to_message = std.StringHashMap(*Message).init(allocator),
+   304→        };
+   305→    }
+   306→
+   307→    /// Alias for symmetry with TS API.
+   308→    pub fn initSimple(allocator: Allocator) Message {
+   309→        return init(allocator);
+   310→    }
+   311→
+   312→    pub fn deinit(self: *Message) void {
+   313→        if (self.allocator) |a| {
+   314→            if (self.owns_message_string and self.message_string.len > 0) {
+   315→                a.free(self.message_string);
+   316→                self.owns_message_string = false;
+   317→            }
+   318→            if (self.owns_sources and self.sources.len > 0) {
+   319→                a.free(self.sources);
+   320→                self.owns_sources = false;
+   321→            }
+   322→            if (self.owns_id and self.id.len > 0) {
+   323→                a.free(self.id);
+   324→                self.owns_id = false;
+   325→            }
+   326→            if (self.owns_nodes and self.nodes.len > 0) {
+   327→                a.free(self.nodes);
+   328→                self.owns_nodes = false;
+   329→            }
+   330→        }
+   331→        // Free the placeholder registry if ownership was transferred.
+   332→        if (self.placeholder_registry) |reg| {
+   333→            if (self.placeholder_registry_deinit) |f| {
+   334→                f(reg);
+   335→            }
+   336→            self.placeholder_registry = null;
+   337→        }
+   338→        self.placeholders.deinit();
+   339→        self.placeholder_to_message.deinit();
+   340→    }
+   341→};
+   342→
+   343→// ─── Visitor interface ───────────────────────────────────────
+   344→
+   345→/// Visitor interface for walking i18n message nodes.
+   346→/// Direct port of `Visitor` interface in the TS source.
+   347→///
+   348→/// Each method takes a `*const Node` and a context pointer.
+   349→/// The visitor dispatches based on `node.kind`.
+   350→pub const Visitor = struct {
+   351→    ctx: *anyopaque,
+   352→    visit_text: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   353→    visit_container: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   354→    visit_icu: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   355→    visit_tag_placeholder: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   356→    visit_placeholder: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   357→    visit_icu_placeholder: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   358→    visit_block_placeholder: *const fn (ctx: *anyopaque, node: *const Node) anyerror!void,
+   359→};
+   360→
+   361→// ─── CloneVisitor ────────────────────────────────────────────
+   362→
+   363→/// Clone the AST — direct port of `CloneVisitor` class in the TS source.
+   364→/// Returns a deep copy of each node.
+   365→pub const CloneVisitor = struct {
+   366→    allocator: Allocator,
+   367→    arena: ?*std.heap.ArenaAllocator = null,
+   368→
+   369→    pub fn init(allocator: Allocator) CloneVisitor {
+   370→        return .{ .allocator = allocator };
+   371→    }
+   372→
+   373→    /// Clone a list of nodes — direct port of `CloneVisitor.visit*` methods.
+   374→    pub fn cloneNodes(self: *CloneVisitor, nodes: []const Node) Allocator.Error![]const Node {
+   375→        var result = try self.allocator.alloc(Node, nodes.len);
+   376→        for (nodes, 0..) |node, i| {
+   377→            result[i] = try self.cloneNode(&node);
+   378→        }
+   379→        return result;
+   380→    }
+   381→
+   382→    /// Clone a single node — dispatches based on kind.
+   383→    pub fn cloneNode(self: *CloneVisitor, node: *const Node) Allocator.Error!Node {
+   384→        const a = self.allocator;
+   385→        return switch (node.data) {
+   386→            .text => |t| Node{
+   387→                .kind = .text,
+   388→                .source_span = node.source_span,
+   389→                .data = .{ .text = .{ .value = t.value } },
+   390→            },
+   391→            .container => |c| Node{
+   392→                .kind = .container,
+   393→                .source_span = node.source_span,
+   394→                .data = .{ .container = .{
+   395→                    .children = try self.cloneNodes(c.children),
+   396→                } },
+   397→            },
+   398→            .icu => |icu| blk: {
+   399→                var cases = try a.alloc(IcuCase, icu.cases.len);
+   400→                for (icu.cases, 0..) |c, i| {
+   401→                    cases[i] = .{
+   402→                        .value = c.value,
+   403→                        .children = try self.cloneNodes(c.children),
+   404→                    };
+   405→                }
+   406→                break :blk Node{
+   407→                    .kind = .icu,
+   408→                    .source_span = node.source_span,
+   409→                    .data = .{ .icu = .{
+   410→                        .expression = icu.expression,
+   411→                        .type = icu.type,
+   412→                        .cases = cases,
+   413→                        .expression_placeholder = icu.expression_placeholder,
+   414→                    } },
+   415→                };
+   416→            },
+   417→            .tag_placeholder => |tp| Node{
+   418→                .kind = .tag_placeholder,
+   419→                .source_span = node.source_span,
+   420→                .data = .{ .tag_placeholder = .{
+   421→                    .tag = tp.tag,
+   422→                    .attrs = tp.attrs,
+   423→                    .start_name = tp.start_name,
+   424→                    .close_name = tp.close_name,
+   425→                    .children = try self.cloneNodes(tp.children),
+   426→                    .is_void = tp.is_void,
+   427→                    .start_source_span = tp.start_source_span,
+   428→                    .end_source_span = tp.end_source_span,
+   429→                } },
+   430→            },
+   431→            .placeholder => |ph| Node{
+   432→                .kind = .placeholder,
+   433→                .source_span = node.source_span,
+   434→                .data = .{ .placeholder = .{
+   435→                    .value = ph.value,
+   436→                    .name = ph.name,
+   437→                } },
+   438→            },
+   439→            .icu_placeholder => |iph| Node{
+   440→                .kind = .icu_placeholder,
+   441→                .source_span = node.source_span,
+   442→                .data = .{ .icu_placeholder = .{
+   443→                    .value = iph.value,
+   444→                    .name = iph.name,
+   445→                    .previous_message = iph.previous_message,
+   446→                } },
+   447→            },
+   448→            .block_placeholder => |bp| Node{
+   449→                .kind = .block_placeholder,
+   450→                .source_span = node.source_span,
+   451→                .data = .{ .block_placeholder = .{
+   452→                    .name = bp.name,
+   453→                    .parameters = bp.parameters,
+   454→                    .start_name = bp.start_name,
+   455→                    .close_name = bp.close_name,
+   456→                    .children = try self.cloneNodes(bp.children),
+   457→                    .start_source_span = bp.start_source_span,
+   458→                    .end_source_span = bp.end_source_span,
+   459→                } },
+   460→            },
+   461→        };
+   462→    }
+   463→};
+   464→
+   465→// ─── RecurseVisitor ──────────────────────────────────────────
+   466→
+   467→/// Visit all the nodes recursively — direct port of `RecurseVisitor` class.
+   468→/// Walks children of containers, ICUs, tag/block placeholders.
+   469→pub const RecurseVisitor = struct {
+   470→    /// Recursively walk a list of nodes.
+   471→    pub fn visitAllNodes(nodes: []const Node) void {
+   472→        for (nodes) |*node| {
+   473→            visitNode(node);
+   474→        }
+   475→    }
+   476→
+   477→    /// Recursively walk a single node.
+   478→    pub fn visitNode(node: *const Node) void {
+   479→        switch (node.data) {
+   480→            .text => {},
+   481→            .container => |c| visitAllNodes(c.children),
+   482→            .icu => |icu| {
+   483→                for (icu.cases) |c| {
+   484→                    visitAllNodes(c.children);
+   485→                }
+   486→            },
+   487→            .tag_placeholder => |tp| visitAllNodes(tp.children),
+   488→            .placeholder => {},
+   489→            .icu_placeholder => {},
+   490→            .block_placeholder => |bp| visitAllNodes(bp.children),
+   491→        }
+   492→    }
+   493→};
+   494→
+   495→// ─── LocalizeMessageStringVisitor ────────────────────────────
+   496→
+   497→/// Serialize the message to the Localize backtick string format.
+   498→/// Direct port of `LocalizeMessageStringVisitor` class in the TS source.
+   499→///
+   500→/// Format:
+   501→///   - Text → value
+   502→///   - Container → children joined
+   503→///   - Icu → {$expressionPlaceholder, type, k1 {children} k2 {children}}
+   504→///   - TagPlaceholder → {$$startName}children{$$closeName}
+   505→///   - Placeholder → {$$name}
+   506→///   - IcuPlaceholder → {$$name}
+   507→///   - BlockPlaceholder → {$$startName}children{$$closeName}
+   508→pub fn serializeMessage(allocator: Allocator, nodes: []const Node) ![]const u8 {
+   509→    var buf = std.array_list.Managed(u8).init(allocator);
+   510→    for (nodes) |node| {
+   511→        try serializeNodeLocalize(&buf, &node);
+   512→    }
+   513→    return buf.toOwnedSlice();
+   514→}
+   515→
+   516→/// Serialize a node using the Localize format.
+   517→fn serializeNodeLocalize(buf: *std.array_list.Managed(u8), node: *const Node) !void {
+   518→    switch (node.data) {
+   519→        .text => |t| try buf.appendSlice(t.value),
+   520→        .container => |c| {
+   521→            for (c.children) |child| {
+   522→                try serializeNodeLocalize(buf, &child);
+   523→            }
+   524→        },
+   525→        .icu => |icu| {
+   526→            try buf.appendSlice("{");
+   527→            try buf.appendSlice(icu.expression_placeholder);
+   528→            try buf.appendSlice(", ");
+   529→            try buf.appendSlice(icu.type);
+   530→            try buf.appendSlice(", ");
+   531→            for (icu.cases, 0..) |c, i| {
+   532→                if (i > 0) try buf.append(' ');
+   533→                try buf.appendSlice(c.value);
+   534→                try buf.appendSlice(" {");
+   535→                for (c.children) |child| {
+   536→                    try serializeNodeLocalize(buf, &child);
+   537→                }
+   538→                try buf.appendSlice("}");
+   539→            }
+   540→            try buf.appendSlice("}");
+   541→        },
+   542→        .tag_placeholder => |tp| {
+   543→            try buf.appendSlice("{$");
+   544→            try buf.appendSlice(tp.start_name);
+   545→            try buf.appendSlice("}");
+   546→            for (tp.children) |child| {
+   547→                try serializeNodeLocalize(buf, &child);
+   548→            }
+   549→            if (!tp.is_void and tp.close_name.len > 0) {
+   550→                try buf.appendSlice("{$");
+   551→                try buf.appendSlice(tp.close_name);
+   552→                try buf.appendSlice("}");
+   553→            }
+   554→        },
+   555→        .placeholder => |ph| {
+   556→            try buf.appendSlice("{$");
+   557→            try buf.appendSlice(ph.name);
+   558→            try buf.appendSlice("}");
+   559→        },
+   560→        .icu_placeholder => |iph| {
+   561→            try buf.appendSlice("{$");
+   562→            try buf.appendSlice(iph.name);
+   563→            try buf.appendSlice("}");
+   564→        },
+   565→        .block_placeholder => |bp| {
+   566→            try buf.appendSlice("{$");
+   567→            try buf.appendSlice(bp.start_name);
+   568→            try buf.appendSlice("}");
+   569→            for (bp.children) |child| {
+   570→                try serializeNodeLocalize(buf, &child);
+   571→            }
+   572→            try buf.appendSlice("{$");
+   573→            try buf.appendSlice(bp.close_name);
+   574→            try buf.appendSlice("}");
+   575→        },
+   576→    }
+   577→}
+   578→
+   579→/// Serialize a message to a string representation.
+   580→/// Alias for `serializeMessage` — matches the TS API name.
+   581→pub fn serializeMessageToString(allocator: Allocator, nodes: []const Node) ![]const u8 {
+   582→    return serializeMessage(allocator, nodes);
+   583→}
+   584→
+   585→// ─── XML-like serializer (for digest computation) ────────────
+   586→
+   587→/// Serialize the i18n AST to an XML-like format for UID generation.
+   588→/// Direct port of `_SerializerVisitor` class in `digest.ts`.
+   589→///
+   590→/// Format:
+   591→///   - Text → value
+   592→///   - Container → [child1, child2, ...]
+   593→///   - Icu → {expression, type, k1 {children}, k2 {children}}
+   594→///   - TagPlaceholder (void) → <ph tag name="startName"/>
+   595→///   - TagPlaceholder (non-void) → <ph tag name="startName">children</ph name="closeName">
+   596→///   - Placeholder → <ph name="name">value</ph> or <ph name="name"/>
+   597→///   - IcuPlaceholder → <ph icu name="name">value</ph>
+   598→///   - BlockPlaceholder → <ph block name="startName">children</ph name="closeName">
+   599→pub fn serializeNodesXmlLike(allocator: Allocator, nodes: []const Node) ![]const u8 {
+   600→    var buf = std.array_list.Managed(u8).init(allocator);
+   601→    for (nodes) |node| {
+   602→        try serializeNodeXmlLike(&buf, &node);
+   603→    }
+   604→    return buf.toOwnedSlice();
+   605→}
+   606→
+   607→fn serializeNodeXmlLike(buf: *std.array_list.Managed(u8), node: *const Node) anyerror!void {
+   608→    switch (node.data) {
+   609→        .text => |t| try buf.appendSlice(t.value),
+   610→        .container => |c| {
+   611→            try buf.append('[');
+   612→            for (c.children, 0..) |child, i| {
+   613→                if (i > 0) try buf.appendSlice(", ");
+   614→                try serializeNodeXmlLike(buf, &child);
+   615→            }
+   616→            try buf.append(']');
+   617→        },
+   618→        .icu => |icu| {
+   619→            try buf.append('{');
+   620→            try buf.appendSlice(icu.expression);
+   621→            try buf.appendSlice(", ");
+   622→            try buf.appendSlice(icu.type);
+   623→            try buf.appendSlice(", ");
+   624→            for (icu.cases, 0..) |c, i| {
+   625→                if (i > 0) try buf.appendSlice(", ");
+   626→                try buf.appendSlice(c.value);
+   627→                try buf.appendSlice(" {");
+   628→                for (c.children) |child| {
+   629→                    try serializeNodeXmlLike(buf, &child);
+   630→                }
+   631→                try buf.appendSlice("}");
+   632→            }
+   633→            try buf.append('}');
+   634→        },
+   635→        .tag_placeholder => |tp| {
+   636→            if (tp.is_void) {
+   637→                try buf.appendSlice("<ph tag name=\"");
+   638→                try buf.appendSlice(tp.start_name);
+   639→                try buf.appendSlice("\"/>");
+   640→            } else {
+   641→                try buf.appendSlice("<ph tag name=\"");
+   642→                try buf.appendSlice(tp.start_name);
+   643→                try buf.appendSlice("\">");
+   644→                for (tp.children, 0..) |child, i| {
+   645→                    if (i > 0) try buf.appendSlice(", ");
+   646→                    try serializeNodeXmlLike(buf, &child);
+   647→                }
+   648→                try buf.appendSlice("</ph name=\"");
+   649→                try buf.appendSlice(tp.close_name);
+   650→                try buf.appendSlice("\">");
+   651→            }
+   652→        },
+   653→        .placeholder => |ph| {
+   654→            if (ph.value.len > 0) {
+   655→                try buf.appendSlice("<ph name=\"");
+   656→                try buf.appendSlice(ph.name);
+   657→                try buf.appendSlice("\">");
+   658→                try buf.appendSlice(ph.value);
+   659→                try buf.appendSlice("</ph>");
+   660→            } else {
+   661→                try buf.appendSlice("<ph name=\"");
+   662→                try buf.appendSlice(ph.name);
+   663→                try buf.appendSlice("\"/>");
+   664→            }
+   665→        },
+   666→        .icu_placeholder => |iph| {
+   667→            try buf.appendSlice("<ph icu name=\"");
+   668→            try buf.appendSlice(iph.name);
+   669→            try buf.appendSlice("\">");
+   670→            // Serialize the inner ICU value
+   671→            const icu_node = Node{
+   672→                .kind = .icu,
+   673→                .source_span = emptySpan(),
+   674→                .data = .{ .icu = iph.value.* },
+   675→            };
+   676→            try serializeNodeXmlLike(buf, &icu_node);
+   677→            try buf.appendSlice("</ph>");
+   678→        },
+   679→        .block_placeholder => |bp| {
+   680→            try buf.appendSlice("<ph block name=\"");
+   681→            try buf.appendSlice(bp.start_name);
+   682→            try buf.appendSlice("\">");
+   683→            for (bp.children, 0..) |child, i| {
+   684→                if (i > 0) try buf.appendSlice(", ");
+   685→                try serializeNodeXmlLike(buf, &child);
+   686→            }
+   687→            try buf.appendSlice("</ph name=\"");
+   688→            try buf.appendSlice(bp.close_name);
+   689→            try buf.appendSlice("\">");
+   690→        },
+   691→    }
+   692→}
+   693→
+   694→/// Serialize nodes ignoring ICU expression content (for decimal digest).
+   695→/// Direct port of `_SerializerIgnoreIcuExpVisitor` class in `digest.ts`.
+   696→pub fn serializeNodesXmlLikeIgnoreIcu(allocator: Allocator, nodes: []const Node) ![]const u8 {
+   697→    var buf = std.array_list.Managed(u8).init(allocator);
+   698→    for (nodes) |node| {
+   699→        try serializeNodeXmlLikeIgnoreIcu(&buf, &node);
+   700→    }
+   701→    return buf.toOwnedSlice();
+   702→}
+   703→
+   704→fn serializeNodeXmlLikeIgnoreIcu(buf: *std.array_list.Managed(u8), node: *const Node) anyerror!void {
+   705→    switch (node.data) {
+   706→        .icu => |icu| {
+   707→            // Do not take the expression into account
+   708→            try buf.append('{');
+   709→            try buf.appendSlice(icu.type);
+   710→            try buf.appendSlice(", ");
+   711→            for (icu.cases, 0..) |c, i| {
+   712→                if (i > 0) try buf.appendSlice(", ");
+   713→                try buf.appendSlice(c.value);
+   714→                try buf.appendSlice(" {");
+   715→                for (c.children) |child| {
+   716→                    try serializeNodeXmlLikeIgnoreIcu(buf, &child);
+   717→                }
+   718→                try buf.appendSlice("}");
+   719→            }
+   720→            try buf.append('}');
+   721→        },
+   722→        else => try serializeNodeXmlLike(buf, node),
+   723→    }
+   724→}
+   725→
+   726→// ─── Tests ──────────────────────────────────────────────────
+   727→
+   728→fn emptySpan() ParseSourceSpan {
+   729→    return .{
+   730→        .start = .{ .offset = 0, .line = 0, .col = 0 },
+   731→        .end = .{ .offset = 0, .line = 0, .col = 0 },
+   732→        .full_start = .{ .start = 0, .end = 0 },
+   733→    };
+   734→}
+   735→
+   736→test "Text node serialization (Localize format)" {
+   737→    const allocator = std.testing.allocator;
+   738→    var nodes = [_]Node{.{
+   739→        .kind = .text,
+   740→        .source_span = emptySpan(),
+   741→        .data = .{ .text = .{ .value = "Hello" } },
+   742→    }};
+   743→    const result = try serializeMessage(allocator, &nodes);
+   744→    defer allocator.free(result);
+   745→    try std.testing.expectEqualStrings("Hello", result);
+   746→}
+   747→
+   748→test "Placeholder node serialization (Localize format)" {
+   749→    const allocator = std.testing.allocator;
+   750→    var nodes = [_]Node{.{
+   751→        .kind = .placeholder,
+   752→        .source_span = emptySpan(),
+   753→        .data = .{ .placeholder = .{ .value = "name", .name = "PH" } },
+   754→    }};
+   755→    const result = try serializeMessage(allocator, &nodes);
+   756→    defer allocator.free(result);
+   757→    try std.testing.expectEqualStrings("{$PH}", result);
+   758→}
+   759→
+   760→test "TagPlaceholder void serialization" {
+   761→    const allocator = std.testing.allocator;
+   762→    var nodes = [_]Node{.{
+   763→        .kind = .tag_placeholder,
+   764→        .source_span = emptySpan(),
+   765→        .data = .{ .tag_placeholder = .{
+   766→            .tag = "img",
+   767→            .start_name = "START_TAG_IMG",
+   768→            .is_void = true,
+   769→        } },
+   770→    }};
+   771→    const result = try serializeMessage(allocator, &nodes);
+   772→    defer allocator.free(result);
+   773→    try std.testing.expectEqualStrings("{$START_TAG_IMG}", result);
+   774→}
+   775→
+   776→test "TagPlaceholder non-void serialization" {
+   777→    const allocator = std.testing.allocator;
+   778→    var children = [_]Node{.{
+   779→        .kind = .text,
+   780→        .source_span = emptySpan(),
+   781→        .data = .{ .text = .{ .value = "Hello" } },
+   782→    }};
+   783→    var nodes = [_]Node{.{
+   784→        .kind = .tag_placeholder,
+   785→        .source_span = emptySpan(),
+   786→        .data = .{ .tag_placeholder = .{
+   787→            .tag = "b",
+   788→            .start_name = "START_TAG_B",
+   789→            .close_name = "CLOSE_TAG_B",
+   790→            .children = &children,
+   791→            .is_void = false,
+   792→        } },
+   793→    }};
+   794→    const result = try serializeMessage(allocator, &nodes);
+   795→    defer allocator.free(result);
+   796→    try std.testing.expectEqualStrings("{$START_TAG_B}Hello{$CLOSE_TAG_B}", result);
+   797→}
+   798→
+   799→test "BlockPlaceholder serialization" {
+   800→    const allocator = std.testing.allocator;
+   801→    var children = [_]Node{.{
+   802→        .kind = .text,
+   803→        .source_span = emptySpan(),
+   804→        .data = .{ .text = .{ .value = "Yes" } },
+   805→    }};
+   806→    var nodes = [_]Node{.{
+   807→        .kind = .block_placeholder,
+   808→        .source_span = emptySpan(),
+   809→        .data = .{ .block_placeholder = .{
+   810→            .name = "if",
+   811→            .start_name = "START_BLOCK_IF",
+   812→            .close_name = "CLOSE_BLOCK_IF",
+   813→            .children = &children,
+   814→        } },
+   815→    }};
+   816→    const result = try serializeMessage(allocator, &nodes);
+   817→    defer allocator.free(result);
+   818→    try std.testing.expectEqualStrings("{$START_BLOCK_IF}Yes{$CLOSE_BLOCK_IF}", result);
+   819→}
+   820→
+   821→test "IcuPlaceholder serialization" {
+   822→    const allocator = std.testing.allocator;
+   823→    var icu = Icu{
+   824→        .expression = "count",
+   825→        .type = "plural",
+   826→        .cases = &.{},
+   827→        .expression_placeholder = "VAR_plural",
+   828→    };
+   829→    var nodes = [_]Node{.{
+   830→        .kind = .icu_placeholder,
+   831→        .source_span = emptySpan(),
+   832→        .data = .{ .icu_placeholder = .{
+   833→            .value = &icu,
+   834→            .name = "ICU",
+   835→        } },
+   836→    }};
+   837→    const result = try serializeMessage(allocator, &nodes);
+   838→    defer allocator.free(result);
+   839→    try std.testing.expectEqualStrings("{$ICU}", result);
+   840→}
+   841→
+   842→test "Icu serialization with cases" {
+   843→    const allocator = std.testing.allocator;
+   844→    var one_children = [_]Node{.{
+   845→        .kind = .text,
+   846→        .source_span = emptySpan(),
+   847→        .data = .{ .text = .{ .value = "one item" } },
+   848→    }};
+   849→    var other_children = [_]Node{.{
+   850→        .kind = .text,
+   851→        .source_span = emptySpan(),
+   852→        .data = .{ .text = .{ .value = "many items" } },
+   853→    }};
+   854→    var cases = [_]IcuCase{
+   855→        .{ .value = "one", .children = &one_children },
+   856→        .{ .value = "other", .children = &other_children },
+   857→    };
+   858→    var nodes = [_]Node{.{
+   859→        .kind = .icu,
+   860→        .source_span = emptySpan(),
+   861→        .data = .{ .icu = .{
+   862→            .expression = "count",
+   863→            .type = "plural",
+   864→            .cases = &cases,
+   865→            .expression_placeholder = "VAR_plural",
+   866→        } },
+   867→    }};
+   868→    const result = try serializeMessage(allocator, &nodes);
+   869→    defer allocator.free(result);
+   870→    try std.testing.expectEqualStrings("{VAR_plural, plural, one {one item} other {many items}}", result);
+   871→}
+   872→
+   873→test "Container serialization" {
+   874→    const allocator = std.testing.allocator;
+   875→    var children = [_]Node{
+   876→        .{ .kind = .text, .source_span = emptySpan(), .data = .{ .text = .{ .value = "Hello " } } },
+   877→        .{ .kind = .placeholder, .source_span = emptySpan(), .data = .{ .placeholder = .{ .value = "name", .name = "PH" } } },
+   878→        .{ .kind = .text, .source_span = emptySpan(), .data = .{ .text = .{ .value = "!" } } },
+   879→    };
+   880→    var nodes = [_]Node{.{
+   881→        .kind = .container,
+   882→        .source_span = emptySpan(),
+   883→        .data = .{ .container = .{ .children = &children } },
+   884→    }};
+   885→    const result = try serializeMessage(allocator, &nodes);
+   886→    defer allocator.free(result);
+   887→    try std.testing.expectEqualStrings("Hello {$PH}!", result);
+   888→}
+   889→
+   890→test "XmlLike serialization — Text" {
+   891→    const allocator = std.testing.allocator;
+   892→    var nodes = [_]Node{.{
+   893→        .kind = .text,
+   894→        .source_span = emptySpan(),
+   895→        .data = .{ .text = .{ .value = "Hello" } },
+   896→    }};
+   897→    const result = try serializeNodesXmlLike(allocator, &nodes);
+   898→    defer allocator.free(result);
+   899→    try std.testing.expectEqualStrings("Hello", result);
+   900→}
+   901→
+   902→test "XmlLike serialization — Placeholder with value" {
+   903→    const allocator = std.testing.allocator;
+   904→    var nodes = [_]Node{.{
+   905→        .kind = .placeholder,
+   906→        .source_span = emptySpan(),
+   907→        .data = .{ .placeholder = .{ .value = "name", .name = "PH" } },
+   908→    }};
+   909→    const result = try serializeNodesXmlLike(allocator, &nodes);
+   910→    defer allocator.free(result);
+   911→    try std.testing.expectEqualStrings("<ph name=\"PH\">name</ph>", result);
+   912→}
+   913→
+   914→test "XmlLike serialization — Placeholder without value" {
+   915→    const allocator = std.testing.allocator;
+   916→    var nodes = [_]Node{.{
+   917→        .kind = .placeholder,
+   918→        .source_span = emptySpan(),
+   919→        .data = .{ .placeholder = .{ .value = "", .name = "PH" } },
+   920→    }};
+   921→    const result = try serializeNodesXmlLike(allocator, &nodes);
+   922→    defer allocator.free(result);
+   923→    try std.testing.expectEqualStrings("<ph name=\"PH\"/>", result);
+   924→}
+   925→
+   926→test "XmlLike serialization — TagPlaceholder void" {
+   927→    const allocator = std.testing.allocator;
+   928→    var nodes = [_]Node{.{
+   929→        .kind = .tag_placeholder,
+   930→        .source_span = emptySpan(),
+   931→        .data = .{ .tag_placeholder = .{
+   932→            .tag = "img",
+   933→            .start_name = "START_TAG_IMG",
+   934→            .is_void = true,
+   935→        } },
+   936→    }};
+   937→    const result = try serializeNodesXmlLike(allocator, &nodes);
+   938→    defer allocator.free(result);
+   939→    try std.testing.expectEqualStrings("<ph tag name=\"START_TAG_IMG\"/>", result);
+   940→}
+   941→
+   942→test "XmlLike serialization — Container" {
+   943→    const allocator = std.testing.allocator;
+   944→    var children = [_]Node{
+   945→        .{ .kind = .text, .source_span = emptySpan(), .data = .{ .text = .{ .value = "a" } } },
+   946→        .{ .kind = .text, .source_span = emptySpan(), .data = .{ .text = .{ .value = "b" } } },
+   947→    };
+   948→    var nodes = [_]Node{.{
+   949→        .kind = .container,
+   950→        .source_span = emptySpan(),
+   951→        .data = .{ .container = .{ .children = &children } },
+   952→    }};
+   953→    const result = try serializeNodesXmlLike(allocator, &nodes);
+   954→    defer allocator.free(result);
+   955→    try std.testing.expectEqualStrings("[a, b]", result);
+   956→}
+   957→
+   958→test "CloneVisitor clones Text" {
+   959→    const allocator = std.testing.allocator;
+   960→    var cv = CloneVisitor.init(allocator);
+   961→    const original = Node{
+   962→        .kind = .text,
+   963→        .source_span = emptySpan(),
+   964→        .data = .{ .text = .{ .value = "Hello" } },
+   965→    };
+   966→    const cloned = try cv.cloneNode(&original);
+   967→    try std.testing.expectEqualStrings("Hello", cloned.data.text.value);
+   968→}
+   969→
+   970→test "CloneVisitor clones Container" {
+   971→    const allocator = std.testing.allocator;
+   972→    var cv = CloneVisitor.init(allocator);
+   973→    var children = [_]Node{.{
+   974→        .kind = .text,
+   975→        .source_span = emptySpan(),
+   976→        .data = .{ .text = .{ .value = "Hello" } },
+   977→    }};
+   978→    const original = Node{
+   979→        .kind = .container,
+   980→        .source_span = emptySpan(),
+   981→        .data = .{ .container = .{ .children = &children } },
+   982→    };
+   983→    const cloned = try cv.cloneNode(&original);
+   984→    defer allocator.free(cloned.data.container.children);
+   985→    try std.testing.expectEqual(@as(usize, 1), cloned.data.container.children.len);
+   986→    try std.testing.expectEqualStrings("Hello", cloned.data.container.children[0].data.text.value);
+   987→}
+   988→
+   989→test "RecurseVisitor walks tree" {
+   990→    var children = [_]Node{.{
+   991→        .kind = .text,
+   992→        .source_span = emptySpan(),
+   993→        .data = .{ .text = .{ .value = "Hello" } },
+   994→    }};
+   995→    var nodes = [_]Node{.{
+   996→        .kind = .container,
+   997→        .source_span = emptySpan(),
+   998→        .data = .{ .container = .{ .children = &children } },
+   999→    }};
+  1000→    RecurseVisitor.visitAllNodes(&nodes);
+  1001→    // Should not crash — walks all children
+  1002→    try std.testing.expect(true);
+  1003→}
+  1004→
+  1005→test "Message.initSimple creates empty message" {
+  1006→    var msg = Message.initSimple(std.testing.allocator);
+  1007→    defer msg.deinit();
+  1008→    try std.testing.expectEqual(@as(usize, 0), msg.nodes.len);
+  1009→    try std.testing.expectEqualStrings("", msg.meaning);
+  1010→}
+  1011→
+  1012→test "TagAttr struct" {
+  1013→    const attr = TagAttr{ .name = "class", .value = "active" };
+  1014→    try std.testing.expectEqualStrings("class", attr.name);
+  1015→    try std.testing.expectEqualStrings("active", attr.value);
+  1016→}
+  1017→
+  1018→test "IcuCase struct" {
+  1019→    var children = [_]Node{.{
+  1020→        .kind = .text,
+  1021→        .source_span = emptySpan(),
+  1022→        .data = .{ .text = .{ .value = "one" } },
+  1023→    }};
+  1024→    const case = IcuCase{ .value = "=1", .children = &children };
+  1025→    try std.testing.expectEqualStrings("=1", case.value);
+  1026→    try std.testing.expectEqual(@as(usize, 1), case.children.len);
+  1027→}
+  1028→
+  1029→test "serializeMessageToString alias" {
+  1030→    const allocator = std.testing.allocator;
+  1031→    var nodes = [_]Node{.{
+  1032→        .kind = .text,
+  1033→        .source_span = emptySpan(),
+  1034→        .data = .{ .text = .{ .value = "Test" } },
+  1035→    }};
+  1036→    const result = try serializeMessageToString(allocator, &nodes);
+  1037→    defer allocator.free(result);
+  1038→    try std.testing.expectEqualStrings("Test", result);
+  1039→}
+  1040→
+  1041→test "XmlLike IgnoreIcu — Icu without expression" {
+  1042→    const allocator = std.testing.allocator;
+  1043→    var one_children = [_]Node{.{
+  1044→        .kind = .text,
+  1045→        .source_span = emptySpan(),
+  1046→        .data = .{ .text = .{ .value = "one" } },
+  1047→    }};
+  1048→    var cases = [_]IcuCase{
+  1049→        .{ .value = "one", .children = &one_children },
+  1050→    };
+  1051→    var nodes = [_]Node{.{
+  1052→        .kind = .icu,
+  1053→        .source_span = emptySpan(),
+  1054→        .data = .{ .icu = .{
+  1055→            .expression = "count",
+  1056→            .type = "plural",
+  1057→            .cases = &cases,
+  1058→            .expression_placeholder = "VAR_plural",
+  1059→        } },
+  1060→    }};
+  1061→    const result = try serializeNodesXmlLikeIgnoreIcu(allocator, &nodes);
+  1062→    defer allocator.free(result);
+  1063→    // Expression "count" should NOT be present
+  1064→    try std.testing.expect(std.mem.indexOf(u8, result, "count") == null);
+  1065→    // Type "plural" should be present
+  1066→    try std.testing.expect(std.mem.indexOf(u8, result, "plural") != null);
+  1067→}
+  1068→

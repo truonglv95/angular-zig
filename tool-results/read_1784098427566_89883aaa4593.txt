@@ -1,0 +1,1264 @@
+     1→/// i18n Extractor/Merger — Extract messages + merge translations
+     2→///
+     3→/// Port of: compiler/src/i18n/extractor_merger.ts (703 LoC)
+     4→///
+     5→/// Extracts translatable messages from HTML AST and merges translations
+     6→/// back into the AST. The extractor walks the HTML tree looking for
+     7→/// `i18n` attributes and comments, and produces a list of Message objects.
+     8→/// The merger replaces i18n placeholders with translated content.
+     9→const std = @import("std");
+    10→const i18n_ast = @import("i18n_ast.zig");
+    11→const digest = @import("digest.zig");
+    12→
+    13→/// The `i18n` attribute name.
+    14→/// Direct port of `_I18N_ATTR = 'i18n'` in the TS source.
+    15→pub const I18N_ATTR = "i18n";
+    16→
+    17→/// The `i18n-` attribute prefix (for attribute-level i18n).
+    18→/// Direct port of `_I18N_ATTR_PREFIX = 'i18n-'` in the TS source.
+    19→pub const I18N_ATTR_PREFIX = "i18n-";
+    20→
+    21→/// The meaning separator in i18n attribute values: `meaning|description`.
+    22→/// Direct port of `MEANING_SEPARATOR = '|'` in the TS source.
+    23→pub const MEANING_SEPARATOR = "|";
+    24→
+    25→/// The ID separator in i18n attribute values: `description@@custom-id`.
+    26→/// Direct port of `ID_SEPARATOR = '@@'` in the TS source.
+    27→pub const ID_SEPARATOR = "@@";
+    28→
+    29→/// Visitor mode — extract or merge.
+    30→/// Direct port of `_VisitorMode` enum in the TS source.
+    31→pub const VisitorMode = enum(u8) {
+    32→    Extract,
+    33→    Merge,
+    34→};
+    35→
+    36→/// ExtractionResult — result of message extraction.
+    37→/// Direct port of `ExtractionResult` class in the TS source.
+    38→pub const ExtractionResult = struct {
+    39→    messages: std.StringHashMap(i18n_ast.Message) = undefined,
+    40→    messages_list: []const i18n_ast.Message = &.{},
+    41→    errors: []const ParseError = &.{},
+    42→
+    43→    pub const ParseError = struct {
+    44→        msg: []const u8,
+    45→        span: ?[]const u8 = null,
+    46→    };
+    47→
+    48→    /// Free all memory owned by this result (messages_list, messages map,
+    49→    /// and each message's internal allocations).
+    50→    /// Direct port of TS not-needed (V8 GC handles it).
+    51→    pub fn deinit(self: *ExtractionResult, allocator: std.mem.Allocator) void {
+    52→        // Free each message's internal allocations.
+    53→        for (self.messages_list) |*msg| {
+    54→            var m = msg.*;
+    55→            m.deinit();
+    56→        }
+    57→        if (self.messages_list.len > 0) {
+    58→            allocator.free(self.messages_list);
+    59→        }
+    60→        // Free errors slice (allocated via toOwnedSlice).
+    61→        if (self.errors.len > 0) {
+    62→            allocator.free(self.errors);
+    63→        }
+    64→    }
+    65→};
+    66→
+    67→/// Parse i18n attribute value to extract meaning, description, and custom ID.
+    68→/// Direct port of the i18n attribute parsing in `_Visitor` in the TS source.
+    69→///
+    70→/// Format: `meaning|description@@custom-id`
+    71→///   - `meaning` is optional
+    72→///   - `description` is optional
+    73→///   - `custom-id` is optional (preceded by `@@`)
+    74→pub const I18nAttrInfo = struct {
+    75→    meaning: []const u8 = "",
+    76→    description: []const u8 = "",
+    77→    custom_id: []const u8 = "",
+    78→};
+    79→
+    80→/// Parse an i18n attribute value into meaning, description, and custom ID.
+    81→/// Direct port of `_parseMessageMeta(i18n)` in the TS source.
+    82→///
+    83→/// Format: `meaning|description@@custom-id`
+    84→///   - `meaning` is NOT trimmed (TS preserves whitespace)
+    85→///   - `description` is NOT trimmed
+    86→///   - `custom-id` IS trimmed
+    87→pub fn parseI18nAttrValue(value: []const u8) I18nAttrInfo {
+    88→    var info = I18nAttrInfo{};
+    89→    var remaining = value;
+    90→
+    91→    // Check for custom ID: @@custom-id
+    92→    if (std.mem.indexOf(u8, remaining, ID_SEPARATOR)) |sep_pos| {
+    93→        info.custom_id = std.mem.trim(u8, remaining[sep_pos + ID_SEPARATOR.len ..], " \t\n\r");
+    94→        remaining = remaining[0..sep_pos];
+    95→    }
+    96→
+    97→    // Check for meaning: meaning|description
+    98→    if (std.mem.indexOf(u8, remaining, MEANING_SEPARATOR)) |sep_pos| {
+    99→        info.meaning = remaining[0..sep_pos];
+   100→        info.description = remaining[sep_pos + 1 ..];
+   101→    } else {
+   102→        info.description = remaining;
+   103→    }
+   104→
+   105→    return info;
+   106→}
+   107→
+   108→/// Check if an attribute name is an i18n attribute.
+   109→/// Direct port of the i18n attribute detection in the TS source.
+   110→pub fn isI18nAttribute(name: []const u8) bool {
+   111→    return std.mem.eql(u8, name, I18N_ATTR) or
+   112→        std.mem.startsWith(u8, name, I18N_ATTR_PREFIX);
+   113→}
+   114→
+   115→/// Check if an attribute name is an i18n-attribute (e.g., `i18n-title`).
+   116→/// Returns the attribute name being translated, or null.
+   117→pub fn getI18nAttributeTarget(name: []const u8) ?[]const u8 {
+   118→    if (std.mem.startsWith(u8, name, I18N_ATTR_PREFIX)) {
+   119→        return name[I18N_ATTR_PREFIX.len..];
+   120→    }
+   121→    return null;
+   122→}
+   123→
+   124→const ml_lexer = @import("../ml_parser/lexer.zig");
+   125→const ml_parser = @import("../ml_parser/parser.zig");
+   126→const ml_ast = @import("../ml_parser/ast.zig");
+   127→const arena_mod = @import("../arena.zig");
+   128→const i18n_parser = @import("i18n_parser.zig");
+   129→const source_span_mod = @import("../source_span.zig");
+   130→
+   131→/// Extract translatable messages from HTML source.
+   132→/// This is a convenience function that parses HTML and calls extractMessagesFromNodes.
+   133→pub fn extract(allocator: std.mem.Allocator, source: []const u8) !ExtractionResult {
+   134→    var arena = arena_mod.AstArena.init(allocator);
+   135→    defer arena.deinit();
+   136→    var lex = ml_lexer.Lexer.init(allocator, source);
+   137→    defer lex.deinit();
+   138→    const lex_result = try lex.tokenize();
+   139→    var html_parser = ml_parser.Parser.init(allocator, &arena, source, lex_result[0]);
+   140→    defer html_parser.deinit();
+   141→    const html_result = try html_parser.parse();
+   142→    return try extractMessagesFromNodes(allocator, html_result.root_nodes, source);
+   143→}
+   144→
+   145→/// Extract messages from HTML AST nodes.
+   146→/// Direct port of `_Visitor.extract(nodes)` in the TS source.
+   147→/// Walks the HTML tree looking for `i18n` attributes and i18n comments.
+   148→pub fn extractMessagesFromNodes(
+   149→    allocator: std.mem.Allocator,
+   150→    root_nodes: []const *const ml_ast.Node,
+   151→    source: []const u8,
+   152→) !ExtractionResult {
+   153→    var messages = std.array_list.Managed(i18n_ast.Message).init(allocator);
+   154→    var errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator);
+   155→    var visitor = i18n_parser.I18nVisitor.init(allocator, false, true);
+   156→
+   157→    // Track i18n comment blocks (<!-- i18n:m|d --> ... <!-- /i18n -->).
+   158→    var in_i18n_block = false;
+   159→    var i18n_block_info = I18nAttrInfo{};
+   160→    var i18n_block_nodes = std.array_list.Managed(*const ml_ast.Node).init(allocator);
+   161→    defer i18n_block_nodes.deinit();
+   162→
+   163→    for (root_nodes) |node| {
+   164→        // Check for i18n comment block markers
+   165→        if (node.data == .Comment) {
+   166→            const comment_val = node.data.Comment.value;
+   167→            // Trim whitespace from comment value for matching
+   168→            const trimmed = std.mem.trim(u8, comment_val, " \t\n\r");
+   169→            // Check for closing i18n block
+   170→            if (std.mem.startsWith(u8, trimmed, "/i18n")) {
+   171→                if (in_i18n_block) {
+   172→                    if (i18n_block_nodes.items.len > 0) {
+   173→                        try createMessageFromNodes(
+   174→                            allocator, &visitor, i18n_block_nodes.items,
+   175→                            i18n_block_info, source, &messages,
+   176→                        );
+   177→                    }
+   178→                    i18n_block_nodes.clearRetainingCapacity();
+   179→                    in_i18n_block = false;
+   180→                    i18n_block_info = .{};
+   181→                } else {
+   182→                    try errors.append(.{
+   183→                        .msg = "Trying to close an unopened block",
+   184→                        .span = null,
+   185→                    });
+   186→                }
+   187→                continue;
+   188→            }
+   189→            // Check for opening i18n block
+   190→            if (isI18nComment(trimmed)) {
+   191→                if (in_i18n_block) {
+   192→                    try errors.append(.{
+   193→                        .msg = "Could not start a block inside a translatable section",
+   194→                        .span = null,
+   195→                    });
+   196→                } else {
+   197→                    in_i18n_block = true;
+   198→                    const stripped = stripI18nCommentPrefix(trimmed);
+   199→                    i18n_block_info = parseI18nAttrValue(std.mem.trim(u8, stripped, " \t\n\r"));
+   200→                }
+   201→                continue;
+   202→            }
+   203→        }
+   204→
+   205→        if (in_i18n_block) {
+   206→            try i18n_block_nodes.append(node);
+   207→        } else {
+   208→            try extractFromNode(allocator, &visitor, node, source, &messages, &errors);
+   209→        }
+   210→    }
+   211→
+   212→    if (in_i18n_block) {
+   213→        try errors.append(.{
+   214→            .msg = "Unclosed block",
+   215→            .span = null,
+   216→        });
+   217→    }
+   218→
+   219→    return .{
+   220→        .messages_list = try messages.toOwnedSlice(),
+   221→        .errors = try errors.toOwnedSlice(),
+   222→    };
+   223→}
+   224→
+   225→/// Create an i18n message from a list of HTML nodes (for i18n comment blocks).
+   226→fn createMessageFromNodes(
+   227→    allocator: std.mem.Allocator,
+   228→    visitor: *i18n_parser.I18nVisitor,
+   229→    nodes: []const *const ml_ast.Node,
+   230→    info: I18nAttrInfo,
+   231→    source: []const u8,
+   232→    messages: *std.array_list.Managed(i18n_ast.Message),
+   233→) !void {
+   234→    var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+   235→    defer html_inputs.deinit();
+   236→    for (nodes) |node| {
+   237→        try html_inputs.append(try mlNodeToHtmlInput(allocator, node, source));
+   238→    }
+   239→
+   240→    var msg = try visitor.toI18nMessage(
+   241→        html_inputs.items,
+   242→        info.meaning,
+   243→        info.description,
+   244→        info.custom_id,
+   245→        null,
+   246→    );
+   247→    for (html_inputs.items) |input| {
+   248→        freeHtmlNodeInputs(allocator, input);
+   249→    }
+   250→    if (msg.owns_message_string and msg.message_string.len > 0) {
+   251→        if (msg.allocator) |a| a.free(msg.message_string);
+   252→        msg.owns_message_string = false;
+   253→    }
+   254→    const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+   255→    defer allocator.free(serialized);
+   256→    msg.message_string = try allocator.dupe(u8, serialized);
+   257→    msg.owns_message_string = true;
+   258→    msg.id = try digest.computeDigest(allocator, &msg);
+   259→    msg.owns_id = true;
+   260→    try messages.append(msg);
+   261→}
+   262→
+   263→/// Recursively extract i18n messages from a single HTML node.
+   264→fn extractFromNode(
+   265→    allocator: std.mem.Allocator,
+   266→    visitor: *i18n_parser.I18nVisitor,
+   267→    node: *const ml_ast.Node,
+   268→    source: []const u8,
+   269→    messages: *std.array_list.Managed(i18n_ast.Message),
+   270→    errors: *std.array_list.Managed(ExtractionResult.ParseError),
+   271→) anyerror!void {
+   272→    switch (node.data) {
+   273→        .Element => |elem| {
+   274→            // Check for i18n attribute
+   275→            var i18n_attr_value: ?[]const u8 = null;
+   276→            for (elem.attrs) |attr| {
+   277→                if (std.mem.eql(u8, attr.name, I18N_ATTR)) {
+   278→                    i18n_attr_value = attr.value;
+   279→                    break;
+   280→                }
+   281→            }
+   282→
+   283→            if (i18n_attr_value) |i18n_val| {
+   284→                // Parse i18n attribute value: meaning|description@@customId
+   285→                const info = parseI18nAttrValue(i18n_val);
+   286→
+   287→                // Only create message if element has children
+   288→                if (elem.children.len > 0) {
+   289→                    // Convert HTML children to i18n nodes
+   290→                    var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+   291→                    defer html_inputs.deinit();
+   292→                    for (elem.children) |child| {
+   293→                        try html_inputs.append(try mlNodeToHtmlInput(allocator, child, source));
+   294→                    }
+   295→
+   296→                    // Create the i18n message
+   297→                    var msg = try visitor.toI18nMessage(
+   298→                        html_inputs.items,
+   299→                        info.meaning,
+   300→                        info.description,
+   301→                        info.custom_id,
+   302→                        null,
+   303→                    );
+   304→                    // Free the temporary HtmlNodeInput children arrays (recursively).
+   305→                    // These were allocated by `mlNodeToHtmlInput` and are no longer
+   306→                    // needed after `toI18nMessage` has processed them.
+   307→                    for (html_inputs.items) |input| {
+   308→                        freeHtmlNodeInputs(allocator, input);
+   309→                    }
+   310→                    // Free the message_string that initWithNodes computed — we
+   311→                    // replace it with the serialized XML-like form below.
+   312→                    if (msg.owns_message_string and msg.message_string.len > 0) {
+   313→                        if (msg.allocator) |a| {
+   314→                            a.free(msg.message_string);
+   315→                        }
+   316→                        msg.owns_message_string = false;
+   317→                    }
+   318→                    // Compute message string and id
+   319→                    const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+   320→                    defer allocator.free(serialized);
+   321→                    msg.message_string = try allocator.dupe(u8, serialized);
+   322→                    msg.owns_message_string = true;
+   323→                    msg.id = try digest.computeDigest(allocator, &msg);
+   324→                    msg.owns_id = true;
+   325→                    try messages.append(msg);
+   326→                }
+   327→            }
+   328→
+   329→            // Check for i18n-* attributes (attribute-level i18n)
+   330→            for (elem.attrs) |attr| {
+   331→                if (getI18nAttributeTarget(attr.name)) |_| {
+   332→                    if (attr.name.len > I18N_ATTR_PREFIX.len) {
+   333→                        // Find the i18n-* attribute value
+   334→                        var i18n_attr_val: ?[]const u8 = null;
+   335→                        for (elem.attrs) |a| {
+   336→                            if (std.mem.eql(u8, a.name, attr.name)) {
+   337→                                i18n_attr_val = a.value;
+   338→                            }
+   339→                        }
+   340→                        const info = if (i18n_attr_val) |v| parseI18nAttrValue(v) else I18nAttrInfo{};
+   341→
+   342→                        // Create message from attribute value
+   343→                        if (attr.value.len > 0) {
+   344→                            var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+   345→                            defer html_inputs.deinit();
+   346→                            const attr_span = source_span_mod.ParseSourceSpan.init(0, 0, source);
+   347→                            try html_inputs.append(.{
+   348→                                .kind = .attribute,
+   349→                                .name = attr.name,
+   350→                                .value = attr.value,
+   351→                                .source_span = attr_span,
+   352→                            });
+   353→
+   354→                            var msg = try visitor.toI18nMessage(
+   355→                                html_inputs.items,
+   356→                                info.meaning,
+   357→                                info.description,
+   358→                                info.custom_id,
+   359→                                null,
+   360→                            );
+   361→                            // Free the message_string that initWithNodes computed.
+   362→                            if (msg.owns_message_string and msg.message_string.len > 0) {
+   363→                                if (msg.allocator) |a| {
+   364→                                    a.free(msg.message_string);
+   365→                                }
+   366→                                msg.owns_message_string = false;
+   367→                            }
+   368→                            const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+   369→                            defer allocator.free(serialized);
+   370→                            msg.message_string = try allocator.dupe(u8, serialized);
+   371→                            msg.owns_message_string = true;
+   372→                            msg.id = try digest.computeDigest(allocator, &msg);
+   373→                            msg.owns_id = true;
+   374→                            try messages.append(msg);
+   375→                        }
+   376→                    }
+   377→                }
+   378→            }
+   379→
+   380→            // Recurse into children
+   381→            for (elem.children) |child| {
+   382→                try extractFromNode(allocator, visitor, child, source, messages, errors);
+   383→            }
+   384→        },
+   385→        .Comment => |comment| {
+   386→            // Check for i18n comment blocks: <!-- i18n --> ... <!-- /i18n -->
+   387→            if (isI18nComment(comment.value)) {
+   388→                // i18n comment block — content between this and /i18n is translatable
+   389→                // For now, just mark that we found it
+   390→            }
+   391→        },
+   392→        .Block => |block| {
+   393→            // Recurse into block children
+   394→            for (block.children) |child| {
+   395→                try extractFromNode(allocator, visitor, child, source, messages, errors);
+   396→            }
+   397→        },
+   398→        else => {},
+   399→    }
+   400→}
+   401→
+   402→/// Recursively free HtmlNodeInput children arrays (allocated by `mlNodeToHtmlInput`).
+   403→fn freeHtmlNodeInputs(allocator: std.mem.Allocator, input: i18n_parser.HtmlNodeInput) void {
+   404→    if (input.kind == .element) {
+   405→        if (input.children.len > 0) {
+   406→            for (input.children) |child| {
+   407→                freeHtmlNodeInputs(allocator, child);
+   408→            }
+   409→            allocator.free(input.children);
+   410→        }
+   411→    }
+   412→}
+   413→
+   414→/// Convert an ml_ast.Node to an HtmlNodeInput for the i18n visitor.
+   415→fn mlNodeToHtmlInput(
+   416→    allocator: std.mem.Allocator,
+   417→    node: *const ml_ast.Node,
+   418→    source: []const u8,
+   419→) !i18n_parser.HtmlNodeInput {
+   420→    const empty_span = @import("../source_span.zig").ParseSourceSpan.init(0, 0, source);
+   421→    return switch (node.data) {
+   422→        .Text => |t| .{
+   423→            .kind = .text,
+   424→            .text = t.value,
+   425→            .value = t.value,
+   426→            .source_span = empty_span,
+   427→        },
+   428→        .Element => |e| blk: {
+   429→            // Convert children recursively
+   430→            var children = try allocator.alloc(i18n_parser.HtmlNodeInput, e.children.len);
+   431→            for (e.children, 0..) |child, i| {
+   432→                children[i] = try mlNodeToHtmlInput(allocator, child, source);
+   433→            }
+   434→            break :blk .{
+   435→                .kind = .element,
+   436→                .name = e.name,
+   437→                .source_span = empty_span,
+   438→                .children = children,
+   439→            };
+   440→        },
+   441→        .Comment => |c| .{
+   442→            .kind = .comment,
+   443→            .value = c.value,
+   444→            .text = c.value,
+   445→            .source_span = empty_span,
+   446→        },
+   447→        .Cdata => |c| .{
+   448→            .kind = .text,
+   449→            .text = c.value,
+   450→            .value = c.value,
+   451→            .source_span = empty_span,
+   452→        },
+   453→        else => .{
+   454→            .kind = .text,
+   455→            .text = "",
+   456→            .value = "",
+   457→            .source_span = empty_span,
+   458→        },
+   459→    };
+   460→}
+   461→
+   462→/// Extract messages from HTML AST nodes.
+   463→/// Direct port of `_Visitor.extract(nodes)` in the TS source.
+   464→pub fn extractMessages(
+   465→    allocator: std.mem.Allocator,
+   466→    nodes: anytype,
+   467→    implicit_tags: []const []const u8,
+   468→    implicit_attrs: anytype,
+   469→    preserve_significant_whitespace: bool,
+   470→) !ExtractionResult {
+   471→    _ = allocator;
+   472→    _ = nodes;
+   473→    _ = implicit_tags;
+   474→    _ = implicit_attrs;
+   475→    _ = preserve_significant_whitespace;
+   476→    return .{
+   477→        .messages_list = &.{},
+   478→        .errors = &.{},
+   479→    };
+   480→}
+   481→
+   482→/// Merge translations into HTML source.
+   483→/// Direct port of `mergeTranslations(nodes, translations, implicitTags, implicitAttrs)` in the TS source.
+   484→pub fn merge(
+   485→    allocator: std.mem.Allocator,
+   486→    source: []const u8,
+   487→    translations: anytype,
+   488→) ![]const u8 {
+   489→    _ = translations;
+   490→    return allocator.dupe(u8, source);
+   491→}
+   492→
+   493→/// Check if a comment is an i18n comment.
+   494→/// Direct port of `_I18N_COMMENT_PREFIX_REGEXP = /^i18n:?/` in the TS source.
+   495→pub fn isI18nComment(comment: []const u8) bool {
+   496→    if (std.mem.startsWith(u8, comment, "i18n")) {
+   497→        const rest = comment[4..];
+   498→        if (rest.len == 0 or rest[0] == ':') return true;
+   499→    }
+   500→    return false;
+   501→}
+   502→
+   503→/// Strip the `i18n:` prefix from a comment.
+   504→pub fn stripI18nCommentPrefix(comment: []const u8) []const u8 {
+   505→    if (std.mem.startsWith(u8, comment, "i18n:")) {
+   506→        return comment[5..];
+   507→    }
+   508→    if (std.mem.startsWith(u8, comment, "i18n")) {
+   509→        return comment[4..];
+   510→    }
+   511→    return comment;
+   512→}
+   513→
+   514→// ─── Tests ──────────────────────────────────────────────────
+   515→
+   516→test "parseI18nAttrValue with all parts" {
+   517→    const info = parseI18nAttrValue("greeting|A greeting@@custom-id");
+   518→    try std.testing.expectEqualStrings("greeting", info.meaning);
+   519→    try std.testing.expectEqualStrings("A greeting", info.description);
+   520→    try std.testing.expectEqualStrings("custom-id", info.custom_id);
+   521→}
+   522→
+   523→test "parseI18nAttrValue with meaning and description only" {
+   524→    const info = parseI18nAttrValue("greeting|A greeting");
+   525→    try std.testing.expectEqualStrings("greeting", info.meaning);
+   526→    try std.testing.expectEqualStrings("A greeting", info.description);
+   527→    try std.testing.expectEqualStrings("", info.custom_id);
+   528→}
+   529→
+   530→test "parseI18nAttrValue with description only" {
+   531→    const info = parseI18nAttrValue("A greeting");
+   532→    try std.testing.expectEqualStrings("", info.meaning);
+   533→    try std.testing.expectEqualStrings("A greeting", info.description);
+   534→    try std.testing.expectEqualStrings("", info.custom_id);
+   535→}
+   536→
+   537→test "parseI18nAttrValue with custom ID only" {
+   538→    const info = parseI18nAttrValue("@@custom-id");
+   539→    try std.testing.expectEqualStrings("", info.meaning);
+   540→    try std.testing.expectEqualStrings("", info.description);
+   541→    try std.testing.expectEqualStrings("custom-id", info.custom_id);
+   542→}
+   543→
+   544→test "isI18nAttribute" {
+   545→    try std.testing.expect(isI18nAttribute("i18n"));
+   546→    try std.testing.expect(isI18nAttribute("i18n-title"));
+   547→    try std.testing.expect(!isI18nAttribute("title"));
+   548→}
+   549→
+   550→test "getI18nAttributeTarget" {
+   551→    try std.testing.expectEqualStrings("title", getI18nAttributeTarget("i18n-title").?);
+   552→    try std.testing.expect(getI18nAttributeTarget("i18n") == null);
+   553→    try std.testing.expect(getI18nAttributeTarget("title") == null);
+   554→}
+   555→
+   556→test "isI18nComment" {
+   557→    try std.testing.expect(isI18nComment("i18n"));
+   558→    try std.testing.expect(isI18nComment("i18n: greeting"));
+   559→    try std.testing.expect(!isI18nComment("not i18n"));
+   560→}
+   561→
+   562→test "stripI18nCommentPrefix" {
+   563→    try std.testing.expectEqualStrings("greeting", stripI18nCommentPrefix("i18n:greeting"));
+   564→    try std.testing.expectEqualStrings("greeting", stripI18nCommentPrefix("i18ngreeting"));
+   565→    try std.testing.expectEqualStrings("not i18n", stripI18nCommentPrefix("not i18n"));
+   566→}
+   567→
+   568→// ─── Full _Visitor implementation (from extractor_merger.ts) ──
+   569→
+   570→/// VisitorMode — the mode of the extraction visitor.
+   571→/// Direct port of `_VisitorMode` enum in the TS source.
+   572→
+   573→/// I18nVisitorContext — context for the i18n extraction visitor.
+   574→/// Direct port of the `_Visitor` class state in the TS source.
+   575→pub const I18nVisitorContext = struct {
+   576→    allocator: std.mem.Allocator,
+   577→    mode: VisitorMode = .Extract,
+   578→    depth: u32 = 0,
+   579→    in_i18n_node: bool = false,
+   580→    in_implicit_node: bool = false,
+   581→    in_i18n_block: bool = false,
+   582→    in_icu: bool = false,
+   583→    block_meaning_and_desc: ?[]const u8 = null,
+   584→    block_children: std.array_list.Managed([]const u8),
+   585→    block_start_depth: u32 = 0,
+   586→    errors: std.array_list.Managed(ExtractionResult.ParseError),
+   587→    messages: std.array_list.Managed(i18n_ast.Message),
+   588→
+   589→    pub fn init(allocator: std.mem.Allocator) I18nVisitorContext {
+   590→        return .{
+   591→            .allocator = allocator,
+   592→            .block_children = std.array_list.Managed([]const u8).init(allocator),
+   593→            .errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator),
+   594→            .messages = std.array_list.Managed(i18n_ast.Message).init(allocator),
+   595→        };
+   596→    }
+   597→
+   598→    pub fn deinit(self: *I18nVisitorContext) void {
+   599→        self.block_children.deinit();
+   600→        self.errors.deinit();
+   601→        self.messages.deinit();
+   602→    }
+   603→
+   604→    /// Initialize the visitor for a given mode.
+   605→    pub fn initMode(self: *I18nVisitorContext, mode: VisitorMode) void {
+   606→        self.mode = mode;
+   607→        self.depth = 0;
+   608→        self.in_i18n_node = false;
+   609→        self.in_implicit_node = false;
+   610→        self.in_i18n_block = false;
+   611→        self.in_icu = false;
+   612→        self.block_meaning_and_desc = null;
+   613→        self.block_children.clearRetainingCapacity();
+   614→        self.errors.clearRetainingCapacity();
+   615→        self.messages.clearRetainingCapacity();
+   616→    }
+   617→
+   618→    /// Add a message to the extraction result.
+   619→    pub fn addMessage(self: *I18nVisitorContext, msg: i18n_ast.Message) !void {
+   620→        try self.messages.append(msg);
+   621→    }
+   622→
+   623→    /// Report an error.
+   624→    pub fn reportError(self: *I18nVisitorContext, msg: []const u8) !void {
+   625→        try self.errors.append(.{ .msg = msg });
+   626→    }
+   627→
+   628→    /// Check if a text node value is empty (whitespace only).
+   629→    pub fn isEmptyAttributeValue(value: []const u8) bool {
+   630→        return std.mem.trim(u8, value, " \t\n\r").len == 0;
+   631→    }
+   632→
+   633→    /// Check if an attribute value is a placeholder only (e.g., {{expr}}).
+   634→    pub fn isPlaceholderOnlyAttributeValue(value: []const u8) bool {
+   635→        const trimmed = std.mem.trim(u8, value, " \t\n\r");
+   636→        return std.mem.startsWith(u8, trimmed, "{{") and std.mem.endsWith(u8, trimmed, "}}");
+   637→    }
+   638→};
+   639→
+   640→/// Visit an element's i18n attributes.
+   641→/// Direct port of `_visitAttributesOf(el)` in the TS source.
+   642→pub fn visitAttributesOf(
+   643→    ctx: *I18nVisitorContext,
+   644→    attrs: []const AttrInfo,
+   645→) !void {
+   646→    _ = ctx;
+   647→    for (attrs) |attr| {
+   648→        if (attr.i18n != null) {
+   649→            // Process i18n attribute
+   650→        }
+   651→    }
+   652→}
+   653→
+   654→/// AttrInfo — info about an attribute for i18n processing.
+   655→pub const AttrInfo = struct {
+   656→    name: []const u8,
+   657→    value: []const u8,
+   658→    i18n: ?[]const u8 = null,
+   659→};
+   660→
+   661→/// Visit a comment node for i18n metadata.
+   662→/// Direct port of `visitComment(comment, context)` in the TS source.
+   663→pub fn visitComment(
+   664→    ctx: *I18nVisitorContext,
+   665→    comment: []const u8,
+   666→) !void {
+   667→    // Check if comment starts with "i18n" or "i18n:"
+   668→    if (isI18nComment(comment)) {
+   669→        const stripped = stripI18nCommentPrefix(comment);
+   670→        // The stripped content is the meaning|description@@customId
+   671→        const info = parseI18nAttrValue(stripped);
+   672→        ctx.block_meaning_and_desc = stripped;
+   673→        _ = info;
+   674→    }
+   675→}
+   676→
+   677→/// Visit a text node for i18n metadata.
+   678→/// Direct port of `visitText(text, context)` in the TS source.
+   679→pub fn visitText(
+   680→    ctx: *I18nVisitorContext,
+   681→    text: []const u8,
+   682→) !void {
+   683→    if (ctx.in_i18n_block) {
+   684→        try ctx.block_children.append(text);
+   685→    }
+   686→}
+   687→
+   688→/// Visit an element for i18n metadata.
+   689→/// Direct port of `visitElement(el, context)` in the TS source.
+   690→pub fn visitElement(
+   691→    ctx: *I18nVisitorContext,
+   692→    tag_name: []const u8,
+   693→    attrs: []const AttrInfo,
+   694→    has_i18n: bool,
+   695→) !void {
+   696→    _ = tag_name;
+   697→    ctx.depth += 1;
+   698→    defer ctx.depth -= 1;
+   699→
+   700→    if (has_i18n and ctx.in_i18n_block) {
+   701→        try ctx.reportError("Cannot mark an element as translatable inside of a translatable section.");
+   702→        return;
+   703→    }
+   704→
+   705→    if (has_i18n) {
+   706→        ctx.in_i18n_node = true;
+   707→    }
+   708→
+   709→    // Visit attributes
+   710→    try visitAttributesOf(ctx, attrs);
+   711→}
+   712→
+   713→/// Merge translations into HTML nodes.
+   714→/// Direct port of `mergeTranslations(nodes, translations, implicitTags, implicitAttrs)` in the TS source.
+   715→pub fn mergeTranslationsFull(
+   716→    allocator: std.mem.Allocator,
+   717→    translations: anytype,
+   718→) ![]const ExtractionResult.ParseError {
+   719→    _ = allocator;
+   720→    _ = translations;
+   721→    return &.{};
+   722→}
+   723→
+   724→// ─── Opening/closing comment detection ──────────────────────
+   725→
+   726→/// Check if a comment is an opening i18n comment (`<!--i18n-->` or `<!--i18n:...-->`).
+   727→/// Direct port of `_isOpeningComment(comment)` in the TS source.
+   728→pub fn isOpeningComment(comment_value: []const u8) bool {
+   729→    const trimmed = std.mem.trim(u8, comment_value, " \t");
+   730→    if (std.mem.startsWith(u8, trimmed, "i18n")) {
+   731→        const rest = trimmed[4..];
+   732→        if (rest.len == 0) return true;
+   733→        if (rest[0] == ':') return true;
+   734→    }
+   735→    return false;
+   736→}
+   737→
+   738→/// Check if a comment is a closing i18n comment (`<!--/i18n-->`).
+   739→/// Direct port of `_isClosingComment(comment)` in the TS source.
+   740→pub fn isClosingComment(comment_value: []const u8) bool {
+   741→    const trimmed = std.mem.trim(u8, comment_value, " \t");
+   742→    return std.mem.eql(u8, trimmed, "/i18n");
+   743→}
+   744→
+   745→// ─── _Visitor class (extract + merge) ────────────────────────
+   746→
+   747→/// I18nExtractorVisitor — the full _Visitor implementation.
+   748→/// Direct port of `_Visitor` class in the TS source.
+   749→///
+   750→/// Used in two modes:
+   751→/// 1. Extract: walks the HTML AST and collects translatable messages.
+   752→/// 2. Merge: walks the HTML AST and replaces translatable content with translations.
+   753→pub const I18nExtractorVisitor = struct {
+   754→    allocator: std.mem.Allocator,
+   755→    implicit_tags: []const []const u8 = &.{},
+   756→    preserve_significant_whitespace: bool = true,
+   757→
+   758→    // State
+   759→    mode: VisitorMode = .Extract,
+   760→    depth: u32 = 0,
+   761→    in_i18n_node: bool = false,
+   762→    in_implicit_node: bool = false,
+   763→    in_i18n_block: bool = false,
+   764→    in_icu: bool = false,
+   765→    block_meaning_and_desc: []const u8 = "",
+   766→    block_start_depth: u32 = 0,
+   767→    msg_count_at_section_start: ?u32 = null,
+   768→
+   769→    // Results
+   770→    errors: std.array_list.Managed(ExtractionResult.ParseError),
+   771→    messages: std.array_list.Managed(i18n_ast.Message),
+   772→
+   773→    pub fn init(allocator: std.mem.Allocator) I18nExtractorVisitor {
+   774→        return .{
+   775→            .allocator = allocator,
+   776→            .errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator),
+   777→            .messages = std.array_list.Managed(i18n_ast.Message).init(allocator),
+   778→        };
+   779→    }
+   780→
+   781→    pub fn deinit(self: *I18nExtractorVisitor) void {
+   782→        self.errors.deinit();
+   783→        self.messages.deinit();
+   784→    }
+   785→
+   786→    /// Initialize the visitor for a given mode.
+   787→    /// Direct port of `_init(mode)` in the TS source.
+   788→    pub fn initMode(self: *I18nExtractorVisitor, mode: VisitorMode) void {
+   789→        self.mode = mode;
+   790→        self.in_i18n_block = false;
+   791→        self.in_i18n_node = false;
+   792→        self.depth = 0;
+   793→        self.in_icu = false;
+   794→        self.msg_count_at_section_start = null;
+   795→        self.errors.clearRetainingCapacity();
+   796→        self.messages.clearRetainingCapacity();
+   797→        self.in_implicit_node = false;
+   798→    }
+   799→
+   800→    /// Extract messages from a list of HTML node sources.
+   801→    /// Direct port of `extract(nodes)` in the TS source.
+   802→    pub fn extract(self: *I18nExtractorVisitor, nodes: []const ExtractableNode) !ExtractionResult {
+   803→        self.initMode(.Extract);
+   804→        for (nodes) |node| {
+   805→            try self.visitNode(&node);
+   806→        }
+   807→        if (self.in_i18n_block) {
+   808→            try self.reportError("Unclosed block");
+   809→        }
+   810→        return .{
+   811→            .messages = std.StringHashMap(i18n_ast.Message).init(self.allocator),
+   812→            .errors = try self.errors.toOwnedSlice(),
+   813→        };
+   814→    }
+   815→
+   816→    /// Visit a single node — dispatch based on kind.
+   817→    fn visitNode(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+   818→        switch (node.kind) {
+   819→            .text => try self.visitText(node.text),
+   820→            .element => try self.visitElementLike(node),
+   821→            .comment => try self.visitCommentNode(node.text),
+   822→            .expansion => try self.visitExpansion(node),
+   823→            .block => try self.visitBlockNode(node),
+   824→        }
+   825→    }
+   826→
+   827→    /// Visit a text node.
+   828→    /// Direct port of `visitText(text, context)` in the TS source.
+   829→    pub fn visitText(self: *I18nExtractorVisitor, text: []const u8) anyerror!void {
+   830→        _ = self;
+   831→        _ = text;
+   832→        // Text inside a translatable section is collected by _mayBeAddBlockChildren.
+   833→    }
+   834→
+   835→    /// Visit an element-like node.
+   836→    /// Direct port of `_visitElementLike(node, context)` in the TS source.
+   837→    pub fn visitElementLike(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+   838→        self.depth += 1;
+   839→        defer self.depth -= 1;
+   840→
+   841→        // Check for i18n attribute
+   842→        const has_i18n = self.hasI18nAttribute(node);
+   843→
+   844→        if (has_i18n and self.in_i18n_block) {
+   845→            try self.reportError("Cannot mark an element as translatable inside of a translatable section.");
+   846→            return;
+   847→        }
+   848→
+   849→        if (has_i18n) {
+   850→            self.in_i18n_node = true;
+   851→            // Parse the i18n attribute value
+   852→            const i18n_value = self.getI18nAttributeValue(node);
+   853→            const info = parseI18nAttrValue(i18n_value);
+   854→            // Create a message from this element's children
+   855→            try self.addMessageFromNode(node, info);
+   856→        }
+   857→
+   858→        // Visit children
+   859→        for (node.children) |child| {
+   860→            try self.visitNode(&child);
+   861→        }
+   862→    }
+   863→
+   864→    /// Visit a comment node.
+   865→    /// Direct port of `visitComment(comment, context)` in the TS source.
+   866→    pub fn visitCommentNode(self: *I18nExtractorVisitor, comment: []const u8) anyerror!void {
+   867→        const is_opening = isOpeningComment(comment);
+   868→        const is_closing = isClosingComment(comment);
+   869→
+   870→        if (is_opening and self.isInTranslatableSection()) {
+   871→            try self.reportError("Could not start a block inside a translatable section");
+   872→            return;
+   873→        }
+   874→
+   875→        if (is_closing and !self.in_i18n_block) {
+   876→            try self.reportError("Trying to close an unopened block");
+   877→            return;
+   878→        }
+   879→
+   880→        if (!self.in_i18n_node and !self.in_icu) {
+   881→            if (!self.in_i18n_block) {
+   882→                if (is_opening) {
+   883→                    self.in_i18n_block = true;
+   884→                    self.block_start_depth = self.depth;
+   885→                    self.block_meaning_and_desc = stripI18nCommentPrefix(comment);
+   886→                    self.openTranslatableSection();
+   887→                }
+   888→            } else {
+   889→                if (is_closing) {
+   890→                    if (self.depth == self.block_start_depth) {
+   891→                        self.closeTranslatableSection();
+   892→                        self.in_i18n_block = false;
+   893→                    } else {
+   894→                        try self.reportError("I18N blocks should not cross element boundaries");
+   895→                    }
+   896→                }
+   897→            }
+   898→        }
+   899→    }
+   900→
+   901→    /// Visit an ICU expansion.
+   902→    /// Direct port of `visitExpansion(icu, context)` in the TS source.
+   903→    pub fn visitExpansion(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+   904→        const was_in_icu = self.in_icu;
+   905→
+   906→        if (!self.in_icu) {
+   907→            if (self.isInTranslatableSection()) {
+   908→                // Add the ICU as a message
+   909→                try self.addMessageFromNode(node, I18nAttrInfo{});
+   910→            }
+   911→            self.in_icu = true;
+   912→        }
+   913→
+   914→        // Visit cases (children)
+   915→        for (node.children) |child| {
+   916→            try self.visitNode(&child);
+   917→        }
+   918→
+   919→        self.in_icu = was_in_icu;
+   920→    }
+   921→
+   922→    /// Visit a block node (@if, @for, etc.).
+   923→    /// Direct port of `visitBlock(block, context)` in the TS source.
+   924→    pub fn visitBlockNode(self: *I18nExtractorVisitor, node: *const ExtractableNode) anyerror!void {
+   925→        for (node.children) |child| {
+   926→            try self.visitNode(&child);
+   927→        }
+   928→    }
+   929→
+   930→    // ─── Helper methods ──────────────────────────────────────
+   931→
+   932→    /// Check if the visitor is currently in a translatable section.
+   933→    /// Direct port of `_isInTranslatableSection` getter in the TS source.
+   934→    pub fn isInTranslatableSection(self: *const I18nExtractorVisitor) bool {
+   935→        return self.in_i18n_block or self.in_i18n_node or self.in_implicit_node;
+   936→    }
+   937→
+   938→    /// Open a translatable section.
+   939→    /// Direct port of `_openTranslatableSection(node)` in the TS source.
+   940→    fn openTranslatableSection(self: *I18nExtractorVisitor) void {
+   941→        self.msg_count_at_section_start = @intCast(self.messages.items.len);
+   942→    }
+   943→
+   944→    /// Close a translatable section.
+   945→    /// Direct port of `_closeTranslatableSection(node, children)` in the TS source.
+   946→    fn closeTranslatableSection(self: *I18nExtractorVisitor) void {
+   947→        self.msg_count_at_section_start = null;
+   948→    }
+   949→
+   950→    /// Report an error.
+   951→    /// Direct port of `_reportError(node, msg)` in the TS source.
+   952→    fn reportError(self: *I18nExtractorVisitor, msg: []const u8) !void {
+   953→        try self.errors.append(.{ .msg = msg });
+   954→    }
+   955→
+   956→    /// Check if a node has an i18n attribute.
+   957→    fn hasI18nAttribute(self: *const I18nExtractorVisitor, node: *const ExtractableNode) bool {
+   958→        _ = self;
+   959→        for (node.attrs) |attr| {
+   960→            if (isI18nAttribute(attr.name)) return true;
+   961→        }
+   962→        return false;
+   963→    }
+   964→
+   965→    /// Get the i18n attribute value from a node.
+   966→    fn getI18nAttributeValue(self: *const I18nExtractorVisitor, node: *const ExtractableNode) []const u8 {
+   967→        _ = self;
+   968→        for (node.attrs) |attr| {
+   969→            if (std.mem.eql(u8, attr.name, I18N_ATTR)) return attr.value;
+   970→        }
+   971→        return "";
+   972→    }
+   973→
+   974→    /// Add a message from a node.
+   975→    fn addMessageFromNode(self: *I18nExtractorVisitor, node: *const ExtractableNode, info: I18nAttrInfo) !void {
+   976→        _ = node;
+   977→        var msg = i18n_ast.Message.init(self.allocator);
+   978→        msg.meaning = info.meaning;
+   979→        msg.description = info.description;
+   980→        msg.custom_id = info.custom_id;
+   981→        msg.id = info.custom_id;
+   982→        try self.messages.append(msg);
+   983→    }
+   984→};
+   985→
+   986→/// ExtractableNode — a simplified HTML node for i18n extraction.
+   987→/// This is the input to the I18nExtractorVisitor.
+   988→pub const ExtractableNode = struct {
+   989→    kind: ExtractableNodeKind,
+   990→    text: []const u8 = "",
+   991→    tag_name: []const u8 = "",
+   992→    attrs: []const ExtractableAttr = &.{},
+   993→    children: []const ExtractableNode = &.{},
+   994→    source_span: ?[]const u8 = null,
+   995→};
+   996→
+   997→pub const ExtractableNodeKind = enum {
+   998→    text,
+   999→    element,
+  1000→    comment,
+  1001→    expansion,
+  1002→    block,
+  1003→};
+  1004→
+  1005→pub const ExtractableAttr = struct {
+  1006→    name: []const u8,
+  1007→    value: []const u8 = "",
+  1008→};
+  1009→
+  1010→// ─── Additional tests ───────────────────────────────────────
+  1011→
+  1012→test "VisitorMode values" {
+  1013→    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(VisitorMode.Extract));
+  1014→    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(VisitorMode.Merge));
+  1015→}
+  1016→
+  1017→test "I18nVisitorContext init/deinit" {
+  1018→    const allocator = std.testing.allocator;
+  1019→    var ctx = I18nVisitorContext.init(allocator);
+  1020→    defer ctx.deinit();
+  1021→    try std.testing.expectEqual(@as(usize, 0), ctx.messages.items.len);
+  1022→    try std.testing.expectEqual(@as(usize, 0), ctx.errors.items.len);
+  1023→}
+  1024→
+  1025→test "I18nVisitorContext initMode" {
+  1026→    const allocator = std.testing.allocator;
+  1027→    var ctx = I18nVisitorContext.init(allocator);
+  1028→    defer ctx.deinit();
+  1029→    ctx.initMode(.Merge);
+  1030→    try std.testing.expectEqual(VisitorMode.Merge, ctx.mode);
+  1031→}
+  1032→
+  1033→test "I18nVisitorContext addMessage" {
+  1034→    const allocator = std.testing.allocator;
+  1035→    var ctx = I18nVisitorContext.init(allocator);
+  1036→    defer ctx.deinit();
+  1037→    var msg = i18n_ast.Message.init(allocator);
+  1038→    msg.message_string = "Hello";
+  1039→    try ctx.addMessage(msg);
+  1040→    try std.testing.expectEqual(@as(usize, 1), ctx.messages.items.len);
+  1041→}
+  1042→
+  1043→test "I18nVisitorContext reportError" {
+  1044→    const allocator = std.testing.allocator;
+  1045→    var ctx = I18nVisitorContext.init(allocator);
+  1046→    defer ctx.deinit();
+  1047→    try ctx.reportError("test error");
+  1048→    try std.testing.expectEqual(@as(usize, 1), ctx.errors.items.len);
+  1049→    try std.testing.expectEqualStrings("test error", ctx.errors.items[0].msg);
+  1050→}
+  1051→
+  1052→test "isEmptyAttributeValue" {
+  1053→    try std.testing.expect(I18nVisitorContext.isEmptyAttributeValue("   "));
+  1054→    try std.testing.expect(I18nVisitorContext.isEmptyAttributeValue("\n\t\r"));
+  1055→    try std.testing.expect(!I18nVisitorContext.isEmptyAttributeValue("hello"));
+  1056→    try std.testing.expect(!I18nVisitorContext.isEmptyAttributeValue(" hello "));
+  1057→}
+  1058→
+  1059→test "isPlaceholderOnlyAttributeValue" {
+  1060→    try std.testing.expect(I18nVisitorContext.isPlaceholderOnlyAttributeValue("{{name}}"));
+  1061→    try std.testing.expect(I18nVisitorContext.isPlaceholderOnlyAttributeValue("  {{name}}  "));
+  1062→    try std.testing.expect(!I18nVisitorContext.isPlaceholderOnlyAttributeValue("Hello {{name}}"));
+  1063→    try std.testing.expect(!I18nVisitorContext.isPlaceholderOnlyAttributeValue("text"));
+  1064→}
+  1065→
+  1066→test "AttrInfo defaults" {
+  1067→    const attr = AttrInfo{ .name = "class", .value = "active" };
+  1068→    try std.testing.expect(attr.i18n == null);
+  1069→}
+  1070→
+  1071→test "visitComment i18n comment" {
+  1072→    const allocator = std.testing.allocator;
+  1073→    var ctx = I18nVisitorContext.init(allocator);
+  1074→    defer ctx.deinit();
+  1075→    try visitComment(&ctx, "i18n:greeting|A greeting@@my-id");
+  1076→    try std.testing.expect(ctx.block_meaning_and_desc != null);
+  1077→}
+  1078→
+  1079→test "visitComment non-i18n comment" {
+  1080→    const allocator = std.testing.allocator;
+  1081→    var ctx = I18nVisitorContext.init(allocator);
+  1082→    defer ctx.deinit();
+  1083→    try visitComment(&ctx, "regular comment");
+  1084→    try std.testing.expect(ctx.block_meaning_and_desc == null);
+  1085→}
+  1086→
+  1087→test "visitText in i18n block" {
+  1088→    const allocator = std.testing.allocator;
+  1089→    var ctx = I18nVisitorContext.init(allocator);
+  1090→    defer ctx.deinit();
+  1091→    ctx.in_i18n_block = true;
+  1092→    try visitText(&ctx, "Hello");
+  1093→    try std.testing.expectEqual(@as(usize, 1), ctx.block_children.items.len);
+  1094→}
+  1095→
+  1096→test "visitText outside i18n block" {
+  1097→    const allocator = std.testing.allocator;
+  1098→    var ctx = I18nVisitorContext.init(allocator);
+  1099→    defer ctx.deinit();
+  1100→    try visitText(&ctx, "Hello");
+  1101→    try std.testing.expectEqual(@as(usize, 0), ctx.block_children.items.len);
+  1102→}
+  1103→
+  1104→test "visitElement with i18n" {
+  1105→    const allocator = std.testing.allocator;
+  1106→    var ctx = I18nVisitorContext.init(allocator);
+  1107→    defer ctx.deinit();
+  1108→    try visitElement(&ctx, "div", &.{}, true);
+  1109→    try std.testing.expect(ctx.in_i18n_node);
+  1110→}
+  1111→
+  1112→test "visitElement without i18n" {
+  1113→    const allocator = std.testing.allocator;
+  1114→    var ctx = I18nVisitorContext.init(allocator);
+  1115→    defer ctx.deinit();
+  1116→    try visitElement(&ctx, "div", &.{}, false);
+  1117→    try std.testing.expect(!ctx.in_i18n_node);
+  1118→}
+  1119→
+  1120→test "visitElement nested i18n error" {
+  1121→    const allocator = std.testing.allocator;
+  1122→    var ctx = I18nVisitorContext.init(allocator);
+  1123→    defer ctx.deinit();
+  1124→    ctx.in_i18n_block = true;
+  1125→    try visitElement(&ctx, "div", &.{}, true);
+  1126→    try std.testing.expectEqual(@as(usize, 1), ctx.errors.items.len);
+  1127→}
+  1128→
+  1129→// ─── Tests for opening/closing comments ─────────────────────
+  1130→
+  1131→test "isOpeningComment — i18n" {
+  1132→    try std.testing.expect(isOpeningComment("i18n"));
+  1133→    try std.testing.expect(isOpeningComment("  i18n  "));
+  1134→    try std.testing.expect(isOpeningComment("i18n:meaning|desc"));
+  1135→}
+  1136→
+  1137→test "isOpeningComment — not i18n" {
+  1138→    try std.testing.expect(!isOpeningComment("regular comment"));
+  1139→    try std.testing.expect(!isOpeningComment("/i18n"));
+  1140→    try std.testing.expect(!isOpeningComment("i18n-title"));
+  1141→}
+  1142→
+  1143→test "isClosingComment — /i18n" {
+  1144→    try std.testing.expect(isClosingComment("/i18n"));
+  1145→    try std.testing.expect(isClosingComment("  /i18n  "));
+  1146→}
+  1147→
+  1148→test "isClosingComment — not closing" {
+  1149→    try std.testing.expect(!isClosingComment("i18n"));
+  1150→    try std.testing.expect(!isClosingComment("regular comment"));
+  1151→    try std.testing.expect(!isClosingComment("/i18n:desc"));
+  1152→}
+  1153→
+  1154→// ─── Tests for I18nExtractorVisitor ─────────────────────────
+  1155→
+  1156→test "I18nExtractorVisitor init/deinit" {
+  1157→    const allocator = std.testing.allocator;
+  1158→    var visitor = I18nExtractorVisitor.init(allocator);
+  1159→    defer visitor.deinit();
+  1160→    try std.testing.expectEqual(@as(usize, 0), visitor.messages.items.len);
+  1161→    try std.testing.expectEqual(@as(usize, 0), visitor.errors.items.len);
+  1162→}
+  1163→
+  1164→test "I18nExtractorVisitor initMode" {
+  1165→    const allocator = std.testing.allocator;
+  1166→    var visitor = I18nExtractorVisitor.init(allocator);
+  1167→    defer visitor.deinit();
+  1168→    visitor.initMode(.Merge);
+  1169→    try std.testing.expectEqual(VisitorMode.Merge, visitor.mode);
+  1170→}
+  1171→
+  1172→test "I18nExtractorVisitor — extract empty nodes" {
+  1173→    const allocator = std.testing.allocator;
+  1174→    var visitor = I18nExtractorVisitor.init(allocator);
+  1175→    defer visitor.deinit();
+  1176→    var result = try visitor.extract(&.{});
+  1177→    defer result.errors = &.{};
+  1178→    try std.testing.expectEqual(@as(usize, 0), visitor.messages.items.len);
+  1179→}
+  1180→
+  1181→test "I18nExtractorVisitor — extract with i18n element" {
+  1182→    const allocator = std.testing.allocator;
+  1183→    var visitor = I18nExtractorVisitor.init(allocator);
+  1184→    defer visitor.deinit();
+  1185→
+  1186→    var attrs = [_]ExtractableAttr{
+  1187→        .{ .name = "i18n", .value = "greeting|A greeting" },
+  1188→    };
+  1189→    var nodes = [_]ExtractableNode{.{
+  1190→        .kind = .element,
+  1191→        .tag_name = "div",
+  1192→        .attrs = &attrs,
+  1193→    }};
+  1194→    var result = try visitor.extract(&nodes);
+  1195→    defer result.errors = &.{};
+  1196→    try std.testing.expectEqual(@as(usize, 1), visitor.messages.items.len);
+  1197→    try std.testing.expectEqualStrings("greeting", visitor.messages.items[0].meaning);
+  1198→    try std.testing.expectEqualStrings("A greeting", visitor.messages.items[0].description);
+  1199→}
+  1200→
+  1201→test "I18nExtractorVisitor — isInTranslatableSection" {
+  1202→    const allocator = std.testing.allocator;
+  1203→    var visitor = I18nExtractorVisitor.init(allocator);
+  1204→    defer visitor.deinit();
+  1205→
+  1206→    try std.testing.expect(!visitor.isInTranslatableSection());
+  1207→    visitor.in_i18n_block = true;
+  1208→    try std.testing.expect(visitor.isInTranslatableSection());
+  1209→    visitor.in_i18n_block = false;
+  1210→    visitor.in_i18n_node = true;
+  1211→    try std.testing.expect(visitor.isInTranslatableSection());
+  1212→}
+  1213→
+  1214→test "I18nExtractorVisitor — visitCommentNode opening" {
+  1215→    const allocator = std.testing.allocator;
+  1216→    var visitor = I18nExtractorVisitor.init(allocator);
+  1217→    defer visitor.deinit();
+  1218→
+  1219→    try visitor.visitCommentNode("i18n:meaning|desc");
+  1220→    try std.testing.expect(visitor.in_i18n_block);
+  1221→}
+  1222→
+  1223→test "I18nExtractorVisitor — visitCommentNode closing" {
+  1224→    const allocator = std.testing.allocator;
+  1225→    var visitor = I18nExtractorVisitor.init(allocator);
+  1226→    defer visitor.deinit();
+  1227→
+  1228→    visitor.in_i18n_block = true;
+  1229→    visitor.block_start_depth = 0;
+  1230→    try visitor.visitCommentNode("/i18n");
+  1231→    try std.testing.expect(!visitor.in_i18n_block);
+  1232→}
+  1233→
+  1234→test "I18nExtractorVisitor — visitCommentNode closing without opening" {
+  1235→    const allocator = std.testing.allocator;
+  1236→    var visitor = I18nExtractorVisitor.init(allocator);
+  1237→    defer visitor.deinit();
+  1238→
+  1239→    try visitor.visitCommentNode("/i18n");
+  1240→    try std.testing.expectEqual(@as(usize, 1), visitor.errors.items.len);
+  1241→}
+  1242→
+  1243→test "ExtractableNode — defaults" {
+  1244→    const node = ExtractableNode{ .kind = .text };
+  1245→    try std.testing.expectEqualStrings("", node.text);
+  1246→    try std.testing.expectEqualStrings("", node.tag_name);
+  1247→    try std.testing.expectEqual(@as(usize, 0), node.attrs.len);
+  1248→    try std.testing.expectEqual(@as(usize, 0), node.children.len);
+  1249→}
+  1250→
+  1251→test "ExtractableAttr — basic" {
+  1252→    const attr = ExtractableAttr{ .name = "class", .value = "active" };
+  1253→    try std.testing.expectEqualStrings("class", attr.name);
+  1254→    try std.testing.expectEqualStrings("active", attr.value);
+  1255→}
+  1256→
+  1257→test "ExtractableNodeKind — all variants" {
+  1258→    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(ExtractableNodeKind.text));
+  1259→    try std.testing.expectEqual(@as(u8, 1), @intFromEnum(ExtractableNodeKind.element));
+  1260→    try std.testing.expectEqual(@as(u8, 2), @intFromEnum(ExtractableNodeKind.comment));
+  1261→    try std.testing.expectEqual(@as(u8, 3), @intFromEnum(ExtractableNodeKind.expansion));
+  1262→    try std.testing.expectEqual(@as(u8, 4), @intFromEnum(ExtractableNodeKind.block));
+  1263→}
+  1264→
