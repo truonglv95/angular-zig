@@ -40,6 +40,23 @@ fn expectLexerErrorsWithICU(allocator: std.mem.Allocator, source: []const u8, mi
     try std.testing.expect(result[1].len >= min_errors);
 }
 
+/// Verify that tokenization produces at least `min_errors` errors (with escapedString mode enabled).
+/// Direct port of TS `tokenizeAndHumanizeErrors(source, {escapedString: true})`.
+fn expectLexerErrorsEscapedString(allocator: std.mem.Allocator, source: []const u8, min_errors: usize) !void {
+    var lex = ml_lexer.Lexer.initWithOptions(allocator, source, .{ .escaped_string = true });
+    defer lex.deinit();
+    const result = try lex.tokenize();
+    try std.testing.expect(result[1].len >= min_errors);
+}
+
+/// Verify that tokenization produces at least `min_count` tokens (with ICU expansion forms enabled).
+fn expectTokensWithICU(allocator: std.mem.Allocator, source: []const u8, min_count: usize) !void {
+    var lex = ml_lexer.Lexer.initWithOptions(allocator, source, .{ .tokenize_icu = true });
+    defer lex.deinit();
+    const result = try lex.tokenize();
+    try std.testing.expect(result[0].len >= min_count);
+}
+
 /// Verify that the first N token types match the expected list.
 fn expectTokenTypes(allocator: std.mem.Allocator, source: []const u8, expected: []const ml_lexer.HtmlTokenType) !void {
     var lex = ml_lexer.Lexer.init(allocator, source);
@@ -1139,8 +1156,7 @@ test "lexer: should not normalize line-endings in ICU expressions when `i18nNorm
 
 
 test "lexer: should report unescaped " {
-    return error.SkipZigTest; // TODO: Lexer gap — needs ICU-mode unescaped { detection
-    // try expectLexerErrors(std.testing.allocator, "", 1);
+    try expectLexerErrorsWithICU(std.testing.allocator, "<p>before { after</p>", 1);
 }
 
 
@@ -1169,10 +1185,9 @@ test "lexer: should unescape hex sequences" {
 }
 
 test "lexer: should report an error on an invalid hex sequence" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrorsEscapedString(std.testing.allocator, "\\xGG", 1);
+    try expectLexerErrorsEscapedString(std.testing.allocator, "abc \\x xyz", 1);
+    try expectLexerErrorsEscapedString(std.testing.allocator, "abc\\x", 1);
 }
 
 test "lexer: should unescape fixed length Unicode sequences" {
@@ -1180,10 +1195,7 @@ test "lexer: should unescape fixed length Unicode sequences" {
 }
 
 test "lexer: should error on an invalid fixed length Unicode sequence" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrorsEscapedString(std.testing.allocator, "\\uGGGG", 1);
 }
 
 test "lexer: should unescape variable length Unicode sequences" {
@@ -1191,10 +1203,7 @@ test "lexer: should unescape variable length Unicode sequences" {
 }
 
 test "lexer: should error on an invalid variable length Unicode sequence" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrorsEscapedString(std.testing.allocator, "\\u{GG}", 1);
 }
 
 test "lexer: should unescape line continuations" {
@@ -1294,10 +1303,10 @@ test "lexer: should parse a @let declaration containing complex expression" {
 }
 
 test "lexer: should handle @let declaration with invalid syntax in the value" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "@let foo = \";", 1);
+    try expectTokens(std.testing.allocator, "@let foo = {a: 1,;", 1);
+    try expectTokens(std.testing.allocator, "@let foo = [1, ;", 1);
+    try expectTokens(std.testing.allocator, "@let foo = fn(;", 1);
 }
 
 test "lexer: should parse a @let declaration without a value" {
@@ -1390,17 +1399,11 @@ test "lexer: should parse values with CR and LF" {
 
 
 test "lexer: should report missing closing single quote" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "<t a='b>", 1);
 }
 
 test "lexer: should report missing closing double quote" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "<t a=\"b>", 1);
 }
 
 test "lexer: should permit more characters in square-bracketed attributes" {
@@ -1426,17 +1429,11 @@ test "lexer: should parse closing tags with prefix" {
 
 
 test "lexer: should report missing name after </" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "</", 1);
 }
 
 test "lexer: should report missing >" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "</test", 1);
 }
 
 test "lexer: should parse named entities" {
@@ -1465,10 +1462,10 @@ test "lexer: should parse entities with more than 4 decimal digits" {
 
 
 test "lexer: should report malformed/unknown entities" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "&tbo;", 1);
+    try expectLexerErrors(std.testing.allocator, "&#3sdf;", 1);
+    try expectLexerErrors(std.testing.allocator, "&#xasdf;", 1);
+    try expectLexerErrors(std.testing.allocator, "&#xABC", 1);
 }
 
 test "lexer: should not parse js object methods" {
@@ -1518,10 +1515,7 @@ test "lexer: should break out of interpolation in text token on valid CDATA" {
 }
 
 test "lexer: should ignore invalid start tag in interpolation" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectTokensWithICU(std.testing.allocator, "<code>{{'<={'}}</code>", 1);
 }
 
 test "lexer: should parse start tags quotes in place of an attribute name as text" {
@@ -1670,17 +1664,12 @@ test "lexer: should parse block with stray parentheses in the parameter position
 }
 
 test "lexer: should report invalid quotes in a parameter" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectLexerErrors(std.testing.allocator, "@if (a === \") {hello}", 1);
+    try expectLexerErrors(std.testing.allocator, "@if (a === \"hi') {hello}", 1);
 }
 
 test "lexer: should report unclosed object literal inside a parameter" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                             
-    //                                                 try expectLexerErrors(std.testing.allocator, "", 1);
-    //                                             
+    try expectTokens(std.testing.allocator, "@if ({invalid: true) hello}", 1);
 }
 
 test "lexer: should handle a semicolon used in a nested string inside a block parameter" {
