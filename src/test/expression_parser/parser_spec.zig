@@ -162,7 +162,7 @@ fn checkInterpolation(allocator: Allocator, text: []const u8) !void {
     defer result.deinit(allocator);
 }
 
-/// Verify that parseTemplateBindings (the Parser method) doesn't crash on the given source.
+/// Verify that parseTemplateBindings produces bindings without errors.
 fn checkTemplateBindings(allocator: Allocator, source: []const u8) !void {
     var arena = AstArena.init(allocator);
     defer arena.deinit();
@@ -171,7 +171,9 @@ fn checkTemplateBindings(allocator: Allocator, source: []const u8) !void {
     const result = try lex.tokenize();
     var p = Parser.init(allocator, &arena, source, result[0], 0);
     defer p.deinit();
-    _ = try p.parseTemplateBindings();
+    const bindings = try p.parseTemplateBindings();
+    // Verify no parse errors were produced.
+    try std.testing.expectEqual(@as(usize, 0), bindings.errors.len);
 }
 
 /// Verify wrapLiteralString produces a literal AST without crashing.

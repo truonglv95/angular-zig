@@ -59,13 +59,14 @@ test "ast_serializer: should support text" {
 }
 
 test "ast_serializer: should support expansion" {
-    // Zig parser doesn't fully support ICU expansion forms yet
-    // We verify parsing doesn't crash
+    // TS: parse ICU expansion form with tokenizeExpansionForms: true,
+    // serialize and compare. We verify the parse produces at least 1 node.
     const allocator = std.testing.allocator;
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "{number, plural, =0 {none} =1 {one} other {many}}");
     defer { var r = result; r.deinit(allocator); }
+    try std.testing.expect(result.root_nodes.len >= 1);
 }
 
 test "ast_serializer: should support comment" {
