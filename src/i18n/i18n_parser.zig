@@ -100,12 +100,14 @@ pub const I18nMessageVisitorContext = struct {
     placeholder_to_message: std.StringHashMap(*i18n_ast.Message),
     visit_node_fn: ?VisitNodeFn = null,
     visit_node_ctx: ?*anyopaque = null,
+    allocator: Allocator,
 
     pub fn init(allocator: Allocator) I18nMessageVisitorContext {
         return .{
             .placeholder_registry = placeholder.PlaceholderRegistry.init(allocator),
             .placeholder_to_content = std.StringHashMap(i18n_ast.MessagePlaceholder).init(allocator),
             .placeholder_to_message = std.StringHashMap(*i18n_ast.Message).init(allocator),
+            .allocator = allocator,
         };
     }
 
@@ -182,32 +184,46 @@ pub const I18nVisitor = struct {
         custom_id: []const u8,
         visit_node_fn: ?VisitNodeFn,
     ) !i18n_ast.Message {
-        var context = I18nMessageVisitorContext.init(self.allocator);
-        // NOTE: We do NOT free placeholder_registry here because the
-        // placeholder names (start_name, close_name, etc.) are allocated
-        // by the registry and referenced by the returned Message's nodes.
-        // Freeing the registry would create dangling pointers.
-        context.is_icu = nodes.len == 1 and nodes[0].kind == .expansion;
-        context.visit_node_fn = visit_node_fn;
+        // Allocate context on the heap so the placeholder_registry outlives
+        // this function call. Ownership is transferred to the returned Message.
+        const context_ptr = try self.allocator.create(I18nMessageVisitorContext);
+        context_ptr.* = I18nMessageVisitorContext.init(self.allocator);
+        context_ptr.is_icu = nodes.len == 1 and nodes[0].kind == .expansion;
+        context_ptr.visit_node_fn = visit_node_fn;
 
         var i18nodes = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
         defer i18nodes.deinit();
 
         for (nodes) |node| {
-            if (try self.visitAny(&node, &context)) |result| {
+            if (try self.visitAny(&node, context_ptr)) |result| {
                 try i18nodes.append(result);
             }
         }
 
-        return try i18n_ast.Message.initWithNodes(
+        var msg = try i18n_ast.Message.initWithNodes(
             self.allocator,
             try i18nodes.toOwnedSlice(),
-            context.placeholder_to_content,
-            context.placeholder_to_message,
+            context_ptr.placeholder_to_content,
+            context_ptr.placeholder_to_message,
             meaning,
             description,
             custom_id,
         );
+        // Transfer ownership of the context (and its placeholder_registry)
+        // to the message. The message's deinit will call placeholderRegistryDeinit.
+        msg.placeholder_registry = @ptrCast(context_ptr);
+        msg.placeholder_registry_deinit = placeholderRegistryDeinit;
+        return msg;
+    }
+
+    /// Callback to free the I18nMessageVisitorContext (and its placeholder_registry).
+    fn placeholderRegistryDeinit(ctx: *anyopaque) void {
+        const context: *I18nMessageVisitorContext = @ptrCast(@alignCast(ctx));
+        context.placeholder_registry.deinit();
+        // The placeholder_to_content and placeholder_to_message maps were
+        // moved into the Message, so don't deinit them here.
+        // Just free the context struct itself.
+        context.allocator.destroy(context);
     }
 
     /// Dispatch to the correct visit method based on node kind.

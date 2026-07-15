@@ -240,6 +240,13 @@ pub const Message = struct {
     owns_id: bool = false,
     /// Whether `nodes` is owned (allocated by `toOwnedSlice` in `initWithNodes`).
     owns_nodes: bool = false,
+    /// Optional PlaceholderRegistry to free on deinit (transferred from
+    /// `I18nVisitor.toI18nMessage`). The registry owns the placeholder name
+    /// strings referenced by `nodes`.
+    placeholder_registry: ?*anyopaque = null,
+    /// Function pointer to call `PlaceholderRegistry.deinit` (since we can't
+    /// import the type here without a circular dependency).
+    placeholder_registry_deinit: ?*const fn (*anyopaque) void = null,
 
     /// Full constructor — direct port of `Message` constructor in the TS source.
     /// Computes `id` (from customId) and `messageString` (from nodes).
@@ -320,6 +327,13 @@ pub const Message = struct {
                 a.free(self.nodes);
                 self.owns_nodes = false;
             }
+        }
+        // Free the placeholder registry if ownership was transferred.
+        if (self.placeholder_registry) |reg| {
+            if (self.placeholder_registry_deinit) |f| {
+                f(reg);
+            }
+            self.placeholder_registry = null;
         }
         self.placeholders.deinit();
         self.placeholder_to_message.deinit();
