@@ -97,16 +97,13 @@ pub const Xmb = struct {
 
     /// Load messages from XMB format.
     pub fn load(
-        allocator: std.mem.Allocator,
-        content: []const u8,
-        url: []const u8,
+        _: std.mem.Allocator,
+        _: []const u8,
+        _: []const u8,
     ) !LoadResult {
-        _ = content;
-        _ = url;
-        return .{
-            .locale = null,
-            .messages = std.StringHashMap(i18n_ast.Message).init(allocator),
-        };
+        // XMB format is write-only — loading is not supported.
+        // Direct port of TS: `throw new Error('Unsupported')`.
+        return error.Unsupported;
     }
 
     /// Compute the digest for a message (uses decimal digest).
@@ -221,9 +218,7 @@ test "toPublicName" {
     try std.testing.expectEqualStrings("123456789", toPublicName("123456789"));
 }
 
-test "Xmb.load returns empty result" {
+test "Xmb.load returns Unsupported error" {
     const allocator = std.testing.allocator;
-    var result = try Xmb.load(allocator, "", "test.xmb");
-    defer result.deinit();
-    try std.testing.expectEqual(@as(usize, 0), result.messages.count());
+    try std.testing.expectError(error.Unsupported, Xmb.load(allocator, "", "test.xmb"));
 }

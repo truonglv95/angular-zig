@@ -21,15 +21,7 @@ test "xmb: should write a valid xmb file" {
 }
 
 test "xmb: should throw when trying to load an xmb file" {
-    // XMB format doesn't support loading (write-only format)
-    // Verify that load() returns an error or empty result
+    // TS: load() throws 'Unsupported' — XMB is write-only.
     const allocator = std.testing.allocator;
-    const result = xmb.Xmb.load(allocator, "<?xml version=\"1.0\"?><messagebundle></messagebundle>", "url");
-    // load() may return an error or an empty result — both are acceptable
-    if (result) |r| {
-        // If it succeeded, verify the result is empty (no translations to load)
-        _ = r;
-    } else |_| {
-        // Error is expected — XMB is write-only
-    }
+    try std.testing.expectError(error.Unsupported, xmb.Xmb.load(allocator, "<?xml version=\"1.0\"?><messagebundle></messagebundle>", "url"));
 }
