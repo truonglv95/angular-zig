@@ -69,8 +69,19 @@ pub const SimpleSelector = struct {
 pub const Selector = struct {
     parts: []const SimpleSelector,
 
-    /// Free the parts slice (allocated via `toOwnedSlice`).
+    /// Free the parts slice (allocated via `toOwnedSlice`) AND recursively
+    /// free any inner selectors (for `:not(...)` pseudo-classes).
     pub fn deinit(self: *Selector, allocator: Allocator) void {
+        // Recursively free inner selectors (allocated for :not(), :has(), :is()).
+        for (self.parts) |part| {
+            if (part.inner) |inner| {
+                for (inner) |*inner_sel| {
+                    var s = inner_sel.*;
+                    s.deinit(allocator);
+                }
+                allocator.free(inner);
+            }
+        }
         if (self.parts.len > 0) allocator.free(self.parts);
     }
 };
