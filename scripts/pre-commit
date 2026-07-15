@@ -1,0 +1,42 @@
+#!/bin/sh
+# Pre-commit hook: Run zig fmt on staged files before committing.
+# Auto-formats files, so commits are always clean.
+#
+# Install: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+# Find zig binary
+ZIG=""
+for path in \
+    "/home/z/.local/lib/python3.13/site-packages/ziglang/zig" \
+    "$(command -v zig 2>/dev/null)" \
+    "/usr/local/bin/zig" \
+    "/usr/bin/zig"; do
+    if [ -x "$path" ]; then
+        ZIG="$path"
+        break
+    fi
+done
+
+if [ -z "$ZIG" ]; then
+    echo "⚠️  zig not found — skipping pre-commit formatting"
+    exit 0
+fi
+
+# Get staged .zig files
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.zig$' || true)
+
+if [ -z "$STAGED" ]; then
+    exit 0
+fi
+
+echo "── Pre-commit: formatting staged .zig files ────────────────"
+
+# Format all staged .zig files
+echo "$STAGED" | xargs "$ZIG" fmt 2>&1 || true
+
+# Re-stage formatted files
+echo "$STAGED" | xargs git add
+
+echo "  ✓ Formatted and re-staged"

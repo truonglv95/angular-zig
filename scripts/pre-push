@@ -1,0 +1,53 @@
+#!/bin/sh
+# Pre-push hook: Run zig fmt check, tests, and build before pushing.
+# If any step fails, the push is aborted.
+#
+# Install: cp scripts/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+set -e
+
+# Find zig binary
+ZIG=""
+for path in \
+    "/home/z/.local/lib/python3.13/site-packages/ziglang/zig" \
+    "$(command -v zig 2>/dev/null)" \
+    "/usr/local/bin/zig" \
+    "/usr/bin/zig"; do
+    if [ -x "$path" ]; then
+        ZIG="$path"
+        break
+    fi
+done
+
+if [ -z "$ZIG" ]; then
+    echo "⚠️  zig not found — skipping pre-push checks"
+    exit 0
+fi
+
+echo "── Pre-push checks ──────────────────────────────────────────"
+
+# Step 1: Check formatting
+echo "  [1/3] Checking formatting (zig fmt --check)..."
+if ! "$ZIG" fmt --check packages/ build.zig 2>&1; then
+    echo "  ❌ Formatting check failed. Run: $ZIG fmt packages/ build.zig"
+    exit 1
+fi
+echo "  ✓ Formatting OK"
+
+# Step 2: Run tests
+echo "  [2/3] Running tests (zig build test)..."
+if ! "$ZIG" build test --summary all 2>&1; then
+    echo "  ❌ Tests failed."
+    exit 1
+fi
+echo "  ✓ Tests passed"
+
+# Step 3: Build all artifacts
+echo "  [3/3] Building all artifacts (zig build)..."
+if ! "$ZIG" build --summary all 2>&1; then
+    echo "  ❌ Build failed."
+    exit 1
+fi
+echo "  ✓ Build succeeded"
+
+echo "── All checks passed, pushing... ────────────────────────────"
