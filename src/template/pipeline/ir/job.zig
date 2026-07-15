@@ -149,6 +149,10 @@ pub const ViewCompilationUnit = struct {
     }
 
     pub fn deinit(self: *ViewCompilationUnit) void {
+        // Free fn_name (allocated via job.allocator in naming.zig)
+        if (self.fn_name) |name| {
+            self.allocator.free(name);
+        }
         self.create.deinit();
         self.update.deinit();
         for (self.functions.items) |*fn_ops| {
