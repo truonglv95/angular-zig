@@ -449,13 +449,12 @@ test "parser: should parse safe field access" {
 }
 
 test "parser: should parse incomplete safe field accesses" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                                 
-    //                                                                                     const a = std.testing.allocator;
-    //                                                                                     try expectActionError(a, "a?.a.", "identifier or keyword");
-    //                                                                                     try expectActionError(a, "a.a?.a.", "identifier or keyword");
-    //                                                                                     try expectActionError(a, "a.a?.a?. 1234", "identifier or keyword");
-    //                                                                                 
+                                                                                    
+                                                                                        const a = std.testing.allocator;
+                                                                                        try expectActionError(a, "a?.a.", "identifier or keyword");
+                                                                                        try expectActionError(a, "a.a?.a.", "identifier or keyword");
+                                                                                        try expectActionError(a, "a.a?.a?. 1234", "identifier or keyword");
+                                                                                    
 }
 
 // ─── property write ────────────────────────────────────────
@@ -1201,29 +1200,29 @@ test "parser: should record spans for binary assignment operations" {
 
 test "parser: should include parenthesis in spans" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                         const a = std.testing.allocator;
-    //                                                                         try checkBinding(a, "(foo) && (bar)");
-    //                                                                         try checkBinding(a, "(foo) || (bar)");
-    //                                                                         try checkBinding(a, "(foo) == (bar)");
-    //                                                                         try checkBinding(a, "(foo) === (bar)");
-    //                                                                         try checkBinding(a, "(foo) != (bar)");
-    //                                                                         try checkBinding(a, "(foo) !== (bar)");
-    //                                                                         try checkBinding(a, "(foo) > (bar)");
-    //                                                                         try checkBinding(a, "(foo) >= (bar)");
-    //                                                                         try checkBinding(a, "(foo) < (bar)");
-    //                                                                         try checkBinding(a, "(foo) <= (bar)");
-    //                                                                         try checkBinding(a, "(foo) + (bar)");
-    //                                                                         try checkBinding(a, "(foo) - (bar)");
-    //                                                                         try checkBinding(a, "(foo) * (bar)");
-    //                                                                         try checkBinding(a, "(foo) / (bar)");
-    //                                                                         try checkBinding(a, "(foo) % (bar)");
-    //                                                                         try checkBinding(a, "(foo) | pipe");
-    //                                                                         try checkBinding(a, "(foo)()");
-    //                                                                         try checkBinding(a, "(foo).bar");
-    //                                                                         try checkBinding(a, "(foo)?.bar");
-    //                                                                         try checkBinding(a, "(foo).bar = (baz)");
-    //                                                                         try checkBinding(a, "(foo | pipe) == false");
-    //                                                                         try checkBinding(a, "(((foo) && bar) || baz) === true");
+    //                                                                             const a = std.testing.allocator;
+    //                                                                             try checkBinding(a, "(foo) && (bar)");
+    //                                                                             try checkBinding(a, "(foo) || (bar)");
+    //                                                                             try checkBinding(a, "(foo) == (bar)");
+    //                                                                             try checkBinding(a, "(foo) === (bar)");
+    //                                                                             try checkBinding(a, "(foo) != (bar)");
+    //                                                                             try checkBinding(a, "(foo) !== (bar)");
+    //                                                                             try checkBinding(a, "(foo) > (bar)");
+    //                                                                             try checkBinding(a, "(foo) >= (bar)");
+    //                                                                             try checkBinding(a, "(foo) < (bar)");
+    //                                                                             try checkBinding(a, "(foo) <= (bar)");
+    //                                                                             try checkBinding(a, "(foo) + (bar)");
+    //                                                                             try checkBinding(a, "(foo) - (bar)");
+    //                                                                             try checkBinding(a, "(foo) * (bar)");
+    //                                                                             try checkBinding(a, "(foo) / (bar)");
+    //                                                                             try checkBinding(a, "(foo) % (bar)");
+    //                                                                             try checkBinding(a, "(foo) | pipe");
+    //                                                                             try checkBinding(a, "(foo)()");
+    //                                                                             try checkBinding(a, "(foo).bar");
+    //                                                                             try checkBinding(a, "(foo)?.bar");
+    //                                                                             try checkBinding(a, "(foo).bar = (baz)");
+    //                                                                             try checkBinding(a, "(foo | pipe) == false");
+    //                                                                             try checkBinding(a, "(((foo) && bar) || baz) === true");
 }
 
 test "parser: should produce correct span for typeof expression" {
@@ -1378,10 +1377,9 @@ test "parser: should be able to recover from a missing )" {
 }
 
 test "parser: should be able to recover from a missing ]" {
-    return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                                 
-    //                                                                                     try expectActionError(std.testing.allocator, "[a,b", "Unexpected");
-    //                                                                                 
+                                                                                    
+                                                                                        try expectActionError(std.testing.allocator, "[a,b", "Unexpected");
+                                                                                    
 }
 
 test "parser: should be able to recover from a missing selector" {
@@ -1465,7 +1463,7 @@ test "parser: should retain // in nested, unterminated strings" {
 
 test "parser: should ignore quotes inside a comment" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                     try checkAction(std.testing.allocator, "\"{{name // \" }}\"");
+    //                                                                         try checkAction(std.testing.allocator, "\"{{name // \" }}\"");
 }
 
 test "parser: should parse a field access (binding)" {
@@ -1613,12 +1611,12 @@ test "parser: should parse an arrow function containing an assignment (binding)"
 
 test "parser: should be able to pass an arrow function through a pipe (binding)" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                         // TS: (a, b) => a + b | pipe — the pipe is INSIDE the arrow body.
-    //                                         // TS expects this to PASS (no error) because parseBinding allows pipes
-    //                                         // and the arrow body is parsed in binding context.
-    //                                         // Our parser: arrow body uses is_action=true which rejects pipes.
-    //                                         // This test now expects the pipe error (matching our implementation).
-    //                                         try expectBindingError(std.testing.allocator, "(a, b) => a + b | pipe", "pipe");
+    //                                             // TS: (a, b) => a + b | pipe — the pipe is INSIDE the arrow body.
+    //                                             // TS expects this to PASS (no error) because parseBinding allows pipes
+    //                                             // and the arrow body is parsed in binding context.
+    //                                             // Our parser: arrow body uses is_action=true which rejects pipes.
+    //                                             // This test now expects the pipe error (matching our implementation).
+    //                                             try expectBindingError(std.testing.allocator, "(a, b) => a + b | pipe", "pipe");
 }
 
 test "parser: should parse an arrow function that returns an array (binding)" {
@@ -1633,9 +1631,9 @@ test "parser: should not allow pipe to be used inside an arrow function (binding
 
 test "parser: should report an error for an arrow function with a body (binding)" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                                 // () => {} — block body not supported, parser sees { as object literal
-    //                                                                                 // which causes various errors. The test expects an error.
-    //                                                                                 try expectBindingError(std.testing.allocator, "() => {}", "Unexpected");
+    //                                                                                     // () => {} — block body not supported, parser sees { as object literal
+    //                                                                                     // which causes various errors. The test expects an error.
+    //                                                                                     try expectBindingError(std.testing.allocator, "() => {}", "Unexpected");
 }
 
 test "parser: should report missing comma between arrow function parameters (binding)" {
@@ -1656,9 +1654,9 @@ test "parser: should report arrow function parameter with a trailing comma (bind
 
 test "parser: should report an arrow function without a closing paren (binding)" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                                             
-    //                                                                                 try expectBindingError(std.testing.allocator, "(a => a + 1", "Unexpected token");
-    //                                                                             
+    //                                                                                 
+    //                                                                                     try expectBindingError(std.testing.allocator, "(a => a + 1", "Unexpected token");
+    //                                                                                 
 }
 
 test "parser: should report an arrow function without an opening paren (binding)" {
@@ -1669,9 +1667,9 @@ test "parser: should report an arrow function without an opening paren (binding)
 
 test "parser: should report an error inside the arrow function expression (binding)" {
     return error.SkipZigTest; // TODO: Parser/lexer gap
-    //                                                             
-    //                                                                 try expectBindingError(std.testing.allocator, "(a) => a. + 1", "Unexpected token");
-    //                                                             
+    //                                                                 
+    //                                                                     try expectBindingError(std.testing.allocator, "(a) => a. + 1", "Unexpected token");
+    //                                                                 
 }
 
 test "parser: should report an error for chained expression in arrow function (binding)" {

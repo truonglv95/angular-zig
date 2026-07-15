@@ -761,6 +761,13 @@ pub const Parser = struct {
                         }
                     }
                 } else {
+                    // Incomplete safe field access: a?.a. or a?.a?. 1234
+                    const next_tok = self.current();
+                    if (next_tok.type == .PrivateIdentifier) {
+                        try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
+                    } else {
+                        try self.errorAt(next_tok.index, "identifier or keyword");
+                    }
                     break;
                 }
             }
@@ -1326,7 +1333,14 @@ pub const Parser = struct {
                 }
             }
         }
-        _ = self.expect(.Operator, "]") catch {};
+        const got_bracket = self.expect(.Operator, "]") catch false;
+        if (!got_bracket) {
+            if (self.at(.EOF)) {
+                try self.errorAt(self.current().index, "Unexpected end of expression");
+            } else {
+                try self.errorAt(self.current().index, "Unexpected token");
+            }
+        }
 
         const exprs_slice = if (exprs.items.len > 0)
             try self.arena.alloc(*const Ast, exprs.items.len)
