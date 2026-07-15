@@ -107,7 +107,13 @@ pub const I18nExtractor = struct {
         // Free placeholder and ICU expression slices in each message.
         for (self.messages.items) |msg| {
             if (msg.placeholders.len > 0) self.allocator.free(msg.placeholders);
-            if (msg.icu_expressions.len > 0) self.allocator.free(msg.icu_expressions);
+            if (msg.icu_expressions.len > 0) {
+                // Free ICU case arrays within each ICU expression.
+                for (msg.icu_expressions) |icu| {
+                    if (icu.cases.len > 0) self.allocator.free(icu.cases);
+                }
+                self.allocator.free(msg.icu_expressions);
+            }
         }
         self.messages.deinit();
         self.seen_ids.deinit();
