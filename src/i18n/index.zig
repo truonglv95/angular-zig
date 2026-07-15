@@ -104,6 +104,11 @@ pub const I18nExtractor = struct {
     }
 
     pub fn deinit(self: *I18nExtractor) void {
+        // Free placeholder and ICU expression slices in each message.
+        for (self.messages.items) |msg| {
+            if (msg.placeholders.len > 0) self.allocator.free(msg.placeholders);
+            if (msg.icu_expressions.len > 0) self.allocator.free(msg.icu_expressions);
+        }
         self.messages.deinit();
         self.seen_ids.deinit();
     }
