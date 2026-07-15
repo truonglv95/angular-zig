@@ -166,3 +166,29 @@ test "keyframes: should handle css functions correctly" {
     try std.testing.expect(result.len > 0);
 }
 
+
+test "keyframes: should not modify css variables ending with 'animation' even if they reference a local keyframes identifier" {
+    const allocator = std.testing.allocator;
+    const css =
+        \\button {
+        \\    --variable-animation: foo;
+        \\}
+        \\@keyframes foo {}
+    ;
+    const result = try shadow_css.shimCssText(allocator, css, "host-a");
+    defer allocator.free(result);
+    try std.testing.expect(std.mem.indexOf(u8, result, "--variable-animation: foo;") != null);
+}
+
+test "keyframes: should not modify css variables ending with 'animation-name' even if they reference a local keyframes identifier" {
+    const allocator = std.testing.allocator;
+    const css =
+        \\button {
+        \\    --variable-animation-name: foo;
+        \\}
+        \\@keyframes foo {}
+    ;
+    const result = try shadow_css.shimCssText(allocator, css, "host-a");
+    defer allocator.free(result);
+    try std.testing.expect(std.mem.indexOf(u8, result, "--variable-animation-name: foo;") != null);
+}
