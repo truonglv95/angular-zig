@@ -157,14 +157,11 @@ test "selector: should detect attr names with escaped $" {
 }
 
 test "selector: should error on attr names with unescaped $" {
-    // The TS test expects an error. Zig's parser is more lenient.
-    // We verify parseSelector handles the input.
+    // TS: parseSelector('[attrname$]') should error.
     const a = std.testing.allocator;
-    var sel = dm.parseSelector(a, "[some$Attr]") catch {
-        return; // Expected error
-    };
-    defer sel.deinit(a);
-    // If no error, that's also acceptable (Zig may handle differently)
+    try std.testing.expectError(error.UnescapedDollar, dm.parseSelector(a, "[some$Attr]"));
+    try std.testing.expectError(error.UnescapedDollar, dm.parseSelector(a, "[$attrname]"));
+    try std.testing.expectError(error.UnescapedDollar, dm.parseSelector(a, "[foo$bar]"));
 }
 
 test "selector: should detect class names" {

@@ -179,6 +179,13 @@ pub fn parseSelector(allocator: Allocator, input: []const u8) !Selector {
                     kind = .AttributeContainsStr;
                     i += 1;
                 }
+                // The operator must be followed by '='.
+                // If we see '$' or '*' not followed by '=', it's an unescaped character error.
+                if (kind == .AttributeEnds or kind == .AttributeContainsStr) {
+                    if (i >= input.len or input[i] != '=') {
+                        return error.UnescapedDollar;
+                    }
+                }
                 // Skip the '='
                 if (i < input.len and input[i] == '=') i += 1;
 
