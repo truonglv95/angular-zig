@@ -158,20 +158,38 @@ pub const Lexer = struct {
 
     /// Check if the current `/` should be treated as the start of a regex literal
     /// (as opposed to a division operator).
+    /// Direct port of `isStartOfRegex()` in TS source.
     fn isRegexStart(self: *Lexer) bool {
         if (self.tokens.items.len == 0) return true;
         const last = self.tokens.items[self.tokens.items.len - 1];
-        // After these token types, `/` is a regex start
-        return switch (last.type) {
-            .Operator, .Character => blk: {
-                const s = last.slice(self.source);
-                // After `)`, `]`, or identifier-like chars, `/` is division
-                if (s.len == 1 and (s[0] == ')' or s[0] == ']')) break :blk false;
-                break :blk true;
-            },
-            .Number, .String, .Identifier, .Keyword => false,
-            else => true,
-        };
+        const last_str = last.slice(self.source);
+
+        // If a slash is preceded by a `!` operator, we need to distinguish whether it's a
+        // negation or a non-null assertion. Regexes can only be preceded by negations.
+        if (last.type == .Operator and last_str.len == 1 and last_str[0] == '!') {
+            // Check the token before the `!` to determine if it's a negation or non-null assertion.
+            if (self.tokens.items.len < 2) return true; // `!` is the first token — it's a negation.
+            const before_prev = self.tokens.items[self.tokens.items.len - 2];
+            const before_prev_str = before_prev.slice(self.source);
+            // If the token before `!` is an identifier, `)`, or `]`, then `!` is a
+            // non-null assertion (not a negation) — so `/` is division.
+            if (before_prev.type == .Identifier) return false;
+            if (before_prev.type == .Character and before_prev_str.len == 1 and
+                (before_prev_str[0] == ')' or before_prev_str[0] == ']')) return false;
+            // Otherwise, `!` is a negation — `/` is a regex.
+            return true;
+        }
+
+        // Only consider the slash a regex if it's preceded either by:
+        // - Any operator, aside from `!` which is special-cased above.
+        // - Opening paren (e.g. `(/a/)`).
+        // - Opening bracket (e.g. `[/a/]`).
+        // - A comma (e.g. `[1, /a/]`).
+        // - A colon (e.g. `{foo: /a/}`).
+        if (last.type == .Operator) return true;
+        if (last.type == .Character and last_str.len == 1 and
+            (last_str[0] == '(' or last_str[0] == '[' or last_str[0] == ',' or last_str[0] == ':')) return true;
+        return false;
     }
 
     /// Scan a regex literal: /body/flags
@@ -425,6 +443,23 @@ pub const Lexer = struct {
     fn scanOperator(self: *Lexer) !void {
         const start = self.pos;
         const ch = self.source[self.pos];
+
+        // Direct port of TS `_consumeOperator()` — these characters are emitted
+        // as Character tokens (NOT Operator tokens) so that `isRegexStart()` can
+        // distinguish them from real operators like `!`, `+`, etc.
+        // Character set: ( ) [ ] , : ;
+        if (ch == '(' or ch == ')' or ch == '[' or ch == ']' or
+            ch == ',' or ch == ':' or ch == ';')
+        {
+            self.pos += 1;
+            try self.tokens.append(.{
+                .type = .Character,
+                .index = start,
+                .end = self.pos,
+            });
+            return;
+        }
+
         const next = if (self.pos + 1 < self.source.len) self.source[self.pos + 1] else 0;
 
         // Multi-character operators (longest match)

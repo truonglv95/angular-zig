@@ -61,6 +61,8 @@ pub const Parser = struct {
     offset: u32 = 0, // global offset for absolute spans
     errors: std.array_list.Managed(source_span.ParseError),
     is_action: bool = false, // true when parsing an action (pipes not allowed)
+    /// Dynamically-allocated error message strings, freed in `deinit`.
+    owned_strings: std.array_list.Managed([]const u8),
 
     pub fn init(allocator: Allocator, arena: *AstArena, source: []const u8, tokens: []const Token, offset: u32) Parser {
         return .{
@@ -70,10 +72,15 @@ pub const Parser = struct {
             .tokens = tokens,
             .offset = offset,
             .errors = std.array_list.Managed(source_span.ParseError).init(allocator),
+            .owned_strings = std.array_list.Managed([]const u8).init(allocator),
         };
     }
 
     pub fn deinit(self: *Parser) void {
+        for (self.owned_strings.items) |s| {
+            self.allocator.free(s);
+        }
+        self.owned_strings.deinit();
         self.errors.deinit();
     }
 
@@ -101,6 +108,16 @@ pub const Parser = struct {
             self.pos += 1;
             return true;
         }
+        // Direct port of TS — single-character punctuation like `(`, `)`, `[`,
+        // `]`, `,`, `:`, `;`, `{`, `}` are emitted as `Character` tokens, but
+        // the parser code checks them as `expect(.Operator, ...)`. Accept both
+        // token types for these single-character punctuation marks.
+        if (tok_type == .Operator and tok.type == .Character) {
+            if (std.mem.eql(u8, tok.slice(self.source), value)) {
+                self.pos += 1;
+                return true;
+            }
+        }
         return false;
     }
 
@@ -112,9 +129,52 @@ pub const Parser = struct {
         return self.current().type == tok_type;
     }
 
+    /// Direct port of TS `peek(type, value)` — matches Operator OR Character
+    /// tokens with the given string value. In the TS source, characters like
+    /// `(`, `)`, `[`, `]`, `,`, `:`, `;` are emitted as `Character` tokens,
+    /// while operators like `!`, `+`, `==` are emitted as `Operator` tokens.
+    /// The Zig lexer follows the same convention, so `atOperator` must accept
+    /// both token types for single-character punctuation.
     fn atOperator(self: *const Parser, op: []const u8) bool {
         const tok = self.current();
-        return tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), op);
+        if (tok.type == .Operator) {
+            return std.mem.eql(u8, tok.slice(self.source), op);
+        }
+        if (tok.type == .Character) {
+            return std.mem.eql(u8, tok.slice(self.source), op);
+        }
+        return false;
+    }
+
+    /// Like `atOperator` but checks the token `ahead` positions ahead.
+    fn peekAtOperator(self: *const Parser, ahead: u32, op: []const u8) bool {
+        const tok = self.peekAt(ahead);
+        if (tok.type == .Operator) {
+            return std.mem.eql(u8, tok.slice(self.source), op);
+        }
+        if (tok.type == .Character) {
+            return std.mem.eql(u8, tok.slice(self.source), op);
+        }
+        return false;
+    }
+
+    /// Returns true if the given token is an operator or character token with
+    /// the given string value. Direct port of TS `Token.isOperator(str)` which
+    /// also matches `Character` tokens for single-character punctuation.
+    fn tokIsOp(tok: Token, source: []const u8, op: []const u8) bool {
+        if (tok.type == .Operator) {
+            return std.mem.eql(u8, tok.slice(source), op);
+        }
+        if (tok.type == .Character) {
+            return std.mem.eql(u8, tok.slice(source), op);
+        }
+        return false;
+    }
+
+    /// Returns true if the current token is an operator/character with the
+    /// given string value.
+    fn atOp(self: *const Parser, op: []const u8) bool {
+        return tokIsOp(self.current(), self.source, op);
     }
 
     fn atKeyword(self: *const Parser, kw: []const u8) bool {
@@ -138,6 +198,18 @@ pub const Parser = struct {
     fn errorAt(self: *Parser, index: u32, comptime msg: []const u8) !void {
         // Truncate source span for error
         const end = @min(index + 10, @as(u32, @intCast(self.source.len)));
+        try self.errors.append(.{
+            .span = source_span.ParseSourceSpan.init(index, end, self.source),
+            .msg = msg,
+        });
+    }
+
+    /// Report a parser error with a formatted message.
+    /// The message is allocated from the parser's allocator and tracked for cleanup.
+    fn errorFmt(self: *Parser, index: u32, comptime fmt: []const u8, args: anytype) !void {
+        const end = @min(index + 10, @as(u32, @intCast(self.source.len)));
+        const msg = try std.fmt.allocPrint(self.allocator, fmt, args);
+        try self.owned_strings.append(msg);
         try self.errors.append(.{
             .span = source_span.ParseSourceSpan.init(index, end, self.source),
             .msg = msg,
@@ -590,7 +662,10 @@ pub const Parser = struct {
         var result = initial;
         while (true) {
             const tok = self.current();
-            if (tok.type != .Operator) break;
+            // Direct port of TS — `(`, `)`, `[`, `]`, `,`, `:`, `;` are
+            // `Character` tokens, but they participate in member/call access.
+            // Stop on EOF, Identifier, Keyword, Number, String, etc.
+            if (tok.type != .Operator and tok.type != .Character) break;
             const op_str = tok.slice(self.source);
 
             // Member access
@@ -611,7 +686,8 @@ pub const Parser = struct {
                     if (next_tok.type == .PrivateIdentifier) {
                         try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
                     } else {
-                        try self.errorAt(next_tok.index, "identifier or keyword");
+                        const tok_str = next_tok.slice(self.source);
+                        try self.errorFmt(next_tok.index, "Unexpected token {s}, expected identifier or keyword", .{tok_str});
                     }
                     self.pos -= 1;
                     break;
@@ -705,7 +781,9 @@ pub const Parser = struct {
                         // a. = 1 → "Expected identifier for property access"
                         try self.errorAt(next_tok.index, "Expected identifier for property access");
                     } else {
-                        try self.errorAt(next_tok.index, "identifier or keyword");
+                        // Direct port of TS: 'Unexpected token <tok>, expected identifier or keyword'
+                        const tok_str = next_tok.slice(self.source);
+                        try self.errorFmt(next_tok.index, "Unexpected token {s}, expected identifier or keyword", .{tok_str});
                     }
                     // Put the dot back for recovery
                     self.pos -= 1;
@@ -714,7 +792,7 @@ pub const Parser = struct {
             }
             // Safe navigation: ?.identifier or ?.[expr] (but NOT ?.() which is safe call)
             else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.") and
-                !(self.peekAt(1).type == .Operator and std.mem.eql(u8, self.peekAt(1).slice(self.source), "("))) {
+                !(self.peekAtOperator(1, "("))) {
                 _ = self.next();
                 const start = self.tokens[self.pos].index;
 
@@ -766,13 +844,14 @@ pub const Parser = struct {
                     if (next_tok.type == .PrivateIdentifier) {
                         try self.errorAt(next_tok.index, "Private identifiers are not supported. Unexpected private identifier");
                     } else {
-                        try self.errorAt(next_tok.index, "identifier or keyword");
+                        const tok_str = next_tok.slice(self.source);
+                        try self.errorFmt(next_tok.index, "Unexpected token {s}, expected identifier or keyword", .{tok_str});
                     }
                     break;
                 }
             }
             // Keyed access: [expr]
-            else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "[")) {
+            else if (tokIsOp(tok, self.source, "[")) {
                 _ = self.next();
                 // Check for empty key
                 if (self.atOperator("]")) {
@@ -812,7 +891,7 @@ pub const Parser = struct {
             }
             // Safe call: ?.()
             else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.") and
-                self.peekAt(1).type == .Operator and std.mem.eql(u8, self.peekAt(1).slice(self.source), "("))
+                self.peekAtOperator(1, "("))
             {
                 _ = self.next(); // skip ?.
                 const open_tok = self.next(); // skip (
@@ -876,7 +955,7 @@ pub const Parser = struct {
                 result = node;
             }
             // Function call: (args)
-            else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "(")) {
+            else if (tokIsOp(tok, self.source, "(")) {
                 const open_tok = self.next();
                 var args = std.array_list.Managed(*const Ast).init(self.allocator);
                 defer args.deinit();
@@ -979,7 +1058,7 @@ pub const Parser = struct {
         }
 
         // Parenthesized expression
-        if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "(")) {
+        if (tokIsOp(tok, self.source, "(")) {
             return self.parseParenthesized();
         }
 
@@ -1055,12 +1134,12 @@ pub const Parser = struct {
         }
 
         // Array literal
-        if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "[")) {
+        if (tokIsOp(tok, self.source, "[")) {
             return self.parseArrayLiteral();
         }
 
         // Object literal
-        if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "{")) {
+        if (tokIsOp(tok, self.source, "{")) {
             return self.parseObjectLiteral();
         }
 
@@ -1072,22 +1151,51 @@ pub const Parser = struct {
             // Check for single-parameter arrow function: ident => body
             if (self.atOperator("=>")) {
                 _ = self.next(); // skip =>
-                // Arrow function body uses binding context (not action) — pipes ARE allowed
-                // but the TS test expects pipes to be rejected inside arrow functions in bindings.
-                // The TS parser sets is_action=false for arrow body, but SimpleExpressionChecker
-                // catches pipes. Our parser already handles this: parsePipe checks is_action.
-                // For arrow functions in bindings, pipes should still be allowed (it's the
-                // SimpleExpressionChecker that rejects them, not the parser itself).
-                // However, the test expects expectBindingError, meaning the parser should
-                // report an error. In TS, this is done by checking the body for pipes.
-                // We set is_action=false for the body so pipes are allowed, but we need
-                // to check if the body contains a BindingPipe and report it.
+                // Check for block body `{ ... }` — not supported.
+                // Direct port of TS: 'Multi-line arrow functions are not supported.
+                // If you meant to return an object literal, wrap it with parentheses.'
+                if (self.atOperator("{")) {
+                    try self.errorAt(self.current().index, "Multi-line arrow functions are not supported. If you meant to return an object literal, wrap it with parentheses.");
+                    // Skip the block body.
+                    _ = self.next();
+                    var depth: u32 = 1;
+                    while (depth > 0 and !self.at(.EOF)) {
+                        if (self.atOperator("{")) depth += 1;
+                        if (self.atOperator("}")) depth -= 1;
+                        if (depth > 0) _ = self.next();
+                    }
+                    if (self.atOperator("}")) _ = self.next();
+                    const params_slice = try self.arena.alloc(ArrowParam, 1);
+                    params_slice[0] = .{ .name = name, .span = self.span(tok.index, tok.end) };
+                    const empty_body = try self.arena.create(Ast);
+                    empty_body.* = .{
+                        .span = self.span(tok.index, self.current().index),
+                        .abs_span = self.absSpan(tok.index, self.current().index),
+                        .data = .Empty,
+                    };
+                    const node = try self.arena.create(Ast);
+                    node.* = .{
+                        .span = self.span(tok.index, self.current().index),
+                        .abs_span = self.absSpan(tok.index, self.current().index),
+                        .data = .{ .ArrowFunction = .{
+                            .params = params_slice,
+                            .body = empty_body,
+                        } },
+                    };
+                    return node;
+                }
+                // Arrow function body uses `parseExpression` (NOT `parsePipe`) —
+                // direct port of TS source. Pipes are NOT allowed in the arrow
+                // body; a pipe after the arrow function applies to the whole
+                // arrow (handled by the outer `parsePipe`).
+                // `is_action=true` allows assignments in the body (matching TS
+                // `parseFlags = ParseFlags.Action`).
+                // We use `parseAssignment` (which wraps `parseConditional`)
+                // because TS's `parseExpression` includes assignment handling
+                // via `parseAccessMember`/`parseKeyedReadOrWrite`.
                 const saved_is_action = self.is_action;
-                // Arrow body: pipes not allowed, but assignments ARE allowed.
-                // Use is_action=true so parsePipe rejects pipes, but parseAssignment
-                // allows assignments within the arrow body.
-                self.is_action = true; // Reject pipes in arrow body
-                const body = try self.parsePipe();
+                self.is_action = true;
+                const body = try self.parseAssignment();
                 self.is_action = saved_is_action;
                 const params_slice = try self.arena.alloc(ArrowParam, 1);
                 params_slice[0] = .{ .name = name, .span = self.span(tok.index, tok.end) };
@@ -1256,8 +1364,50 @@ pub const Parser = struct {
         }
 
         if (is_arrow) {
+            // Check for block body `{ ... }` — not supported.
+            // Direct port of TS: 'Multi-line arrow functions are not supported.
+            // If you meant to return an object literal, wrap it with parentheses.'
+            if (self.atOperator("{")) {
+                try self.errorAt(self.current().index, "Multi-line arrow functions are not supported. If you meant to return an object literal, wrap it with parentheses.");
+                // Skip the block body.
+                _ = self.next();
+                var depth: u32 = 1;
+                while (depth > 0 and !self.at(.EOF)) {
+                    if (self.atOperator("{")) depth += 1;
+                    if (self.atOperator("}")) depth -= 1;
+                    if (depth > 0) _ = self.next();
+                }
+                if (self.atOperator("}")) _ = self.next();
+                const params_slice = try self.arena.alloc(ArrowParam, params.items.len);
+                @memcpy(params_slice, params.items);
+                const empty_body = try self.arena.create(Ast);
+                empty_body.* = .{
+                    .span = self.span(open.index, self.current().index),
+                    .abs_span = self.absSpan(open.index, self.current().index),
+                    .data = .Empty,
+                };
+                const node = try self.arena.create(Ast);
+                node.* = .{
+                    .span = self.span(open.index, self.current().index),
+                    .abs_span = self.absSpan(open.index, self.current().index),
+                    .data = .{ .ArrowFunction = .{
+                        .params = params_slice,
+                        .body = empty_body,
+                    } },
+                };
+                return node;
+            }
             const saved_is_action = self.is_action;
-            self.is_action = true; // Arrow body rejects pipes like action context
+            // Arrow function body uses `parseExpression` (NOT `parsePipe`) —
+            // direct port of TS source. Pipes are NOT allowed in the arrow body;
+            // a pipe after the arrow function applies to the whole arrow
+            // (handled by the outer `parsePipe`).
+            // `is_action=true` allows assignments in the body (matching TS
+            // `parseFlags = ParseFlags.Action`).
+            // We use `parseAssignment` (which wraps `parseConditional`)
+            // because TS's `parseExpression` includes assignment handling
+            // via `parseAccessMember`/`parseKeyedReadOrWrite`.
+            self.is_action = true;
             const body = try self.parseAssignment();
             self.is_action = saved_is_action;
             const params_slice = try self.arena.alloc(ArrowParam, params.items.len);
@@ -1279,7 +1429,7 @@ pub const Parser = struct {
         const expr = try self.parsePipe();
         const got_paren = self.expect(.Operator, ")") catch false;
         if (!got_paren) {
-            // Missing closing paren — report error
+            // Missing closing paren — report error.
             // Check if we hit EOF or another token
             if (self.at(.EOF)) {
                 try self.errorAt(self.current().index, "Unexpected end of expression");

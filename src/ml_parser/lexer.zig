@@ -507,6 +507,12 @@ pub const Lexer = struct {
                 break;
             }
 
+            // `<` terminates the attribute list — it's the start of a new tag
+            // (likely an incomplete previous tag like `<a <span>`).
+            if (ch == '<') {
+                break;
+            }
+
             // Inline single-line comment: // ... up to end of line
             if (ch == '/' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '/') {
                 self.pos += 2;
@@ -633,23 +639,25 @@ pub const Lexer = struct {
 
         if (self.pos < self.source.len and self.source[self.pos] == '>') {
             self.pos += 1;
+            try self.tokens.append(.{
+                .type = if (self_closing) .TagOpenEndVoid else .TagOpenEnd,
+                .index = start,
+                .end = self.pos,
+                .self_closing = self_closing,
+            });
         } else if (self.pos >= self.source.len) {
             // Missing > at EOF — direct port of TS `_requireCharCode(chars.$GT)`.
             try self.reportError(@intCast(self.pos), "Unexpected character \"EOF\"");
+            // Don't emit a TagOpenEnd — the tag is incomplete.
         } else {
-            // Missing > — non-EOF case. Report the unexpected character.
+            // Missing > — non-EOF case. Report the unexpected character but
+            // do NOT consume it — the character may be the start of a new tag
+            // (e.g. `<a <span>` where the first `<a` is incomplete). The main
+            // tokenization loop will re-process the character.
+            // Don't emit a TagOpenEnd — the tag is incomplete.
             const ch = self.source[self.pos];
             try self.reportErrorFmt(@intCast(self.pos), "Unexpected character \"{c}\"", .{ch});
-            // Skip the offending character to allow continued parsing.
-            self.pos += 1;
         }
-
-        try self.tokens.append(.{
-            .type = if (self_closing) .TagOpenEndVoid else .TagOpenEnd,
-            .index = start,
-            .end = self.pos,
-            .self_closing = self_closing,
-        });
     }
 
     // ─── Text Scanning ────────────────────────────────────────

@@ -583,8 +583,19 @@ pub const Scope = struct {
 
     pub fn deinit(self: *Scope) void {
         self.named_entities.deinit();
+        // Don't recursively deinit child scopes — they may be stack-allocated
+        // by the caller. Each scope is responsible for its own cleanup.
+        // Just clear the child_scopes list (the pointers themselves are not owned).
+        self.child_scopes.deinit();
+    }
+
+    /// Like `deinit`, but also recursively deinit and free heap-allocated
+    /// child scopes. Use this when the scope (and all its children) were
+    /// heap-allocated.
+    pub fn deinitRecursive(self: *Scope) void {
+        self.named_entities.deinit();
         for (self.child_scopes.items) |child| {
-            child.deinit();
+            child.deinitRecursive();
             self.allocator.destroy(child);
         }
         self.child_scopes.deinit();

@@ -67,12 +67,63 @@ pub const Parser = struct {
             }
         }
 
-        const owned = try root_nodes.toOwnedSlice();
+        // Merge adjacent Text nodes into a single Text node.
+        // Direct port of `mergeTextTokens` in TS source, but applied at the
+        // AST level (since the Zig lexer doesn't merge tokens).
+        const merged = try self.mergeAdjacentTextNodes(root_nodes.items);
+        root_nodes.deinit();
+
+        const owned = merged;
         self.owned_root_nodes = owned;
         return .{
             .root_nodes = owned,
             .errors = self.errors.items,
         };
+    }
+
+    /// Merge adjacent Text nodes into a single Text node.
+    /// Direct port of `mergeTextTokens` in TS source.
+    fn mergeAdjacentTextNodes(self: *Parser, nodes: []const *const Node) ![]const *const Node {
+        if (nodes.len == 0) return &[_]*const Node{};
+
+        var result = std.array_list.Managed(*const Node).init(self.allocator);
+        errdefer result.deinit();
+
+        var i: usize = 0;
+        while (i < nodes.len) {
+            if (nodes[i].kind == .Text) {
+                // Collect all adjacent text nodes.
+                var combined_value = std.array_list.Managed(u8).init(self.allocator);
+                defer combined_value.deinit();
+                const first_span = nodes[i].source_span;
+                var last_span = nodes[i].source_span;
+                try combined_value.appendSlice(nodes[i].data.Text.value);
+                var j = i + 1;
+                while (j < nodes.len and nodes[j].kind == .Text) : (j += 1) {
+                    try combined_value.appendSlice(nodes[j].data.Text.value);
+                    last_span = nodes[j].source_span;
+                }
+                if (j > i + 1) {
+                    // Multiple text nodes were merged.
+                    const node = try self.arena.create(Node);
+                    node.* = .{
+                        .kind = .Text,
+                        .source_span = ParseSourceSpan.init(first_span.start.offset, last_span.end.offset, self.source),
+                        .data = .{ .Text = .{
+                            .value = try self.arena.dupe(combined_value.items),
+                            .interpolation_boundaries = &.{},
+                        } },
+                    };
+                    try result.append(node);
+                    i = j;
+                    continue;
+                }
+            }
+            try result.append(nodes[i]);
+            i += 1;
+        }
+
+        return try result.toOwnedSlice();
     }
 
     // ─── Token Helpers ───────────────────────────────────────
@@ -120,12 +171,100 @@ pub const Parser = struct {
             .Comment => return try self.parseComment(),
             .DocType => return try self.parseDocType(),
             .Cdata => return try self.parseCdata(),
+            .BlockOpenStart, .IncompleteBlockOpen => return try self.parseBlock(),
+            .BlockClose => {
+                // Block close handled by parseBlock — skip if seen here.
+                _ = self.next();
+                return null;
+            },
+            .LetStart, .IncompleteLet => return try self.parseLet(),
             .EOF => return null,
             else => {
                 _ = self.next();
                 return null;
             },
         }
+    }
+
+    /// Parse a block (@if, @for, @switch, etc.).
+    /// Direct port of `Block` visit in TS AST.
+    fn parseBlock(self: *Parser) !?*const Node {
+        const start_tok = self.next(); // BlockOpenStart or IncompleteBlockOpen
+        // Strip leading `@` from the block name (e.g. `@if` -> `if`).
+        const raw_name = start_tok.slice(self.source);
+        const block_name = if (raw_name.len > 0 and raw_name[0] == '@') raw_name[1..] else raw_name;
+
+        // Skip BlockParameter tokens until we hit BlockOpenEnd, BlockClose, or EOF.
+        var params = std.array_list.Managed(ast.BlockParameter).init(self.allocator);
+        defer params.deinit();
+
+        while (!self.at(.BlockOpenEnd) and !self.at(.BlockClose) and !self.at(.EOF)) {
+            if (self.at(.BlockParameter)) {
+                const param_tok = self.next();
+                const param_str = param_tok.slice(self.source);
+                try params.append(.{
+                    .expression = param_str,
+                    .source_span = .{ .start = param_tok.index, .end = param_tok.end },
+                });
+            } else {
+                _ = self.next();
+            }
+        }
+
+        // Consume BlockOpenEnd if present.
+        if (self.at(.BlockOpenEnd)) {
+            _ = self.next();
+        }
+
+        // Parse children until BlockClose.
+        var children = std.array_list.Managed(*const Node).init(self.allocator);
+        defer children.deinit();
+
+        while (!self.at(.BlockClose) and !self.at(.EOF)) {
+            if (self.parseNode() catch null) |child| {
+                try children.append(child);
+            }
+        }
+
+        if (self.at(.BlockClose)) {
+            _ = self.next();
+        }
+
+        const params_slice = if (params.items.len > 0)
+            try self.arena.alloc(ast.BlockParameter, params.items.len)
+        else
+            &[_]ast.BlockParameter{};
+        if (params.items.len > 0) @memcpy(@constCast(params_slice), params.items);
+
+        const children_slice = if (children.items.len > 0)
+            try self.arena.alloc(*const Node, children.items.len)
+        else
+            &[_]*const Node{};
+        if (children.items.len > 0) @memcpy(@constCast(children_slice), children.items);
+
+        const node = try self.arena.create(Node);
+        node.* = .{
+            .kind = .Block,
+            .source_span = ParseSourceSpan.init(start_tok.index, self.current().index, self.source),
+            .data = .{ .Block = .{
+                .name = block_name,
+                .parameters = params_slice,
+                .children = children_slice,
+            } },
+        };
+        return node;
+    }
+
+    /// Parse a @let declaration.
+    fn parseLet(self: *Parser) !?*const Node {
+        // Consume all @let-related tokens until LetEnd or EOF.
+        while (!self.at(.LetEnd) and !self.at(.EOF)) {
+            _ = self.next();
+        }
+        if (self.at(.LetEnd)) {
+            _ = self.next();
+        }
+        return null;
     }
 
     /// Parse an EncodedEntity token as a Text node.
@@ -156,7 +295,7 @@ pub const Parser = struct {
         var attrs = std.array_list.Managed(AttributeNode).init(self.allocator);
         defer attrs.deinit();
 
-        while (!self.at(.TagOpenEnd) and !self.at(.EOF)) {
+        while (!self.at(.TagOpenEnd) and !self.at(.TagOpenEndVoid) and !self.at(.EOF)) {
             if (self.at(.AttributeName)) {
                 const attr = try self.parseAttribute();
                 try attrs.append(attr);
@@ -165,16 +304,23 @@ pub const Parser = struct {
             }
         }
 
-        // Parse tag end
-        const end_tok = self.next();
-        const self_closing = (end_tok.type == .TagOpenEnd and end_tok.self_closing) or
-            end_tok.type == .TagOpenEndVoid;
+        // Parse tag end (only if present — incomplete tags may not have one).
+        var self_closing = false;
+        var end_tok = self.current();
+        const has_end = self.at(.TagOpenEnd) or self.at(.TagOpenEndVoid);
+        if (has_end) {
+            end_tok = self.next();
+            self_closing = (end_tok.type == .TagOpenEnd and end_tok.self_closing) or
+                end_tok.type == .TagOpenEndVoid;
+        }
 
-        // Parse children (if not void and not self-closing)
+        // Parse children (if not void and not self-closing AND has a proper end).
+        // Incomplete tags (no `>`) are treated as empty elements — direct port
+        // of TS behavior where `<a <span>` produces two separate elements.
         var children = std.array_list.Managed(*const Node).init(self.allocator);
         defer children.deinit();
 
-        if (!is_void and !self_closing) {
+        if (!is_void and !self_closing and has_end) {
             while (!self.at(.TagCloseStart) and !self.at(.EOF)) {
                 if (self.parseNode() catch null) |child| {
                     try children.append(child);
