@@ -238,6 +238,8 @@ pub const Message = struct {
     owns_sources: bool = false,
     /// Whether `id` is owned (allocated by `computeDigest`).
     owns_id: bool = false,
+    /// Whether `nodes` is owned (allocated by `toOwnedSlice` in `initWithNodes`).
+    owns_nodes: bool = false,
 
     /// Full constructor — direct port of `Message` constructor in the TS source.
     /// Computes `id` (from customId) and `messageString` (from nodes).
@@ -262,6 +264,7 @@ pub const Message = struct {
             .message_string = try serializeMessage(allocator, nodes),
             .allocator = allocator,
             .owns_message_string = true,
+            .owns_nodes = true,
         };
 
         // Compute sources from first/last node spans (direct port of lines 50-62 in TS).
@@ -312,6 +315,10 @@ pub const Message = struct {
             if (self.owns_id and self.id.len > 0) {
                 a.free(self.id);
                 self.owns_id = false;
+            }
+            if (self.owns_nodes and self.nodes.len > 0) {
+                a.free(self.nodes);
+                self.owns_nodes = false;
             }
         }
         self.placeholders.deinit();

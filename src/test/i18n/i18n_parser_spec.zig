@@ -19,8 +19,9 @@ const allocator = std.testing.allocator;
 // Memory leak is acceptable in tests.
 var g_arena: ?arena_mod.AstArena = null;
 
-/// Extract messages from HTML and return the message list.
-fn extractMessages(html: []const u8) ![]const i18n_ast.Message {
+/// Extract messages from HTML and return the extraction result.
+/// Caller must call `result.deinit(allocator)` when done.
+fn extractMessages(html: []const u8) !em.ExtractionResult {
     if (g_arena == null) {
         g_arena = arena_mod.AstArena.init(allocator);
     }
@@ -31,8 +32,7 @@ fn extractMessages(html: []const u8) ![]const i18n_ast.Message {
     var parser = ml_parser.Parser.init(allocator, arena, html, lex_result[0]);
     defer parser.deinit();
     const html_result = try parser.parse();
-    const result = try em.extractMessagesFromNodes(allocator, html_result.root_nodes, html);
-    return result.messages_list;
+    return try em.extractMessagesFromNodes(allocator, html_result.root_nodes, html);
 }
 
 /// Serialize message nodes to string for comparison.
@@ -43,36 +43,48 @@ fn serializeMsg(msg: i18n_ast.Message) ![]const u8 {
 // ─── Elements tests ────────────────────────────────────────
 
 test "i18n_parser: should extract from elements" {
-    const messages = try extractMessages("<div i18n=\"m|d\">text</div>");
+    var result = try extractMessages("<div i18n=\"m|d\">text</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     try std.testing.expectEqualStrings("m", messages[0].meaning);
     try std.testing.expectEqualStrings("d", messages[0].description);
 }
 
 test "i18n_parser: should extract from nested elements" {
-            const messages = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
+            var result = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
+            defer result.deinit(allocator);
+            const messages = result.messages_list;
             try std.testing.expectEqual(@as(usize, 1), messages.len);
             try std.testing.expectEqualStrings("m", messages[0].meaning);
             try std.testing.expectEqualStrings("d", messages[0].description);
 }
 
 test "i18n_parser: should not create a message for empty elements" {
-    const messages = try extractMessages("<div i18n=\"m|d\"></div>");
+    var result = try extractMessages("<div i18n=\"m|d\"></div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should not create a message for plain elements" {
-    const messages = try extractMessages("<div></div>");
+    var result = try extractMessages("<div></div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should support void elements" {
-            const messages = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
+            var result = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
+            defer result.deinit(allocator);
+            const messages = result.messages_list;
             try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should trim whitespace from custom ids (but not meanings)" {
-    const messages = try extractMessages("<div i18n=\"\n   m|d@@id\n   \">text</div>");
+    var result = try extractMessages("<div i18n=\"\n   m|d@@id\n   \">text</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     // meaning is NOT trimmed (TS preserves whitespace)
     try std.testing.expectEqualStrings("\n   m", messages[0].meaning);
@@ -85,60 +97,80 @@ test "i18n_parser: should trim whitespace from custom ids (but not meanings)" {
 // ─── Attributes tests ──────────────────────────────────────
 
 test "i18n_parser: should extract from attributes outside of translatable section" {
-    const messages = try extractMessages("<div i18n-title=\"m|d\" title=\"msg\"></div>");
+    var result = try extractMessages("<div i18n-title=\"m|d\" title=\"msg\"></div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     try std.testing.expectEqualStrings("m", messages[0].meaning);
     try std.testing.expectEqualStrings("d", messages[0].description);
 }
 
 test "i18n_parser: should extract from attributes in translatable element" {
-            const messages = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
+            var result = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
+            defer result.deinit(allocator);
+            const messages = result.messages_list;
             // Should extract at least the attribute message
             try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in translatable block" {
-    const messages = try extractMessages("@if (cond) { <div i18n-title=\"m|d\" title=\"msg\"></div> }");
+    var result = try extractMessages("@if (cond) { <div i18n-title=\"m|d\" title=\"msg\"></div> }");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in translatable ICU" {
-            const messages = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
+            var result = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
+            defer result.deinit(allocator);
+            const messages = result.messages_list;
             try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in non translatable ICU" {
-    const messages = try extractMessages("{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}");
+    var result = try extractMessages("{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should not create a message for empty attributes" {
-    const messages = try extractMessages("<div i18n-title title=\"\"></div>");
+    var result = try extractMessages("<div i18n-title title=\"\"></div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 // ─── Interpolation tests ──────────────────────────────────
 
 test "i18n_parser: should replace interpolation with placeholder" {
-    const messages = try extractMessages("<div i18n>Hello {{name}}</div>");
+    var result = try extractMessages("<div i18n>Hello {{name}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should support named interpolation" {
-    const messages = try extractMessages("<div i18n>Hello {{// i18n(ph=\"name\") name}}</div>");
+    var result = try extractMessages("<div i18n>Hello {{// i18n(ph=\"name\") name}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 // ─── Block tests ───────────────────────────────────────────
 
 test "i18n_parser: should extract from blocks" {
-    const messages = try extractMessages("@if (cond) { text }");
+    var result = try extractMessages("@if (cond) { text }");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     // Blocks without i18n attr don't produce messages
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should extract all siblings" {
-    const messages = try extractMessages("<div i18n=\"m1|d1\">a</div><div i18n=\"m2|d2\">b</div>");
+    var result = try extractMessages("<div i18n=\"m1|d1\">a</div><div i18n=\"m2|d2\">b</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 2), messages.len);
     try std.testing.expectEqualStrings("m1", messages[0].meaning);
     try std.testing.expectEqualStrings("m2", messages[1].meaning);
@@ -147,45 +179,61 @@ test "i18n_parser: should extract all siblings" {
 // ─── ICU tests ─────────────────────────────────────────────
 
 test "i18n_parser: should extract as ICU when single child of an element" {
-    const messages = try extractMessages("<div i18n=\"m|d\">{count, plural, =0 {none} other {some}}</div>");
+    var result = try extractMessages("<div i18n=\"m|d\">{count, plural, =0 {none} other {some}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
     try std.testing.expectEqualStrings("m", messages[0].meaning);
 }
 
 test "i18n_parser: should extract as ICU + ph when not single child of an element" {
-    const messages = try extractMessages("<div i18n=\"m|d\">text {count, plural, =0 {none} other {some}} more</div>");
+    var result = try extractMessages("<div i18n=\"m|d\">text {count, plural, =0 {none} other {some}} more</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should extract as ICU + ph when wrapped in whitespace in an element" {
-    const messages = try extractMessages("<div i18n=\"m|d\"> {count, plural, =0 {none} other {some}} </div>");
+    var result = try extractMessages("<div i18n=\"m|d\"> {count, plural, =0 {none} other {some}} </div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should extract as ICU when single child of a block" {
-    const messages = try extractMessages("@if (cond) { {count, plural, =0 {none} other {some}} }");
+    var result = try extractMessages("@if (cond) { {count, plural, =0 {none} other {some}} }");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should extract as ICU + ph when not single child of a block" {
-    const messages = try extractMessages("@if (cond) { text {count, plural, =0 {none}} }");
+    var result = try extractMessages("@if (cond) { text {count, plural, =0 {none}} }");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should not extract nested ICU messages" {
-    const messages = try extractMessages("<div i18n=\"m|d\">{count, plural, =0 {{g, select, male {m} other {o}}} other {some}}</div>");
+    var result = try extractMessages("<div i18n=\"m|d\">{count, plural, =0 {{g, select, male {m} other {o}}} other {some}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 // ─── Whitespace tests ──────────────────────────────────────
 
 test "i18n_parser: should preserve whitespace when preserving significant whitespace" {
-    const messages = try extractMessages("<div i18n>  text  </div>");
+    var result = try extractMessages("<div i18n>  text  </div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should normalize whitespace when not preserving significant whitespace" {
-    const messages = try extractMessages("<div i18n>  text  </div>");
+    var result = try extractMessages("<div i18n>  text  </div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
@@ -193,38 +241,52 @@ test "i18n_parser: should normalize whitespace when not preserving significant w
 
 test "i18n_parser: should extract from implicit elements" {
     // Without implicit tags, plain elements without i18n attr don't produce messages
-    const messages = try extractMessages("<div>text</div>");
+    var result = try extractMessages("<div>text</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 test "i18n_parser: should extract implicit attributes" {
-    const messages = try extractMessages("<div title=\"msg\"></div>");
+    var result = try extractMessages("<div title=\"msg\"></div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 0), messages.len);
 }
 
 // ─── Placeholder reuse tests ───────────────────────────────
 
 test "i18n_parser: should reuse the same placeholder name for tags" {
-            const messages = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
+            var result = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
+            defer result.deinit(allocator);
+            const messages = result.messages_list;
             try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should reuse the same placeholder name for interpolations" {
-    const messages = try extractMessages("<div i18n>{{a}} {{a}}</div>");
+    var result = try extractMessages("<div i18n>{{a}} {{a}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should reuse the same placeholder name for icu messages" {
-    const messages = try extractMessages("<div i18n>{count, plural, =0 {none}} {count, plural, =0 {none}}</div>");
+    var result = try extractMessages("<div i18n>{count, plural, =0 {none}} {count, plural, =0 {none}}</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should preserve whitespace when preserving significant whitespace (dup 1)" {
-    const messages = try extractMessages("<div i18n>\n  text\n</div>");
+    var result = try extractMessages("<div i18n>\n  text\n</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should normalize whitespace when not preserving significant whitespace (dup 1)" {
-    const messages = try extractMessages("<div i18n>\n  text\n</div>");
+    var result = try extractMessages("<div i18n>\n  text\n</div>");
+    defer result.deinit(allocator);
+    const messages = result.messages_list;
     try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
