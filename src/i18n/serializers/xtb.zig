@@ -172,11 +172,50 @@ pub const XtbParser = struct {
     }
 
     /// Simple content parser — scans for translationbundle and translation tags.
+    /// Handles XML declarations (<?xml ...?>) and DOCTYPE declarations (<!DOCTYPE ...]>).
     fn parseContent(self: *XtbParser, content: []const u8) !void {
         var pos: usize = 0;
         while (pos < content.len) {
             // Find next '<'
             const tag_start = std.mem.indexOfScalarPos(u8, content, pos, '<') orelse break;
+
+            // Skip XML declaration: <?xml ... ?>
+            if (pos + 1 < content.len and content[pos] == '<' and tag_start == pos and
+                pos + 1 < content.len and content[pos + 1] == '?')
+            {
+                const end = std.mem.indexOfPos(u8, content, pos, "?>") orelse break;
+                pos = end + 2;
+                continue;
+            }
+
+            // Skip DOCTYPE declaration: <!DOCTYPE ... ]>
+            // DOCTYPE can contain nested > characters inside [ ... ]
+            if (tag_start + 1 < content.len and content[tag_start + 1] == '!') {
+                // Check if it's <!DOCTYPE
+                if (tag_start + 9 <= content.len and std.mem.startsWith(u8, content[tag_start..], "<!DOCTYPE")) {
+                    // Find the end of DOCTYPE — look for ']>' or just '>'
+                    // First check if there's a '[' (internal subset)
+                    if (std.mem.indexOfPos(u8, content, tag_start, "[")) |bracket_pos| {
+                        // Internal subset — find ']>' after the bracket
+                        if (std.mem.indexOfPos(u8, content, bracket_pos, "]>")) |end_pos| {
+                            pos = end_pos + 2;
+                            continue;
+                        }
+                    } else {
+                        // No internal subset — just find '>'
+                        const end = std.mem.indexOfScalarPos(u8, content, tag_start, '>') orelse break;
+                        pos = end + 1;
+                        continue;
+                    }
+                }
+                // Skip other declarations like <!-- comments -->
+                if (tag_start + 4 <= content.len and std.mem.startsWith(u8, content[tag_start..], "<!--")) {
+                    const end = std.mem.indexOfPos(u8, content, tag_start, "-->") orelse break;
+                    pos = end + 3;
+                    continue;
+                }
+            }
+
             const tag_end = std.mem.indexOfScalarPos(u8, content, tag_start, '>') orelse break;
             const tag_content = content[tag_start + 1 .. tag_end];
 

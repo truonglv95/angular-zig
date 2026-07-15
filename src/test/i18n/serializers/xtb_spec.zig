@@ -22,13 +22,10 @@ test "xtb: should load XTB files with a doctype" {
         \\  <translation id="8841459487341224498">rab</translation>
         \\</translationbundle>
     ;
-    const result = xtb.Xtb.load(allocator, xtb_content, "url");
-    if (result) |r| {
-        var r_mut = r;
-        defer r_mut.deinit();
-    } else |_| {
-        // Error is acceptable if XML parsing is limited
-    }
+    var result = try xtb.Xtb.load(allocator, xtb_content, "url");
+    defer result.deinit();
+    // Verify the translation was loaded successfully.
+    try std.testing.expectEqual(@as(usize, 1), result.i18n_nodes_by_msg_id.count());
 }
 
 test "xtb: should load XTB files without placeholders" {
