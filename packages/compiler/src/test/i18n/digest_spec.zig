@@ -39,7 +39,8 @@ test "digest: should returns the sha1 of unicode strings" {
 test "digest: should support arbitrary string size" {
     const allocator = std.testing.allocator;
     const prefix = "你好，世界";
-    const _r = try digest_mod.sha1(allocator, prefix); defer allocator.free(_r);
+    const _r = try digest_mod.sha1(allocator, prefix);
+    defer allocator.free(_r);
 }
 
 test "digest: should work on well known inputs w/o meaning" {
@@ -76,5 +77,6 @@ test "digest: should work on well known inputs with meaning" {
 test "digest: should support arbitrary string size (dup 1)" {
     const allocator = std.testing.allocator;
     const prefix = "你好，世界";
-    const _r2 = try digest_mod.computeMsgId(allocator, prefix, ""); defer allocator.free(_r2);
+    const _r2 = try digest_mod.computeMsgId(allocator, prefix, "");
+    defer allocator.free(_r2);
 }

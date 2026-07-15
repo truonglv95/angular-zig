@@ -27,7 +27,6 @@ const MAX_DEPTH = helpers.MAX_DEPTH;
 const bindingPriority = helpers.bindingPriority;
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     var depth: u32 = 0;
@@ -63,7 +62,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
 }
 
-
 // ─── Merged from order_update_ops.zig (1:1 structure consolidation) ──
 pub fn orderUpdateOps(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
@@ -90,7 +88,6 @@ pub fn orderUpdateOps(job: *ComponentCompilationJob, view: *ViewCompilationUnit)
         items[j] = key;
     }
 }
-
 
 // ─── Merged from validate_nesting.zig (1:1 structure consolidation) ──
 pub fn validateNesting(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -123,4 +120,6 @@ pub fn validateNesting(job: *ComponentCompilationJob, view: *ViewCompilationUnit
     // depth should be 0 if all elements are properly closed
 }
 
-pub fn orderOps(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn orderOps(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

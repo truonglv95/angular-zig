@@ -11,6 +11,5 @@ pub const R3InjectorMetadata = struct {
 
 /// Compile ɵɵdefineInjector() call.
 pub fn compileInjector(allocator: std.mem.Allocator, meta: R3InjectorMetadata) ![]const u8 {
-    return std.fmt.allocPrint(allocator,
-        "ɵɵdefineInjector({{ type: {s} }})", .{meta.name});
+    return std.fmt.allocPrint(allocator, "ɵɵdefineInjector({{ type: {s} }})", .{meta.name});
 }

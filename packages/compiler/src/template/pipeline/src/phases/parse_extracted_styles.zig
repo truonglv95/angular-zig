@@ -152,11 +152,13 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
                         .kind = .Attribute,
                         .xref = op.xref,
                         .source_span = op.source_span,
-                        .data = .{ .Attribute = .{
-                            .name = parsed[i],
-                            .value = parsed[i + 1],
-                            .security_context = 2, // SecurityContext.STYLE
-                        } },
+                        .data = .{
+                            .Attribute = .{
+                                .name = parsed[i],
+                                .value = parsed[i + 1],
+                                .security_context = 2, // SecurityContext.STYLE
+                            },
+                        },
                     };
                     try new_create.append(style_op);
                 }
@@ -170,11 +172,13 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
                         .kind = .Attribute,
                         .xref = op.xref,
                         .source_span = op.source_span,
-                        .data = .{ .Attribute = .{
-                            .name = class_name,
-                            .value = "",
-                            .security_context = 0, // SecurityContext.NONE
-                        } },
+                        .data = .{
+                            .Attribute = .{
+                                .name = class_name,
+                                .value = "",
+                                .security_context = 0, // SecurityContext.NONE
+                            },
+                        },
                     };
                     try new_create.append(class_op);
                 }

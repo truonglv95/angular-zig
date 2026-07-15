@@ -749,10 +749,15 @@ pub const Scanner = struct {
         var in_class = false;
         while (self.index < self.length) {
             const ch = self.input[self.index];
-            if (ch == '\\') { self.index += 1; }
-            else if (ch == '[') { in_class = true; }
-            else if (ch == ']' and in_class) { in_class = false; }
-            else if (ch == '/' and !in_class) { break; }
+            if (ch == '\\') {
+                self.index += 1;
+            } else if (ch == '[') {
+                in_class = true;
+            } else if (ch == ']' and in_class) {
+                in_class = false;
+            } else if (ch == '/' and !in_class) {
+                break;
+            }
             if (self.index < self.length) self.index += 1;
         }
         if (self.index < self.length) self.index += 1; // skip /
@@ -763,13 +768,12 @@ pub const Scanner = struct {
             self.index += 1;
         }
         // Return regex body token (body) + flags token would be separate
-        const body_text = self.input[start+1..body_end-1];
+        const body_text = self.input[start + 1 .. body_end - 1];
         const flags_text = self.input[flags_start..self.index];
         _ = flags_text; // Used by caller to create RegExpFlags token
         return newRegExpBodyToken(@intCast(start), @intCast(self.index), body_text);
     }
 };
-
 
 // ─── Missing Token helper methods from Angular lexer.ts ─────
 
@@ -801,19 +805,45 @@ pub fn isKeyword(token: Token, kw: []const u8) bool {
     return token.type == .Keyword and std.mem.eql(u8, token.str_value, kw);
 }
 
-pub fn isKeywordTrue(token: Token) bool { return isKeyword(token, "true"); }
-pub fn isKeywordFalse(token: Token) bool { return isKeyword(token, "false"); }
-pub fn isKeywordNull(token: Token) bool { return isKeyword(token, "null"); }
-pub fn isKeywordUndefined(token: Token) bool { return isKeyword(token, "undefined"); }
-pub fn isKeywordThis(token: Token) bool { return isKeyword(token, "this"); }
-pub fn isKeywordTypeof(token: Token) bool { return isKeyword(token, "typeof"); }
-pub fn isKeywordVoid(token: Token) bool { return isKeyword(token, "void"); }
-pub fn isKeywordIn(token: Token) bool { return isKeyword(token, "in"); }
-pub fn isKeywordInstanceOf(token: Token) bool { return isKeyword(token, "instanceof"); }
-pub fn isKeywordAs(token: Token) bool { return isKeyword(token, "as"); }
-pub fn isKeywordLet(token: Token) bool { return isKeyword(token, "let"); }
-pub fn isKeywordNew(token: Token) bool { return isKeyword(token, "new"); }
-pub fn isKeywordDelete(token: Token) bool { return isKeyword(token, "delete"); }
+pub fn isKeywordTrue(token: Token) bool {
+    return isKeyword(token, "true");
+}
+pub fn isKeywordFalse(token: Token) bool {
+    return isKeyword(token, "false");
+}
+pub fn isKeywordNull(token: Token) bool {
+    return isKeyword(token, "null");
+}
+pub fn isKeywordUndefined(token: Token) bool {
+    return isKeyword(token, "undefined");
+}
+pub fn isKeywordThis(token: Token) bool {
+    return isKeyword(token, "this");
+}
+pub fn isKeywordTypeof(token: Token) bool {
+    return isKeyword(token, "typeof");
+}
+pub fn isKeywordVoid(token: Token) bool {
+    return isKeyword(token, "void");
+}
+pub fn isKeywordIn(token: Token) bool {
+    return isKeyword(token, "in");
+}
+pub fn isKeywordInstanceOf(token: Token) bool {
+    return isKeyword(token, "instanceof");
+}
+pub fn isKeywordAs(token: Token) bool {
+    return isKeyword(token, "as");
+}
+pub fn isKeywordLet(token: Token) bool {
+    return isKeyword(token, "let");
+}
+pub fn isKeywordNew(token: Token) bool {
+    return isKeyword(token, "new");
+}
+pub fn isKeywordDelete(token: Token) bool {
+    return isKeyword(token, "delete");
+}
 
 pub fn isError(token: Token) bool {
     return token.type == .Error;
@@ -859,4 +889,3 @@ pub fn peekNext(scanner: *const Scanner) u8 {
 pub fn atEnd(scanner: *const Scanner) bool {
     return scanner.index >= scanner.length;
 }
-

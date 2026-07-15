@@ -55,7 +55,6 @@ pub fn generateReference(
     return std.fmt.allocPrint(allocator, "var _r_{s}: {s};", .{ ref_name, target });
 }
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "references module loads" {

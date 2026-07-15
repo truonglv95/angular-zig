@@ -62,7 +62,6 @@ pub fn checkSplitTwoWayBinding(
     return null;
 }
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "bindings module loads" {

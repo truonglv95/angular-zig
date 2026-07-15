@@ -137,4 +137,3 @@ test "at_rules: should scope normal selectors inside a starting-style rule" {
     defer allocator.free(result);
     try std.testing.expect(result.len > 0);
 }
-

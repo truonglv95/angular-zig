@@ -319,7 +319,6 @@ test "serialize unary" {
     allocator.free(result);
 }
 
-
 // ─── Missing visitor methods from Angular serializer.ts ─────
 
 /// Visit and serialize an ASTWithSource.
@@ -471,7 +470,11 @@ pub fn visitLiteralMap(writer: anytype, ast: *const Ast) !void {
 pub fn visitLiteralPrimitive(writer: anytype, ast: *const Ast) !void {
     const v = ast.data.LiteralPrimitive;
     switch (v) {
-        .String => |s| { try writer.writeAll("\""); try writer.writeAll(s); try writer.writeAll("\""); },
+        .String => |s| {
+            try writer.writeAll("\"");
+            try writer.writeAll(s);
+            try writer.writeAll("\"");
+        },
         .Number => |n| try writer.print("{d}", .{n}),
         .Boolean => |b| try writer.writeAll(if (b) "true" else "false"),
         .Null => try writer.writeAll("null"),
@@ -584,18 +587,43 @@ pub fn visitSpreadElement(writer: anytype, ast: *const Ast) !void {
 /// Convert a BinaryOp to its string representation.
 pub fn binaryOpToString(op: BinaryOp) []const u8 {
     return switch (op) {
-        .Plus => "+", .Minus => "-", .Multiply => "*", .Divide => "/", .Percent => "%",
-        .Equals => "==", .NotEquals => "!=", .Identical => "===", .NotIdentical => "!==",
-        .Less => "<", .Greater => ">", .LessEquals => "<=", .GreaterEquals => ">=",
-        .And => "&&", .Or => "||", .Nullish => "??",
-        .BitwiseAnd => "&", .BitwiseOr => "|", .BitwiseXor => "^",
-        .LeftShift => "<<", .RightShift => ">>", .UnsignedRightShift => ">>>",
+        .Plus => "+",
+        .Minus => "-",
+        .Multiply => "*",
+        .Divide => "/",
+        .Percent => "%",
+        .Equals => "==",
+        .NotEquals => "!=",
+        .Identical => "===",
+        .NotIdentical => "!==",
+        .Less => "<",
+        .Greater => ">",
+        .LessEquals => "<=",
+        .GreaterEquals => ">=",
+        .And => "&&",
+        .Or => "||",
+        .Nullish => "??",
+        .BitwiseAnd => "&",
+        .BitwiseOr => "|",
+        .BitwiseXor => "^",
+        .LeftShift => "<<",
+        .RightShift => ">>",
+        .UnsignedRightShift => ">>>",
         .Comma => ",",
-        .Assign => "=", .AddAssign => "+=", .SubtractAssign => "-=",
-        .MultiplyAssign => "*=", .DivideAssign => "/=", .ModuloAssign => "%=",
-        .BitwiseAndAssign => "&=", .BitwiseOrAssign => "|=", .BitwiseXorAssign => "^=",
-        .LeftShiftAssign => "<<=", .RightShiftAssign => ">>=",
+        .Assign => "=",
+        .AddAssign => "+=",
+        .SubtractAssign => "-=",
+        .MultiplyAssign => "*=",
+        .DivideAssign => "/=",
+        .ModuloAssign => "%=",
+        .BitwiseAndAssign => "&=",
+        .BitwiseOrAssign => "|=",
+        .BitwiseXorAssign => "^=",
+        .LeftShiftAssign => "<<=",
+        .RightShiftAssign => ">>=",
         .UnsignedRightShiftAssign => ">>>=",
-        .NullishCoalescingAssign => "??=", .LogicalAndAssign => "&&=", .LogicalOrAssign => "||=",
+        .NullishCoalescingAssign => "??=",
+        .LogicalAndAssign => "&&=",
+        .LogicalOrAssign => "||=",
     };
 }

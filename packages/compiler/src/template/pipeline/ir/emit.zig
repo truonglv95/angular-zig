@@ -218,7 +218,6 @@ fn allocArgs3(allocator: Allocator, a: Expr, b: Expr, c: Expr) ![]const Expr {
     return result;
 }
 
-
 // ─── Main Emit Entry Point ──────────────────────────────────
 
 /// Emit IR ops from a view into an Output AST template function.
@@ -301,10 +300,7 @@ fn emitCreateOp(allocator: Allocator, op: IrOp) !?Stmt {
         .SourceLocation => |span| emitSourceLocation(span),
         .ListEnd, .Content => null,
         .Template => |d| emitTemplate(allocator, op.xref, d.tag, d.namespace),
-        .ConditionalBranchCreate, .ForeignComponent, .I18nAttributes,
-        .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder,
-        .ExtractedAttribute, .ControlCreate, .Control,
-        .EnableIncrementalHydrationRuntime => null,
+        .ConditionalBranchCreate, .ForeignComponent, .I18nAttributes, .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder, .ExtractedAttribute, .ControlCreate, .Control, .EnableIncrementalHydrationRuntime => null,
         // Update-only ops: no create-phase emission
         .InterpolateText, .Binding, .Property, .StyleProp, .ClassProp, .StyleMap, .ClassMap, .DomProperty, .TwoWayProperty, .TwoWayListener, .Pipe, .StoreLet, .Advance, .Conditional, .Repeater, .Variable, .I18nExpression, .AnimationBinding, .AnimationString => null,
     };

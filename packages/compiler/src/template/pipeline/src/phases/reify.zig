@@ -22,7 +22,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // TODO: implement reify phase
 }
 
-
 // ─── Merged from final_validation.zig (1:1 structure consolidation) ──
 pub fn finalValidation(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
@@ -73,7 +72,6 @@ pub fn finalValidation(job: *ComponentCompilationJob, view: *ViewCompilationUnit
     }
 }
 
-
 // ─── Merged from generate_directive_metadata.zig (1:1 structure consolidation) ──
 pub fn generateDirectiveMetadata(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
@@ -105,7 +103,6 @@ pub fn generateDirectiveMetadata(job: *ComponentCompilationJob, view: *ViewCompi
     // may be a host binding compilation — that's valid.
 }
 
-
 // ─── Merged from generate_view_id.zig (1:1 structure consolidation) ──
 pub fn generateViewId(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
@@ -129,7 +126,6 @@ pub fn generateViewId(job: *ComponentCompilationJob, view: *ViewCompilationUnit)
     view.create.ops.deinit();
     view.create.ops = result;
 }
-
 
 // ─── Merged from optimize_template_size.zig (1:1 structure consolidation) ──
 pub fn optimizeTemplateSize(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -161,7 +157,6 @@ pub fn optimizeTemplateSize(job: *ComponentCompilationJob, view: *ViewCompilatio
     }
     view.update.ops.items.len = write;
 }
-
 
 // ─── Merged from validate_op_consistency.zig (1:1 structure consolidation) ──
 pub fn validateOpConsistency(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

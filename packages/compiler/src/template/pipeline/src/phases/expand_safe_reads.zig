@@ -28,7 +28,6 @@ const getExpressionPtr = helpers.getExpressionPtr;
 const helpers = @import("../helpers.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const allocator = view.update.allocator;
@@ -55,4 +54,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
 }
 
-pub fn expandSafeReads(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn expandSafeReads(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

@@ -155,7 +155,7 @@ test "compileNgModule basic" {
 
 test "compileNgModule with declarations and imports" {
     const allocator = std.testing.allocator;
-    const decls = [_]R3Reference{.{ .name = "MyComp" }, .{ .name = "MyDir" }};
+    const decls = [_]R3Reference{ .{ .name = "MyComp" }, .{ .name = "MyDir" } };
     const imports = [_]R3Reference{.{ .name = "CommonModule" }};
     const meta = R3NgModuleMetadata{
         .type = .{ .name = "MyModule" },

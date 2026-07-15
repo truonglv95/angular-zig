@@ -23,7 +23,10 @@ test "whitespaces: should preserve whitespaces by default" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>  text  </div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -32,7 +35,10 @@ test "whitespaces: should handle whitespace-only text" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>   </div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -41,7 +47,10 @@ test "whitespaces: should handle newlines" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>\n  text\n</div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -50,7 +59,10 @@ test "whitespaces: should handle tabs" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>\ttext\t</div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -59,7 +71,10 @@ test "whitespaces: should handle whitespace between elements" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div> <span>a</span> <span>b</span> </div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expect(elem.children.len >= 2);
 }
@@ -81,7 +96,10 @@ test "html_whitespaces: should remove whitespaces (space, tab, new line) between
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<br>  <br>\t<br>\n<br>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 7), result.root_nodes.len);
 }
 
@@ -90,7 +108,10 @@ test "html_whitespaces: should remove whitespaces from child text nodes" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div><span> </span></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.children.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Element, elem.children[0].kind);
@@ -101,7 +122,10 @@ test "html_whitespaces: should remove whitespaces from the beginning and end of 
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, " <br>\t");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     // Should have at least the <br> element
     var found_br = false;
     for (result.root_nodes) |node| {
@@ -138,19 +162,22 @@ test "html_whitespaces: should replace multiple whitespaces with one space" {
 }
 
 test "html_whitespaces: should remove whitespace inside of blocks" {
-                        const allocator = std.testing.allocator;
-                        var arena = arena_mod.AstArena.init(allocator);
-                        defer arena.deinit();
-                        const result = try parseHtml(allocator, &arena, "@if (cond) {<br>  <br>\t<br>\n<br>}");
-                        defer { var r = result; r.deinit(allocator); }
-                        var found_block = false;
-                        for (result.root_nodes) |node| {
-                            if (node.kind == .Block) {
-                                found_block = true;
-                                break;
-                            }
-                        }
-                        try std.testing.expect(found_block);
+    const allocator = std.testing.allocator;
+    var arena = arena_mod.AstArena.init(allocator);
+    defer arena.deinit();
+    const result = try parseHtml(allocator, &arena, "@if (cond) {<br>  <br>\t<br>\n<br>}");
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
+    var found_block = false;
+    for (result.root_nodes) |node| {
+        if (node.kind == .Block) {
+            found_block = true;
+            break;
+        }
+    }
+    try std.testing.expect(found_block);
 }
 
 test "html_whitespaces: should not replace &nbsp;" {

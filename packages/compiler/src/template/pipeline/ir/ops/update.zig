@@ -58,9 +58,7 @@ pub fn isUpdateOp(kind: UpdateOpKind) bool {
 /// Check if an op kind is a binding op (Property, Binding, StyleProp, etc.).
 pub fn isBindingOp(kind: UpdateOpKind) bool {
     return switch (kind) {
-        .Binding, .Property, .StyleProp, .ClassProp,
-        .StyleMap, .ClassMap, .DomProperty, .TwoWayProperty,
-        .Attribute => true,
+        .Binding, .Property, .StyleProp, .ClassProp, .StyleMap, .ClassMap, .DomProperty, .TwoWayProperty, .Attribute => true,
         else => false,
     };
 }

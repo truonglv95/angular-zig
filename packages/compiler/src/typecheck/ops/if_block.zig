@@ -57,7 +57,6 @@ pub const TcbIfBlockOp = struct {
     }
 };
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "if_block module loads" {

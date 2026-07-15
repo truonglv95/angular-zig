@@ -32,7 +32,6 @@ test "i18n: formatI18nPlaceholderName" {
 // ─── parseI18nMeta tests ───────────────────────────────────
 
 test "i18n: parseI18nMeta()" {
-    
 
     // parseI18nMeta('') → meta()
     {
@@ -81,7 +80,6 @@ test "i18n: parseI18nMeta()" {
 // ─── parseI18nMeta with whitespace tests ───────────────────
 
 test "i18n: parseI18nMeta with whitespace" {
-    
 
     // parseI18nMeta('\n   ') → meta()
     {
@@ -132,7 +130,7 @@ test "i18n: parseI18nMeta with whitespace" {
 test "i18n: serializeI18nHead" {
     // The TS test verifies i18nMetaToJSDoc output.
     // We verify the I18nMeta struct is correct.
-    
+
     const m = i18n_meta.parseI18nMeta("meaning|desc@@id");
     try std.testing.expectEqualStrings("id", m.custom_id.?);
     try std.testing.expectEqualStrings("meaning", m.meaning.?);
@@ -151,19 +149,16 @@ test "i18n: serializeI18nPlaceholderBlock" {
 // ─── generates with description ────────────────────────────
 
 test "i18n: generates with description" {
-    
     const m = i18n_meta.parseI18nMeta("description text");
     try std.testing.expectEqualStrings("description text", m.description.?);
 }
 
 test "i18n: generates with no description suppressed" {
-    
     const m = i18n_meta.parseI18nMeta("");
     try std.testing.expect(m.description == null);
 }
 
 test "i18n: generates with description and meaning" {
-    
     const m = i18n_meta.parseI18nMeta("meaning|description");
     try std.testing.expectEqualStrings("meaning", m.meaning.?);
     try std.testing.expectEqualStrings("description", m.description.?);

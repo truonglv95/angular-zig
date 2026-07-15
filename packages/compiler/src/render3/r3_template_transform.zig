@@ -20,7 +20,6 @@ const ClassifiedAttr = binding_parser.ClassifiedAttr;
 /// BIND_NAME_REGEXP — matches binding prefixes: bind-, let-, ref-/#, on-, bindon-, @
 /// Direct port of `BIND_NAME_REGEXP` in the TS source.
 /// Groups: 1=bind-, 2=let-, 3=ref-/#, 4=on-, 5=bindon-, 6=@, 7=identifier
-
 /// Keyword group indices for BIND_NAME_REGEXP.
 /// Direct port of the KW_* constants in the TS source.
 pub const KW_BIND_IDX: usize = 1;

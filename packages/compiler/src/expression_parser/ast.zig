@@ -106,9 +106,7 @@ pub const BinaryOp = enum {
             .Comma => 0,
             // Assignment operators — lowest precedence (below comma in some grammars,
             // but in Angular templates they're at the action level)
-            .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign, .DivideAssign,
-            .ModuloAssign, .PowerAssign, .NullishCoalescingAssign, .LogicalAndAssign,
-            .LogicalOrAssign => 0,
+            .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign, .DivideAssign, .ModuloAssign, .PowerAssign, .NullishCoalescingAssign, .LogicalAndAssign, .LogicalOrAssign => 0,
             .Or => 1,
             .And => 2,
             .Nullish => 3,
@@ -641,27 +639,77 @@ pub const RecursiveAstVisitor = struct {
     pub fn visitChildren(self: *const RecursiveAstVisitor, ast: *const Ast) void {
         _ = self;
         switch (ast.data) {
-            .Binary => |b| { _ = b.left; _ = b.right; },
-            .Conditional => |c| { _ = c.condition; _ = c.true_expr; _ = c.false_expr; },
-            .Call => |call| { _ = call.receiver; for (call.args) |_| {} },
-            .SafeCall => |call| { _ = call.receiver; for (call.args) |_| {} },
-            .PropertyRead => |pr| { _ = pr.receiver; },
-            .SafePropertyRead => |spr| { _ = spr.receiver; },
-            .KeyedRead => |kr| { _ = kr.receiver; _ = kr.key; },
-            .SafeKeyedRead => |skr| { _ = skr.receiver; _ = skr.key; },
-            .BindingPipe => |bp| { _ = bp.exp; for (bp.args) |_| {} },
-            .LiteralArray => |la| { for (la.expressions) |_| {} },
-            .LiteralMap => |lm| { for (lm.entries) |_| {} },
-            .Interpolation => |i| { for (i.expressions) |_| {} },
-            .PrefixNot => |pn| { _ = pn.expression; },
-            .Unary => |u| { _ = u.expr; },
-            .NonNullAssert => |nna| { _ = nna.expression; },
-            .Chain => |c| { for (c.expressions) |_| {} },
-            .ArrowFunction => |af| { _ = af.body; },
-            .Parenthesized => |p| { _ = p.expression; },
-            .TypeofExpr => |t| { _ = t.expression; },
-            .VoidExpr => |v| { _ = v.expression; },
-            .SpreadElement => |s| { _ = s.expression; },
+            .Binary => |b| {
+                _ = b.left;
+                _ = b.right;
+            },
+            .Conditional => |c| {
+                _ = c.condition;
+                _ = c.true_expr;
+                _ = c.false_expr;
+            },
+            .Call => |call| {
+                _ = call.receiver;
+                for (call.args) |_| {}
+            },
+            .SafeCall => |call| {
+                _ = call.receiver;
+                for (call.args) |_| {}
+            },
+            .PropertyRead => |pr| {
+                _ = pr.receiver;
+            },
+            .SafePropertyRead => |spr| {
+                _ = spr.receiver;
+            },
+            .KeyedRead => |kr| {
+                _ = kr.receiver;
+                _ = kr.key;
+            },
+            .SafeKeyedRead => |skr| {
+                _ = skr.receiver;
+                _ = skr.key;
+            },
+            .BindingPipe => |bp| {
+                _ = bp.exp;
+                for (bp.args) |_| {}
+            },
+            .LiteralArray => |la| {
+                for (la.expressions) |_| {}
+            },
+            .LiteralMap => |lm| {
+                for (lm.entries) |_| {}
+            },
+            .Interpolation => |i| {
+                for (i.expressions) |_| {}
+            },
+            .PrefixNot => |pn| {
+                _ = pn.expression;
+            },
+            .Unary => |u| {
+                _ = u.expr;
+            },
+            .NonNullAssert => |nna| {
+                _ = nna.expression;
+            },
+            .Chain => |c| {
+                for (c.expressions) |_| {}
+            },
+            .ArrowFunction => |af| {
+                _ = af.body;
+            },
+            .Parenthesized => |p| {
+                _ = p.expression;
+            },
+            .TypeofExpr => |t| {
+                _ = t.expression;
+            },
+            .VoidExpr => |v| {
+                _ = v.expression;
+            },
+            .SpreadElement => |s| {
+                _ = s.expression;
+            },
             else => {},
         }
     }
@@ -741,7 +789,6 @@ pub const BoundElementProperty = struct {
     value_span: ?AbsoluteSourceSpan = null,
 };
 
-
 // ─── Missing methods and types from Angular ast.ts ──────────
 
 /// EmptyExpr — represents an empty expression.
@@ -750,11 +797,7 @@ pub const EmptyExpr = struct { base: Ast };
 /// Check if an operation is an assignment operation.
 pub fn isAssignmentOperation(op: BinaryOp) bool {
     return switch (op) {
-        .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign,
-        .DivideAssign, .ModuloAssign, .BitwiseAndAssign,
-        .BitwiseOrAssign, .BitwiseXorAssign, .LeftShiftAssign,
-        .RightShiftAssign, .UnsignedRightShiftAssign,
-        .NullishCoalescingAssign, .LogicalAndAssign, .LogicalOrAssign => true,
+        .Assign, .AddAssign, .SubtractAssign, .MultiplyAssign, .DivideAssign, .ModuloAssign, .BitwiseAndAssign, .BitwiseOrAssign, .BitwiseXorAssign, .LeftShiftAssign, .RightShiftAssign, .UnsignedRightShiftAssign, .NullishCoalescingAssign, .LogicalAndAssign, .LogicalOrAssign => true,
         else => false,
     };
 }
@@ -802,28 +845,75 @@ pub fn astToString(allocator: std.mem.Allocator, ast_node: *const Ast) ![]const 
 pub fn visitAll(ast_node: *const Ast, visitor: anytype) void {
     ast_node.visit(visitor, {});
     switch (ast_node.data) {
-        .Binary => |b| { visitAll(b.left, visitor); visitAll(b.right, visitor); },
-        .Conditional => |c| { visitAll(c.condition, visitor); visitAll(c.true_expr, visitor); visitAll(c.false_expr, visitor); },
+        .Binary => |b| {
+            visitAll(b.left, visitor);
+            visitAll(b.right, visitor);
+        },
+        .Conditional => |c| {
+            visitAll(c.condition, visitor);
+            visitAll(c.true_expr, visitor);
+            visitAll(c.false_expr, visitor);
+        },
         .PropertyRead => |pr| visitAll(pr.receiver, visitor),
         .SafePropertyRead => |spr| visitAll(spr.receiver, visitor),
-        .KeyedRead => |kr| { visitAll(kr.receiver, visitor); visitAll(kr.key, visitor); },
-        .SafeKeyedRead => |skr| { visitAll(skr.receiver, visitor); visitAll(skr.key, visitor); },
-        .Call => |call| { visitAll(call.receiver, visitor); for (call.args) |a| { visitAll(a, visitor); } },
-        .SafeCall => |call| { visitAll(call.receiver, visitor); for (call.args) |a| { visitAll(a, visitor); } },
-        .BindingPipe => |bp| { visitAll(bp.exp, visitor); for (bp.args) |a| { visitAll(a, visitor); } },
-        .LiteralArray => |la| { for (la.expressions) |e| { visitAll(e, visitor); } },
-        .LiteralMap => |lm| { for (lm.entries) |e| { visitAll(e.value, visitor); } },
-        .Interpolation => |i| { for (i.expressions) |e| { visitAll(e, visitor); } },
+        .KeyedRead => |kr| {
+            visitAll(kr.receiver, visitor);
+            visitAll(kr.key, visitor);
+        },
+        .SafeKeyedRead => |skr| {
+            visitAll(skr.receiver, visitor);
+            visitAll(skr.key, visitor);
+        },
+        .Call => |call| {
+            visitAll(call.receiver, visitor);
+            for (call.args) |a| {
+                visitAll(a, visitor);
+            }
+        },
+        .SafeCall => |call| {
+            visitAll(call.receiver, visitor);
+            for (call.args) |a| {
+                visitAll(a, visitor);
+            }
+        },
+        .BindingPipe => |bp| {
+            visitAll(bp.exp, visitor);
+            for (bp.args) |a| {
+                visitAll(a, visitor);
+            }
+        },
+        .LiteralArray => |la| {
+            for (la.expressions) |e| {
+                visitAll(e, visitor);
+            }
+        },
+        .LiteralMap => |lm| {
+            for (lm.entries) |e| {
+                visitAll(e.value, visitor);
+            }
+        },
+        .Interpolation => |i| {
+            for (i.expressions) |e| {
+                visitAll(e, visitor);
+            }
+        },
         .PrefixNot => |pn| visitAll(pn.expression, visitor),
         .Unary => |u| visitAll(u.expr, visitor),
         .NonNullAssert => |nna| visitAll(nna.expression, visitor),
-        .Chain => |c| { for (c.expressions) |e| { visitAll(e, visitor); } },
+        .Chain => |c| {
+            for (c.expressions) |e| {
+                visitAll(e, visitor);
+            }
+        },
         .ArrowFunction => |af| visitAll(af.body, visitor),
         .Parenthesized => |p| visitAll(p.expression, visitor),
         .TypeofExpr => |t| visitAll(t.expression, visitor),
         .VoidExpr => |v| visitAll(v.expression, visitor),
         .SpreadElement => |s| visitAll(s.expression, visitor),
-        .Assignment => |a| { visitAll(a.target, visitor); visitAll(a.value, visitor); },
+        .Assignment => |a| {
+            visitAll(a.target, visitor);
+            visitAll(a.value, visitor);
+        },
         else => {},
     }
 }

@@ -692,7 +692,7 @@ pub fn extractPlaceholderName(input: []const u8) ?[]const u8 {
 /// Void elements: area, base, br, col, embed, hr, img, input, link, meta, param, source, track, wbr.
 fn isVoidElement(name: []const u8) bool {
     const void_tags = [_][]const u8{
-        "area", "base", "br",  "col",  "embed", "hr",    "img",
+        "area",  "base", "br",   "col",   "embed",  "hr",    "img",
         "input", "link", "meta", "param", "source", "track", "wbr",
     };
     for (void_tags) |void_tag| {

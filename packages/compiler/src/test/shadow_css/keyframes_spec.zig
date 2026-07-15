@@ -166,7 +166,6 @@ test "keyframes: should handle css functions correctly" {
     try std.testing.expect(result.len > 0);
 }
 
-
 test "keyframes: should not modify css variables ending with 'animation' even if they reference a local keyframes identifier" {
     const allocator = std.testing.allocator;
     const css =

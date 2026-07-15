@@ -94,7 +94,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
 }
 
-
 // ─── Merged from mark_security_contexts.zig (1:1 structure consolidation) ──
 pub fn markSecurityContexts(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     return injectSecurityContexts(job, view);

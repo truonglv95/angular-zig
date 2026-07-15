@@ -23,7 +23,6 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     const allocator = view.update.allocator;
     var result = std.array_list.Managed(IrOp).init(allocator);
@@ -53,7 +52,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
-
 
 // ─── Merged from normalize_two_way_binding_pairs.zig (1:1 structure consolidation) ──
 pub fn normalizeTwoWayBindingPairs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

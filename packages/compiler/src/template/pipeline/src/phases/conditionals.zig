@@ -23,7 +23,6 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     // Count ConditionalCreate ops in create list
@@ -46,4 +45,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // finalValidation. This phase is a structural checkpoint.
 }
 
-pub fn generateConditionalExpressions(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn generateConditionalExpressions(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

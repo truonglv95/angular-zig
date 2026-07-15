@@ -3,6 +3,10 @@
 const std = @import("std");
 
 pub const DomPropertyOp = struct {};
-pub fn createDomPropertyOp(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn createDomPropertyOp(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}
 
-test "module loads" { std.testing.expect(true); }
+test "module loads" {
+    std.testing.expect(true);
+}

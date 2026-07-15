@@ -77,8 +77,7 @@ test "placeholder: should generate different names for the same tag with differe
     try std.testing.expectEqualStrings(start1, start2);
 }
 
-test "placeholder: should be case sensitive for attributes" {
-}
+test "placeholder: should be case sensitive for attributes" {}
 
 test "placeholder: should support void tags" {
     const allocator = std.testing.allocator;

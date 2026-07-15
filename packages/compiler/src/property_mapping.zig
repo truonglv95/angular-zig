@@ -75,13 +75,13 @@ pub const PROPERTY_MAPPINGS = std.StaticStringMap([]const u8).initComptime(.{
 
 /// Properties that are boolean (presence = true, absence = false).
 pub const BOOLEAN_PROPERTIES = std.StaticStringMap(void).initComptime(.{
-    .{ "disabled", {} }, .{ "required", {} }, .{ "checked", {} },
-    .{ "multiple", {} }, .{ "selected", {} }, .{ "hidden", {} },
-    .{ "readonly", {} }, .{ "async", {} }, .{ "defer", {} },
-    .{ "ismap", {} }, .{ "itemscope", {} }, .{ "nomodule", {} },
-    .{ "nowrap", {} }, .{ "open", {} }, .{ "reversed", {} },
-    .{ "default", {} }, .{ "autoplay", {} }, .{ "controls", {} },
-    .{ "loop", {} }, .{ "muted", {} }, .{ "novalidate", {} },
+    .{ "disabled", {} },       .{ "required", {} },  .{ "checked", {} },
+    .{ "multiple", {} },       .{ "selected", {} },  .{ "hidden", {} },
+    .{ "readonly", {} },       .{ "async", {} },     .{ "defer", {} },
+    .{ "ismap", {} },          .{ "itemscope", {} }, .{ "nomodule", {} },
+    .{ "nowrap", {} },         .{ "open", {} },      .{ "reversed", {} },
+    .{ "default", {} },        .{ "autoplay", {} },  .{ "controls", {} },
+    .{ "loop", {} },           .{ "muted", {} },     .{ "novalidate", {} },
     .{ "formnovalidate", {} }, .{ "hidden2", {} },
 });
 

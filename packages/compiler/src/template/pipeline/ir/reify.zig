@@ -162,10 +162,7 @@ pub fn opKindToReified(kind: OpKind) ReifiedKind {
         .AnimationBinding => .AnimationBinding,
         .AnimationString => .AnimationString,
         // New ops added for 1:1 fidelity — map to Statement as fallback.
-        .Template, .ConditionalBranchCreate, .ForeignComponent,
-        .I18nAttributes, .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder,
-        .ExtractedAttribute, .ControlCreate, .Control,
-        .EnableIncrementalHydrationRuntime => .Statement,
+        .Template, .ConditionalBranchCreate, .ForeignComponent, .I18nAttributes, .I18nContext, .IcuStart, .IcuEnd, .IcuPlaceholder, .ExtractedAttribute, .ControlCreate, .Control, .EnableIncrementalHydrationRuntime => .Statement,
     };
 }
 
@@ -1115,7 +1112,11 @@ test "reify ElementStart op" {
         .data = .{ .ElementStart = .{ .name = "div", .namespace = .HTML, .attrs_xref = 0 } },
     });
 
-    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
+    const reified = try reifyJob(&job);
+    defer {
+        var r = reified;
+        r.deinit();
+    }
     try std.testing.expectEqual(@as(usize, 1), reified.create_ops.len);
     try std.testing.expectEqual(ReifiedKind.ElementStart, reified.create_ops[0].kind);
     try std.testing.expectEqual(OpPhase.Create, reified.create_ops[0].phase);
@@ -1152,7 +1153,11 @@ test "reify create + update ops" {
         .data = .{ .Binding = .{ .name = "textContent", .expression = expr, .binding_kind = .Property } },
     });
 
-    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
+    const reified = try reifyJob(&job);
+    defer {
+        var r = reified;
+        r.deinit();
+    }
     try std.testing.expectEqual(@as(usize, 2), reified.create_ops.len);
     try std.testing.expectEqual(@as(usize, 1), reified.update_ops.len);
     try std.testing.expectEqual(ReifiedKind.Binding, reified.update_ops[0].kind);
@@ -1178,7 +1183,11 @@ test "collectStats counts correctly" {
         .data = .{ .ElementEnd = {} },
     });
 
-    const reified = try reifyJob(&job); defer { var r = reified; r.deinit(); }
+    const reified = try reifyJob(&job);
+    defer {
+        var r = reified;
+        r.deinit();
+    }
     const stats = collectStats(reified.create_ops, reified.update_ops);
     try std.testing.expectEqual(@as(usize, 1), stats.element_starts);
     try std.testing.expectEqual(@as(usize, 2), stats.create_count);

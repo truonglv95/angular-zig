@@ -38,7 +38,8 @@ test "xtb: should load XTB files without placeholders" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -69,12 +70,12 @@ test "xtb: should load XTB files with placeholders" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
-test "xtb: should replace ICU placeholders with their translations" {
-}
+test "xtb: should replace ICU placeholders with their translations" {}
 
 test "xtb: should load complex XTB files" {
     const allocator = std.testing.allocator;
@@ -88,7 +89,8 @@ test "xtb: should load complex XTB files" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -102,7 +104,8 @@ test "xtb: should be able to parse non-angular xtb files without error" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -119,7 +122,8 @@ test "xtb: should throw on nested <translationbundle>" {
     // Should produce an error or empty result
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -133,7 +137,8 @@ test "xtb: should throw when a <translation> has no id attribute" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -147,7 +152,8 @@ test "xtb: should throw when a placeholder has no name attribute" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -161,7 +167,8 @@ test "xtb: should throw on unknown xtb tags" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -181,7 +188,8 @@ test "xtb: should handle empty translation" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }
 
@@ -195,6 +203,7 @@ test "xtb: should handle escaped characters" {
     ;
     const result = xtb.Xtb.load(allocator, xtb_content, "url");
     if (result) |r| {
-        var r_mut = r; defer r_mut.deinit();
+        var r_mut = r;
+        defer r_mut.deinit();
     } else |_| {}
 }

@@ -10,7 +10,8 @@ const arena_mod = @import("../../arena.zig");
 fn parseHtml(allocator: std.mem.Allocator, arena: *arena_mod.AstArena, source: []const u8) !ml_ast.ParseTreeResult {
     var lex = ml_lexer.Lexer.init(allocator, source);
     defer lex.deinit();
-    const lex_result = try lex.tokenize(); const lex_tokens = lex_result[0];
+    const lex_result = try lex.tokenize();
+    const lex_tokens = lex_result[0];
     var parser = ml_parser.Parser.init(allocator, arena, source, lex_tokens);
     // parser.deinit() frees owned_root_nodes which is the same as result.root_nodes.
     // We don't call it here — the caller must call result.deinit(allocator) instead.
@@ -22,7 +23,10 @@ test "html_parser: should parse empty document" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 0), result.root_nodes.len);
 }
 
@@ -31,7 +35,10 @@ test "html_parser: should parse simple element" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Element, result.root_nodes[0].kind);
 }
@@ -41,7 +48,10 @@ test "html_parser: should parse element with text" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>Hello</div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.children.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Text, elem.children[0].kind);
@@ -52,7 +62,10 @@ test "html_parser: should parse nested elements" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div><span>text</span></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.children.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Element, elem.children[0].kind);
@@ -64,7 +77,10 @@ test "html_parser: should parse self-closing element" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<br/>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expect(result.root_nodes[0].data.Element.is_self_closing);
 }
@@ -74,7 +90,10 @@ test "html_parser: should parse void element" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<br>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expect(result.root_nodes[0].data.Element.is_void);
 }
@@ -84,7 +103,10 @@ test "html_parser: should parse attributes" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div class=\"container\" id=\"main\"></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), elem.attrs.len);
     try std.testing.expectEqualStrings("class", elem.attrs[0].name);
@@ -96,7 +118,10 @@ test "html_parser: should parse comment" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!-- comment -->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Comment, result.root_nodes[0].kind);
 }
@@ -106,7 +131,10 @@ test "html_parser: should parse multiple root elements" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div></div><span></span>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 2), result.root_nodes.len);
 }
 
@@ -115,7 +143,10 @@ test "html_parser: should parse deeply nested elements" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div><span><p><b>deep</b></p></span></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const div = result.root_nodes[0].data.Element;
     const span = div.children[0].data.Element;
     const p = span.children[0].data.Element;
@@ -128,7 +159,10 @@ test "html_parser: should parse attribute without value" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<input disabled>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.attrs.len);
     try std.testing.expectEqualStrings("disabled", elem.attrs[0].name);
@@ -139,7 +173,10 @@ test "html_parser: should parse mixed content" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>text<span>inner</span>more</div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 3), elem.children.len);
 }
@@ -149,7 +186,10 @@ test "html_parser: should parse siblings" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div>text1</div><div>text2</div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 2), result.root_nodes.len);
 }
 
@@ -1306,4 +1346,3 @@ test "html_parser: should also report lexer errors" {
     var r = try parseHtml(allocator, &arena, "");
     defer r.deinit(allocator);
 }
-

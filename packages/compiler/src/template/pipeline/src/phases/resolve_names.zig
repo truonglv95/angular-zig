@@ -69,4 +69,6 @@ fn processLexicalScope(
     for (ops) |_| {}
 }
 
-pub fn resolveNames(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn resolveNames(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

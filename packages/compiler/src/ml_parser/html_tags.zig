@@ -55,8 +55,9 @@ pub const HtmlTagDefinition = struct {
 /// Void HTML elements (self-closing, no children).
 /// Direct port of the void tag definitions in the TS source.
 pub const VOID_TAGS = [_][]const u8{
-    "base", "meta", "area", "embed", "link", "img",
-    "input", "param", "hr", "br", "source", "track", "wbr", "col",
+    "base",  "meta",  "area", "embed", "link",   "img",
+    "input", "param", "hr",   "br",    "source", "track",
+    "wbr",   "col",
 };
 
 /// Tags with raw text content type.
@@ -100,10 +101,11 @@ pub fn isEscapableRawTextTag(name: []const u8) bool {
 
 /// Tags that close <p> when encountered as children.
 const P_CLOSED_BY = [_][]const u8{
-    "address", "article", "aside", "blockquote", "div", "dl",
-    "fieldset", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
-    "header", "hgroup", "hr", "main", "nav", "ol", "p", "pre",
-    "section", "table", "ul",
+    "address",  "article", "aside", "blockquote", "div",    "dl",
+    "fieldset", "footer",  "form",  "h1",         "h2",     "h3",
+    "h4",       "h5",      "h6",    "header",     "hgroup", "hr",
+    "main",     "nav",     "ol",    "p",          "pre",    "section",
+    "table",    "ul",
 };
 
 /// Get the tag definition for an HTML tag name.

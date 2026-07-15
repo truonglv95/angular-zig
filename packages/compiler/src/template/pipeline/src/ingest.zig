@@ -371,9 +371,7 @@ fn ingestNode(job: *CompilationJob, view: *ViewCompilationUnit, node: *const R3N
             // The TS source intentionally does nothing for plain Component nodes here.
         },
         .Comment => {},
-        .Variable, .Reference, .TextAttribute, .BoundAttribute, .BoundEvent,
-        .Directive, .IfBlockBranch, .ForLoopBlockEmpty, .SwitchBlockCaseGroup,
-        .SwitchBlockCase, .DeferredTrigger, .IcuPlaceholder, .UnknownBlock => {
+        .Variable, .Reference, .TextAttribute, .BoundAttribute, .BoundEvent, .Directive, .IfBlockBranch, .ForLoopBlockEmpty, .SwitchBlockCaseGroup, .SwitchBlockCase, .DeferredTrigger, .IcuPlaceholder, .UnknownBlock => {
             // These are sub-node types processed by their parent ingesters,
             // not as top-level nodes.
         },

@@ -344,7 +344,6 @@ pub const MapProperty = struct {
     quoted: bool,
 };
 
-
 pub const TemplateLiteral = struct {
     elements: []const []const u8,
     expressions: []const Expr,
@@ -356,9 +355,6 @@ pub const ArrowBody = union(enum) {
 };
 
 // ─── Statement Types ─────────────────────────────────────────
-
-
-
 
 pub const VarModifier = enum { Const, Let, Var };
 
@@ -382,7 +378,11 @@ pub const TypeModifier = enum(u8) { None, Const };
 
 /// TypeKind — tagged union for type variants.
 pub const TypeKind = enum(u8) {
-    Builtin, Expression, Array, Map, Transplanted,
+    Builtin,
+    Expression,
+    Array,
+    Map,
+    Transplanted,
 };
 
 /// Type — base type representation using tagged union (DOD: no class hierarchy).
@@ -416,28 +416,62 @@ pub const TypeVisitor = struct {
 
 /// UnaryOperator — unary operators for output expressions.
 pub const UnaryOperator = enum(u8) {
-    Minus, Plus, BitwiseNot, LogicalNot,
+    Minus,
+    Plus,
+    BitwiseNot,
+    LogicalNot,
 };
 
 /// BinaryOperator — binary operators matching Angular's output_ast.
 pub const BinaryOperator = enum(u8) {
-    Equals, NotEquals, Identical, NotIdentical,
-    Less, LessEquals, Greater, GreaterEquals,
-    Plus, Minus, Multiply, Divide, Modulo,
-    BitwiseAnd, BitwiseOr, BitwiseXor, BitwiseShiftLeft, BitwiseShiftRight,
-    LogicalAnd, LogicalOr, NullishCoalescing,
+    Equals,
+    NotEquals,
+    Identical,
+    NotIdentical,
+    Less,
+    LessEquals,
+    Greater,
+    GreaterEquals,
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    Modulo,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseShiftLeft,
+    BitwiseShiftRight,
+    LogicalAnd,
+    LogicalOr,
+    NullishCoalescing,
     Comma,
 };
 
 /// Convert BinaryOperator to JS string.
 pub fn binaryOperatorToString(op: BinaryOperator) []const u8 {
     return switch (op) {
-        .Equals => "==", .NotEquals => "!=", .Identical => "===", .NotIdentical => "!==",
-        .Less => "<", .LessEquals => "<=", .Greater => ">", .GreaterEquals => ">=",
-        .Plus => "+", .Minus => "-", .Multiply => "*", .Divide => "/", .Modulo => "%",
-        .BitwiseAnd => "&", .BitwiseOr => "|", .BitwiseXor => "^",
-        .BitwiseShiftLeft => "<<", .BitwiseShiftRight => ">>",
-        .LogicalAnd => "&&", .LogicalOr => "||", .NullishCoalescing => "??",
+        .Equals => "==",
+        .NotEquals => "!=",
+        .Identical => "===",
+        .NotIdentical => "!==",
+        .Less => "<",
+        .LessEquals => "<=",
+        .Greater => ">",
+        .GreaterEquals => ">=",
+        .Plus => "+",
+        .Minus => "-",
+        .Multiply => "*",
+        .Divide => "/",
+        .Modulo => "%",
+        .BitwiseAnd => "&",
+        .BitwiseOr => "|",
+        .BitwiseXor => "^",
+        .BitwiseShiftLeft => "<<",
+        .BitwiseShiftRight => ">>",
+        .LogicalAnd => "&&",
+        .LogicalOr => "||",
+        .NullishCoalescing => "??",
         .Comma => ",",
     };
 }
@@ -493,7 +527,13 @@ pub const JSDocTag = struct {
 
 /// JSDocTagName — well-known JSDoc tag names.
 pub const JSDocTagName = enum {
-    Description, See, Deprecated, Link, Param, Returns, Type,
+    Description,
+    See,
+    Deprecated,
+    Link,
+    Param,
+    Returns,
+    Type,
 };
 
 // ─── LeadingComment ─────────────────────────────────────────
@@ -528,7 +568,15 @@ pub const StmtModifier = enum(u8) { Final, Private, Exported, Static };
 
 /// StmtKind — tagged union for statement variants.
 pub const StmtKind = enum(u8) {
-    DeclareVar, DeclareFunction, Expression, Return, If, Throw, Comment, TryCatch, Block,
+    DeclareVar,
+    DeclareFunction,
+    Expression,
+    Return,
+    If,
+    Throw,
+    Comment,
+    TryCatch,
+    Block,
 };
 
 /// StmtData — tagged union for statement data (DOD: defined before Stmt).
@@ -1090,7 +1138,7 @@ test "not factory" {
 }
 
 test "fn_ factory" {
-    const params = [_]FnParam{.{ .name = "rf" }, .{ .name = "ctx" }};
+    const params = [_]FnParam{ .{ .name = "rf" }, .{ .name = "ctx" } };
     const e = fn_("MyTemplate", &params, &.{});
     try std.testing.expectEqual(ExprKind.FunctionExpr, e.kind);
     try std.testing.expectEqualStrings("MyTemplate", e.data.FunctionExpr.name.?);
@@ -1484,5 +1532,3 @@ test "ClassField with static" {
     };
     try std.testing.expect(field.is_static);
 }
-
-

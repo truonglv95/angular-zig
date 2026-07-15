@@ -31,11 +31,9 @@ test "xliff2: should write a valid xliff2 file with a target locale" {
     try std.testing.expect(std.mem.indexOf(u8, result, "trgLang=\"fr\"") != null);
 }
 
-test "xliff2: should load XLIFF 2.0 files" {
-}
+test "xliff2: should load XLIFF 2.0 files" {}
 
-test "xliff2: should return the target locale" {
-}
+test "xliff2: should return the target locale" {}
 
 test "xliff2: should write trans-unit with id" {
     const allocator = std.testing.allocator;

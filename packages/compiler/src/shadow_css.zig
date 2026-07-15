@@ -5,13 +5,13 @@ const std = @import("std");
 
 /// Animation keywords that should not be modified during keyframe scoping.
 const ANIMATION_KEYWORDS = std.StaticStringMap(void).initComptime(.{
-    .{ "inherit", {} }, .{ "initial", {} }, .{ "revert", {} }, .{ "unset", {} },
-    .{ "alternate", {} }, .{ "alternate-reverse", {} }, .{ "normal", {} }, .{ "reverse", {} },
-    .{ "backwards", {} }, .{ "both", {} }, .{ "forwards", {} }, .{ "none", {} },
-    .{ "paused", {} }, .{ "running", {} }, .{ "ease", {} }, .{ "ease-in", {} },
-    .{ "ease-in-out", {} }, .{ "ease-out", {} }, .{ "linear", {} }, .{ "step-start", {} },
-    .{ "step-end", {} }, .{ "end", {} }, .{ "jump-both", {} }, .{ "jump-end", {} },
-    .{ "jump-none", {} }, .{ "jump-start", {} }, .{ "start", {} },
+    .{ "inherit", {} },     .{ "initial", {} },           .{ "revert", {} },    .{ "unset", {} },
+    .{ "alternate", {} },   .{ "alternate-reverse", {} }, .{ "normal", {} },    .{ "reverse", {} },
+    .{ "backwards", {} },   .{ "both", {} },              .{ "forwards", {} },  .{ "none", {} },
+    .{ "paused", {} },      .{ "running", {} },           .{ "ease", {} },      .{ "ease-in", {} },
+    .{ "ease-in-out", {} }, .{ "ease-out", {} },          .{ "linear", {} },    .{ "step-start", {} },
+    .{ "step-end", {} },    .{ "end", {} },               .{ "jump-both", {} }, .{ "jump-end", {} },
+    .{ "jump-none", {} },   .{ "jump-start", {} },        .{ "start", {} },
 });
 
 /// CSS at-rule identifiers that are scoped.
@@ -36,7 +36,9 @@ const CssShim = struct {
         return .{ .allocator = allocator, .attr = attr, .buf = std.array_list.Managed(u8).init(allocator) };
     }
 
-    fn deinit(self: *CssShim) void { self.buf.deinit(); }
+    fn deinit(self: *CssShim) void {
+        self.buf.deinit();
+    }
 
     fn shimCssText(self: *CssShim, css: []const u8) ![]const u8 {
         var i: usize = 0;
@@ -296,14 +298,13 @@ fn scopeAnimationReferences(allocator: std.mem.Allocator, css: []const u8, scope
 pub fn isAnimationKeyword(s: []const u8) bool {
     // Check common animation shorthand keywords
     const keywords = [_][]const u8{
-        "inherit", "initial", "revert", "unset",
-        "alternate", "alternate-reverse", "normal", "reverse",
-        "backwards", "both", "forwards", "none",
-        "paused", "running",
-        "ease", "ease-in", "ease-in-out", "ease-out", "linear",
-        "step-start", "step-end",
-        "end", "jump-both", "jump-end", "jump-none", "jump-start", "start",
-        "infinite",
+        "inherit",     "initial",           "revert",    "unset",
+        "alternate",   "alternate-reverse", "normal",    "reverse",
+        "backwards",   "both",              "forwards",  "none",
+        "paused",      "running",           "ease",      "ease-in",
+        "ease-in-out", "ease-out",          "linear",    "step-start",
+        "step-end",    "end",               "jump-both", "jump-end",
+        "jump-none",   "jump-start",        "start",     "infinite",
     };
     for (keywords) |kw| {
         if (std.mem.eql(u8, s, kw)) return true;
@@ -551,8 +552,8 @@ pub fn hasSlotted(selector: []const u8) bool {
 /// Check if a string is an animation timing function keyword.
 pub fn isAnimationTimingFunction(name: []const u8) bool {
     const timing_keywords = [_][]const u8{
-        "ease",      "ease-in",     "ease-out", "ease-in-out",
-        "linear",    "step-start",  "step-end",
+        "ease",   "ease-in",    "ease-out", "ease-in-out",
+        "linear", "step-start", "step-end",
     };
     for (timing_keywords) |kw| {
         if (std.mem.eql(u8, name, kw)) return true;

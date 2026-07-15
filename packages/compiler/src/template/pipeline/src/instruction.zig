@@ -103,7 +103,7 @@ pub fn elementStart(allocator: std.mem.Allocator, slot: u32, tag: []const u8) ![
 
 /// Generate an ɵɵelementEnd() instruction call.
 pub fn elementEnd(allocator: std.mem.Allocator) ![]const u8 {
-    return allocator.dupe(u8, Instruction.elementStart[0..Instruction.elementStart.len-5] ++ "End()");
+    return allocator.dupe(u8, Instruction.elementStart[0 .. Instruction.elementStart.len - 5] ++ "End()");
 }
 
 /// Generate an ɵɵtext(slot) instruction call.

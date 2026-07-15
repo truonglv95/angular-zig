@@ -66,7 +66,7 @@ pub const CharacterReferenceType = enum(u8) {
 /// Supported block names for @if/@for/@switch/@defer.
 /// Direct port of `SUPPORTED_BLOCKS` in the TS source.
 pub const SUPPORTED_BLOCKS = [_][]const u8{
-    "if", "else if", "else", "for", "empty", "switch",
+    "if",   "else if", "else",  "for",         "empty",   "switch",
     "case", "default", "defer", "placeholder", "loading", "error",
 };
 

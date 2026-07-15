@@ -56,13 +56,13 @@ test "i18n_parser: should extract from elements" {
 }
 
 test "i18n_parser: should extract from nested elements" {
-            var extracted = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
-            defer extracted.arena.deinit();
-            defer extracted.result.deinit(allocator);
-            const messages = extracted.result.messages_list;
-            try std.testing.expectEqual(@as(usize, 1), messages.len);
-            try std.testing.expectEqualStrings("m", messages[0].meaning);
-            try std.testing.expectEqualStrings("d", messages[0].description);
+    var extracted = try extractMessages("<div i18n=\"m|d\">text<span><b>nested</b></span></div>");
+    defer extracted.arena.deinit();
+    defer extracted.result.deinit(allocator);
+    const messages = extracted.result.messages_list;
+    try std.testing.expectEqual(@as(usize, 1), messages.len);
+    try std.testing.expectEqualStrings("m", messages[0].meaning);
+    try std.testing.expectEqualStrings("d", messages[0].description);
 }
 
 test "i18n_parser: should not create a message for empty elements" {
@@ -82,11 +82,11 @@ test "i18n_parser: should not create a message for plain elements" {
 }
 
 test "i18n_parser: should support void elements" {
-            var extracted = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
-            defer extracted.arena.deinit();
-            defer extracted.result.deinit(allocator);
-            const messages = extracted.result.messages_list;
-            try std.testing.expectEqual(@as(usize, 1), messages.len);
+    var extracted = try extractMessages("<div i18n=\"m|d\"><p><br></p></div>");
+    defer extracted.arena.deinit();
+    defer extracted.result.deinit(allocator);
+    const messages = extracted.result.messages_list;
+    try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should trim whitespace from custom ids (but not meanings)" {
@@ -116,12 +116,12 @@ test "i18n_parser: should extract from attributes outside of translatable sectio
 }
 
 test "i18n_parser: should extract from attributes in translatable element" {
-            var extracted = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
-            defer extracted.arena.deinit();
-            defer extracted.result.deinit(allocator);
-            const messages = extracted.result.messages_list;
-            // Should extract at least the attribute message
-            try std.testing.expect(messages.len >= 1);
+    var extracted = try extractMessages("<div i18n><p><b i18n-title=\"m|d\" title=\"msg\"></b></p></div>");
+    defer extracted.arena.deinit();
+    defer extracted.result.deinit(allocator);
+    const messages = extracted.result.messages_list;
+    // Should extract at least the attribute message
+    try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in translatable block" {
@@ -133,11 +133,11 @@ test "i18n_parser: should extract from attributes in translatable block" {
 }
 
 test "i18n_parser: should extract from attributes in translatable ICU" {
-            var extracted = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
-            defer extracted.arena.deinit();
-            defer extracted.result.deinit(allocator);
-            const messages = extracted.result.messages_list;
-            try std.testing.expect(messages.len >= 1);
+    var extracted = try extractMessages("<div i18n>{count, plural, =0 {<b i18n-title=\"m|d\" title=\"msg\"></b>}}</div>");
+    defer extracted.arena.deinit();
+    defer extracted.result.deinit(allocator);
+    const messages = extracted.result.messages_list;
+    try std.testing.expect(messages.len >= 1);
 }
 
 test "i18n_parser: should extract from attributes in non translatable ICU" {
@@ -286,11 +286,11 @@ test "i18n_parser: should extract implicit attributes" {
 // ─── Placeholder reuse tests ───────────────────────────────
 
 test "i18n_parser: should reuse the same placeholder name for tags" {
-            var extracted = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
-            defer extracted.arena.deinit();
-            defer extracted.result.deinit(allocator);
-            const messages = extracted.result.messages_list;
-            try std.testing.expectEqual(@as(usize, 1), messages.len);
+    var extracted = try extractMessages("<div i18n><span>a</span><span>b</span></div>");
+    defer extracted.arena.deinit();
+    defer extracted.result.deinit(allocator);
+    const messages = extracted.result.messages_list;
+    try std.testing.expectEqual(@as(usize, 1), messages.len);
 }
 
 test "i18n_parser: should reuse the same placeholder name for interpolations" {

@@ -10,13 +10,10 @@ const std = @import("std");
 /// Pattern for the expression in a for loop block: `item of items`.
 /// Direct port of `FOR_LOOP_EXPRESSION_PATTERN` in the TS source.
 /// Format: `^\s*([0-9A-Za-z_$]*)\s+of\s+([\S\s]*)`
-
 /// Pattern for the tracking expression in a for loop block: `track expr`.
 /// Direct port of `FOR_LOOP_TRACK_PATTERN` in the TS source.
-
 /// Pattern for the `as` expression in a conditional block: `as alias`.
 /// Direct port of `CONDITIONAL_ALIAS_PATTERN` in the TS source.
-
 /// Names of variables that are allowed to be used in the `let` expression
 /// of a `for` loop.
 /// Direct port of `ALLOWED_FOR_LOOP_LET_VARIABLES` in the TS source.

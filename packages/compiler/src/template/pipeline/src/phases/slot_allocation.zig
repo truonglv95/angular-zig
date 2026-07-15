@@ -23,7 +23,6 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     var max_slot: u32 = 0;
@@ -45,7 +44,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // decls = max_slot + 1 (number of declaration slots needed)
     view.decls = max_slot + 1;
 }
-
 
 // ─── Merged from allocate_interpolation_slots.zig (1:1 structure consolidation) ──
 pub fn allocateInterpolationSlots(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

@@ -94,6 +94,10 @@ test "trait size" {
     try std.testing.expectEqual(@as(usize, 1), @sizeOf(OpTrait));
 }
 
-pub fn hasDependsOnSlotContextTrait(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn hasDependsOnSlotContextTrait(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}
 
-pub fn hasConsumesVarsTrait(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn hasConsumesVarsTrait(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

@@ -26,7 +26,6 @@ const helpers = @import("../helpers.zig");
 const getExpressionPtrConst = helpers.getExpressionPtrConst;
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const allocator = view.update.allocator;
@@ -51,7 +50,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
-
 
 // ─── Merged from remove_unused_store_lets.zig (1:1 structure consolidation) ──
 pub fn removeUnusedStoreLets(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

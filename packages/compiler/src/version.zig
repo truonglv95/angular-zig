@@ -28,6 +28,6 @@ pub fn isCompatible(version: []const u8) bool {
     // Check major version matches
     if (version.len < 2) return false;
     return std.mem.startsWith(u8, version, "19") or
-           std.mem.startsWith(u8, version, "18") or
-           std.mem.startsWith(u8, version, "17");
+        std.mem.startsWith(u8, version, "18") or
+        std.mem.startsWith(u8, version, "17");
 }

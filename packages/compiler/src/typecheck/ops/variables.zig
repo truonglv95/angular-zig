@@ -58,7 +58,6 @@ pub fn declareBlockVariable(
     return std.fmt.allocPrint(allocator, "var {s}: {s};", .{ name, var_type });
 }
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "variables module loads" {

@@ -54,8 +54,7 @@ test "translation_bundle: should translate a message with placeholder" {
     try std.testing.expect(std.mem.indexOf(u8, found.?.message_string, "bar") != null);
 }
 
-test "translation_bundle: should translate a message with placeholder referencing messages" {
-}
+test "translation_bundle: should translate a message with placeholder referencing messages" {}
 
 test "translation_bundle: should use the original message or throw when a translation is not found" {
     const allocator = std.testing.allocator;
@@ -67,8 +66,7 @@ test "translation_bundle: should use the original message or throw when a transl
     try std.testing.expect(found == null);
 }
 
-test "translation_bundle: should report unknown placeholders" {
-}
+test "translation_bundle: should report unknown placeholders" {}
 
 test "translation_bundle: should report missing translation" {
     const allocator = std.testing.allocator;
@@ -102,11 +100,9 @@ test "translation_bundle: should not report missing translation with MissingTran
     try std.testing.expect(found == null);
 }
 
-test "translation_bundle: should report missing referenced message" {
-}
+test "translation_bundle: should report missing referenced message" {}
 
-test "translation_bundle: should report invalid translated html" {
-}
+test "translation_bundle: should report invalid translated html" {}
 
 test "translation_bundle: should check if translation exists by id" {
     const allocator = std.testing.allocator;

@@ -17,7 +17,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     // TODO: implement deduplicate_text_bindings phase
 }
 
-
 // ─── Merged from merge_adjacent_text.zig (1:1 structure consolidation) ──
 pub fn mergeAdjacentText(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;

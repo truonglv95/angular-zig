@@ -28,26 +28,26 @@ test "whitespace_sensitivity: from converting one-line messages to block message
     // When preserveWhitespace is false, the message IDs should be the same
     // regardless of whitespace formatting.
     const one_line =
- \\<div i18n>Hello, World!</div>
- \\<div i18n>Hello {{ abc }}</div>
- \\<div i18n>Start {{ abc }} End</div>
- \\<div i18n>{{ first }} middle {{ end }}</div>
- \\<div i18n><a href="/foo">First Second</a></div>
- \\<div i18n>Before <a href="/foo">First Second</a> After</div>
- \\<div i18n><input type="text" /></div>
- \\<div i18n>Before <input type="text" /> After</div>
+        \\<div i18n>Hello, World!</div>
+        \\<div i18n>Hello {{ abc }}</div>
+        \\<div i18n>Start {{ abc }} End</div>
+        \\<div i18n>{{ first }} middle {{ end }}</div>
+        \\<div i18n><a href="/foo">First Second</a></div>
+        \\<div i18n>Before <a href="/foo">First Second</a> After</div>
+        \\<div i18n><input type="text" /></div>
+        \\<div i18n>Before <input type="text" /> After</div>
     ;
 
     const multi_line =
- \\<div i18n>
- \\  Hello, World!
- \\</div>
- \\<div i18n>
- \\  Hello {{ abc }}
- \\</div>
- \\<div i18n>
- \\  Start {{ abc }} End
- \\</div>
+        \\<div i18n>
+        \\  Hello, World!
+        \\</div>
+        \\<div i18n>
+        \\  Hello {{ abc }}
+        \\</div>
+        \\<div i18n>
+        \\  Start {{ abc }} End
+        \\</div>
     ;
 
     const info1 = try extractInfo(one_line);
@@ -64,9 +64,9 @@ test "whitespace_sensitivity: from indenting a message" {
     // TS: Indenting a message should not change its ID when whitespace is not preserved.
     const unindented = "<div i18n>Hello, World!</div>";
     const indented =
- \\<div i18n>
- \\    Hello, World!
- \\</div>
+        \\<div i18n>
+        \\    Hello, World!
+        \\</div>
     ;
 
     const info1 = try extractInfo(unindented);
@@ -81,11 +81,11 @@ test "whitespace_sensitivity: from adjusting line wrapping" {
     // TS: Wrapping lines differently should not change message IDs.
     const unwrapped = "<div i18n>Hello {{ abc }} End</div>";
     const wrapped =
- \\<div i18n>
- \\    Hello
- \\    {{ abc }}
- \\    End
- \\</div>
+        \\<div i18n>
+        \\    Hello
+        \\    {{ abc }}
+        \\    End
+        \\</div>
     ;
 
     const info1 = try extractInfo(unwrapped);
@@ -99,41 +99,41 @@ test "whitespace_sensitivity: from adjusting line wrapping" {
 test "whitespace_sensitivity: from trimming significant whitespace" {
     // TS: Trimming whitespace from messages should produce consistent results.
     const with_whitespace =
- \\<div i18n>
- \\  Hello, World!
- \\</div>
- \\<div i18n>
- \\  Hello {{ abc }}
- \\</div>
- \\<div i18n>
- \\  Start {{ abc }} End
- \\</div>
- \\<div i18n>
- \\  {{ first }} middle {{ end }}
- \\</div>
- \\<div i18n>
- \\  <a href="/foo">First Second</a>
- \\</div>
- \\<div i18n>
- \\  Before <a href="/foo">First Second</a> After
- \\</div>
- \\<div i18n>
- \\  <input type="text" />
- \\</div>
- \\<div i18n>
- \\  Before <input type="text" /> After
- \\</div>
+        \\<div i18n>
+        \\  Hello, World!
+        \\</div>
+        \\<div i18n>
+        \\  Hello {{ abc }}
+        \\</div>
+        \\<div i18n>
+        \\  Start {{ abc }} End
+        \\</div>
+        \\<div i18n>
+        \\  {{ first }} middle {{ end }}
+        \\</div>
+        \\<div i18n>
+        \\  <a href="/foo">First Second</a>
+        \\</div>
+        \\<div i18n>
+        \\  Before <a href="/foo">First Second</a> After
+        \\</div>
+        \\<div i18n>
+        \\  <input type="text" />
+        \\</div>
+        \\<div i18n>
+        \\  Before <input type="text" /> After
+        \\</div>
     ;
 
     const without_whitespace =
- \\<div i18n>Hello, World!</div>
- \\<div i18n>Hello {{ abc }}</div>
- \\<div i18n>Start {{ abc }} End</div>
- \\<div i18n>{{ first }} middle {{ end }}</div>
- \\<div i18n><a href="/foo">First Second</a></div>
- \\<div i18n>Before <a href="/foo">First Second</a> After</div>
- \\<div i18n><input type="text" /></div>
- \\<div i18n>Before <input type="text" /> After</div>
+        \\<div i18n>Hello, World!</div>
+        \\<div i18n>Hello {{ abc }}</div>
+        \\<div i18n>Start {{ abc }} End</div>
+        \\<div i18n>{{ first }} middle {{ end }}</div>
+        \\<div i18n><a href="/foo">First Second</a></div>
+        \\<div i18n>Before <a href="/foo">First Second</a> After</div>
+        \\<div i18n><input type="text" /></div>
+        \\<div i18n>Before <input type="text" /> After</div>
     ;
 
     const info1 = try extractInfo(with_whitespace);

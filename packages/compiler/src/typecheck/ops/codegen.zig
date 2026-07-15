@@ -27,7 +27,6 @@ pub const Scope = struct {
 };
 
 /// TcbExpr — a type-check expression result (string representation of TS code).
-
 /// Generate a statements block from a list of expressions.
 /// Direct port of `getStatementsBlock(statements)` in the TS source.
 pub fn getStatementsBlock(

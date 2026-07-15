@@ -163,10 +163,10 @@ pub const AngularPhaseMapping = struct {
 };
 
 pub const PhaseStatus = enum {
-    ported,     // Phase exists in Zig and matches Angular
-    partial,    // Phase exists but is incomplete
-    missing,    // Phase does not exist in Zig yet
-    extra,      // Phase exists in Zig but not in Angular (Zig-specific)
+    ported, // Phase exists in Zig and matches Angular
+    partial, // Phase exists but is incomplete
+    missing, // Phase does not exist in Zig yet
+    extra, // Phase exists in Zig but not in Angular (Zig-specific)
 };
 
 /// Phase mapping table (will be updated as phases are ported).

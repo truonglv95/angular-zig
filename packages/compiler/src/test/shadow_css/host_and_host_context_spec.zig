@@ -172,4 +172,3 @@ test "host_and_host_context: should parse multiple rules containing :host-contex
     defer allocator.free(result);
     try std.testing.expect(result.len > 0);
 }
-

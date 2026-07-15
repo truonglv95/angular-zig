@@ -464,9 +464,7 @@ pub const ControlCreateOp = struct {
 /// Check if an op kind is an element or container op.
 pub fn isElementOrContainerOp(kind: OpKind) bool {
     return switch (kind) {
-        .ElementStart, .ContainerStart,
-        .Template, .RepeaterCreate, .ConditionalCreate,
-        .ConditionalBranchCreate => true,
+        .ElementStart, .ContainerStart, .Template, .RepeaterCreate, .ConditionalCreate, .ConditionalBranchCreate => true,
         else => false,
     };
 }

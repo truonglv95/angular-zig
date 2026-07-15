@@ -28,6 +28,5 @@ pub fn compileService(allocator: std.mem.Allocator, meta: R3ServiceMetadata) ![]
 
 /// Generate a factory function for a service.
 pub fn compileServiceFactory(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
-    return std.fmt.allocPrint(allocator,
-        "ɵɵdefineFactory({{ type: {s}, target: 2, deps: [] }})", .{name});
+    return std.fmt.allocPrint(allocator, "ɵɵdefineFactory({{ type: {s}, target: 2, deps: [] }})", .{name});
 }

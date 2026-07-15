@@ -23,7 +23,6 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const allocator = view.update.allocator;
@@ -66,7 +65,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.update.ops.deinit();
     view.update.ops = result;
 }
-
 
 // ─── Merged from class_binding_specialization.zig (1:1 structure consolidation) ──
 pub fn normalizeClassMapExpressions(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {

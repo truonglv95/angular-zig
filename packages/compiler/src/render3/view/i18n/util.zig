@@ -15,7 +15,7 @@ pub const I18N_ICU_VAR_PREFIX = "VAR_";
 /// Check if an attribute name is an i18n attribute.
 pub fn isI18nAttribute(name: []const u8) bool {
     return std.mem.eql(u8, name, I18N_ATTR) or
-           std.mem.startsWith(u8, name, I18N_ATTR_PREFIX);
+        std.mem.startsWith(u8, name, I18N_ATTR_PREFIX);
 }
 
 /// Convert internal placeholder name to public name.

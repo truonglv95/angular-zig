@@ -4,6 +4,4 @@
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
 
-test "parse_template_options: should include an array of HTML comment nodes on the returned R3 AST" {
-}
-
+test "parse_template_options: should include an array of HTML comment nodes on the returned R3 AST" {}

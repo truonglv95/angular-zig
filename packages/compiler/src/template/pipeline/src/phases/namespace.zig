@@ -84,7 +84,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     view.create.ops = result;
 }
 
-
 // ─── Merged from declare_namespaces.zig (1:1 structure consolidation) ──
 pub fn declareNamespaces(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;

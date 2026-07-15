@@ -4,9 +4,6 @@
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
 
-test "integration: should support dotted selectors" {
-}
+test "integration: should support dotted selectors" {}
 
-test "integration: should work regardless the namespace" {
-}
-
+test "integration: should work regardless the namespace" {}

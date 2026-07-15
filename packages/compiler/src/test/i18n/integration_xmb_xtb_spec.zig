@@ -4,15 +4,10 @@
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
 
-test "integration_xmb_xtb: should extract from templates" {
-}
+test "integration_xmb_xtb: should extract from templates" {}
 
-test "integration_xmb_xtb: should translate templates" {
-}
+test "integration_xmb_xtb: should translate templates" {}
 
-test "integration_xmb_xtb: should extract from templates (with CRLF line endings)" {
-}
+test "integration_xmb_xtb: should extract from templates (with CRLF line endings)" {}
 
-test "integration_xmb_xtb: should translate templates (with CRLF line endings)" {
-}
-
+test "integration_xmb_xtb: should translate templates (with CRLF line endings)" {}

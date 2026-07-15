@@ -32,14 +32,11 @@ test "xliff: should write a valid xliff file with a source language" {
     try std.testing.expect(std.mem.indexOf(u8, result, "source-language=\"en\"") != null);
 }
 
-test "xliff: should load XLIFF files" {
-}
+test "xliff: should load XLIFF files" {}
 
-test "xliff: should return the target locale" {
-}
+test "xliff: should return the target locale" {}
 
-test "xliff: should ignore alt-trans targets" {
-}
+test "xliff: should ignore alt-trans targets" {}
 
 test "xliff: should preserve message meaning and description" {
     const allocator = std.testing.allocator;

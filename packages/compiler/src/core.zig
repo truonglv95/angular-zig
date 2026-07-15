@@ -285,9 +285,7 @@ pub fn parserSelectorToSimpleSelector(allocator: std.mem.Allocator, selector: Cs
     var result = std.array_list.Managed(R3CssSelectorEntry).init(allocator);
 
     // Element name (empty string if '*' or null)
-    const element_name = if (selector.element) |el| (
-        if (std.mem.eql(u8, el, "*")) "" else el
-    ) else "";
+    const element_name = if (selector.element) |el| (if (std.mem.eql(u8, el, "*")) "" else el) else "";
     try result.append(.{ .string = element_name });
 
     // Attributes

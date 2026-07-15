@@ -39,10 +39,12 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         .kind = .Variable,
         .xref = save_var_xref,
         .source_span = AbsoluteSourceSpan.empty(),
-        .data = .{ .Variable = .{
-            .name = "ctx",
-            .value = undefined, // Would be GetCurrentViewExpr
-        } },
+        .data = .{
+            .Variable = .{
+                .name = "ctx",
+                .value = undefined, // Would be GetCurrentViewExpr
+            },
+        },
     };
     // Note: we can't create the expression without allocExpr, so we skip the
     // actual prepend in this simplified version. The full implementation would
@@ -95,10 +97,12 @@ fn addSaveRestoreViewOperation(
         .kind = .Variable,
         .xref = restore_var_xref,
         .source_span = AbsoluteSourceSpan.empty(),
-        .data = .{ .Variable = .{
-            .name = "ctx",
-            .value = undefined, // Would be RestoreViewExpr
-        } },
+        .data = .{
+            .Variable = .{
+                .name = "ctx",
+                .value = undefined, // Would be RestoreViewExpr
+            },
+        },
     };
     try op_list.insert(0, restore_op);
 

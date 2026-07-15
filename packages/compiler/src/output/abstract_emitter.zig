@@ -392,12 +392,16 @@ pub const Emitter = struct {
                 try self.emitIndent(writer);
                 try writer.writeAll("try {\n");
                 self.indent_level += 1;
-                for (tc.body) |s| { try self.emitStmt(writer, s); }
+                for (tc.body) |s| {
+                    try self.emitStmt(writer, s);
+                }
                 self.indent_level -= 1;
                 try self.emitIndent(writer);
                 try writer.writeAll("} catch {\n");
                 self.indent_level += 1;
-                for (tc.catch_body) |s| { try self.emitStmt(writer, s); }
+                for (tc.catch_body) |s| {
+                    try self.emitStmt(writer, s);
+                }
                 self.indent_level -= 1;
                 try self.emitIndent(writer);
                 try writer.writeAll("}\n");

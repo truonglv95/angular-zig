@@ -122,5 +122,9 @@ pub fn toUpper(code: u8) u8 {
     if (code >= DOLLAR_a and code <= DOLLAR_z) return code - 32;
     return code;
 }
-pub fn isIdentifierStart(code: u8) bool { return isAsciiLetter(code) or code == DOLLAR_SIGN or code == 95; }
-pub fn isIdentifierPart(code: u8) bool { return isAsciiLetter(code) or isDigit(code) or code == DOLLAR_SIGN or code == 95; }
+pub fn isIdentifierStart(code: u8) bool {
+    return isAsciiLetter(code) or code == DOLLAR_SIGN or code == 95;
+}
+pub fn isIdentifierPart(code: u8) bool {
+    return isAsciiLetter(code) or isDigit(code) or code == DOLLAR_SIGN or code == 95;
+}

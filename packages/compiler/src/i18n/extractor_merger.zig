@@ -173,8 +173,12 @@ pub fn extractMessagesFromNodes(
                 if (in_i18n_block) {
                     if (i18n_block_nodes.items.len > 0) {
                         try createMessageFromNodes(
-                            allocator, &visitor, i18n_block_nodes.items,
-                            i18n_block_info, source, &messages,
+                            allocator,
+                            &visitor,
+                            i18n_block_nodes.items,
+                            i18n_block_info,
+                            source,
+                            &messages,
                         );
                     }
                     i18n_block_nodes.clearRetainingCapacity();
@@ -571,7 +575,6 @@ test "stripI18nCommentPrefix" {
 
 /// VisitorMode — the mode of the extraction visitor.
 /// Direct port of `_VisitorMode` enum in the TS source.
-
 /// I18nVisitorContext — context for the i18n extraction visitor.
 /// Direct port of the `_Visitor` class state in the TS source.
 pub const I18nVisitorContext = struct {

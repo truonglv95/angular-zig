@@ -61,7 +61,6 @@ pub const TcbSwitchOp = struct {
     }
 };
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "switch_block module loads" {

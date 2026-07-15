@@ -27,7 +27,6 @@ const getExpressionPtrConst = helpers.getExpressionPtrConst;
 const helpers = @import("../helpers.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const allocator = view.update.allocator;

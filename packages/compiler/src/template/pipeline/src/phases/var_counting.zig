@@ -23,7 +23,6 @@ const IrExpr = ir_expr.IrExpr;
 const source_span = @import("../../../../source_span.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     var var_count: u32 = 0;
@@ -36,7 +35,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
     view.vars = var_count;
 }
-
 
 // ─── Merged from compact_xrefs.zig (1:1 structure consolidation) ──
 pub fn compactXrefs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -87,7 +85,6 @@ pub fn compactXrefs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !
     }
 }
 
-
 // ─── Merged from validate_xrefs.zig (1:1 structure consolidation) ──
 pub fn validateXrefs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
@@ -122,4 +119,6 @@ pub fn validateXrefs(job: *ComponentCompilationJob, view: *ViewCompilationUnit) 
     }
 }
 
-pub fn countVariables(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn countVariables(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

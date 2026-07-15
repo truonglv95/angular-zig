@@ -62,4 +62,6 @@ fn stripParensRecursive(expr: *IrExpr) void {
     _ = expr;
 }
 
-pub fn stripNonrequiredParentheses(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn stripNonrequiredParentheses(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

@@ -45,7 +45,10 @@ pub fn escapeIdentifier(allocator: std.mem.Allocator, s: []const u8) ![]const u8
     var result = std.ArrayList(u8).init(allocator);
     for (s) |ch| {
         switch (ch) {
-            '\'', '"', '\\' => { try result.append('\\'); try result.append(ch); },
+            '\'', '"', '\\' => {
+                try result.append('\\');
+                try result.append(ch);
+            },
             '\n' => try result.appendSlice("\\n"),
             '\r' => try result.appendSlice("\\r"),
             '\t' => try result.appendSlice("\\t"),

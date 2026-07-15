@@ -47,7 +47,7 @@ pub fn compileInjectable(allocator: std.mem.Allocator, meta: R3InjectableMetadat
     if (meta.provided_in) |pi| {
         try buf.appendSlice(", providedIn: '");
         try buf.appendSlice(pi);
-        try buf.append(''');
+        try buf.append('\'');
     }
 
     // UseExisting
@@ -84,7 +84,7 @@ pub fn compileInjectable(allocator: std.mem.Allocator, meta: R3InjectableMetadat
             if (i > 0) try buf.appendSlice(", ");
             try buf.appendSlice("ɵɵinject('");
             try buf.appendSlice(dep.token);
-            try buf.append(''');
+            try buf.append('\'');
             if (dep.optional) try buf.appendSlice(", 8"); // InjectFlags.Optional
             try buf.append(')');
         }

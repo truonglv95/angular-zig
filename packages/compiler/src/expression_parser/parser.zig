@@ -342,7 +342,9 @@ pub const Parser = struct {
                 if (!self.is_action) {
                     try self.errors.append(.{
                         .span = source_span.ParseSourceSpan.init(
-                            tok.index, tok.end, self.source,
+                            tok.index,
+                            tok.end,
+                            self.source,
                         ),
                         .msg = "Bindings cannot contain assignments",
                     });
@@ -352,7 +354,9 @@ pub const Parser = struct {
                 if (self.at(.EOF)) {
                     try self.errors.append(.{
                         .span = source_span.ParseSourceSpan.init(
-                            tok.index, @intCast(self.source.len), self.source,
+                            tok.index,
+                            @intCast(self.source.len),
+                            self.source,
                         ),
                         .msg = "Unexpected end of expression",
                     });
@@ -792,7 +796,8 @@ pub const Parser = struct {
             }
             // Safe navigation: ?.identifier or ?.[expr] (but NOT ?.() which is safe call)
             else if (tok.type == .Operator and std.mem.eql(u8, tok.slice(self.source), "?.") and
-                !(self.peekAtOperator(1, "("))) {
+                !(self.peekAtOperator(1, "(")))
+            {
                 _ = self.next();
                 const start = self.tokens[self.pos].index;
 
@@ -2172,8 +2177,9 @@ pub fn parseDirectiveKeywordBindings(allocator: std.mem.Allocator, source: []con
 /// Check if a token is a keyword.
 pub fn isKeyword(text: []const u8) bool {
     const keywords = [_][]const u8{
-        "true", "false", "null", "undefined", "this",
-        "typeof", "void", "in", "instanceof", "new", "delete",
+        "true",   "false", "null", "undefined",  "this",
+        "typeof", "void",  "in",   "instanceof", "new",
+        "delete",
     };
     for (keywords) |kw| {
         if (std.mem.eql(u8, text, kw)) return true;
@@ -2194,7 +2200,6 @@ pub fn reportErrorForPrivateIdentifier(allocator: std.mem.Allocator, token_text:
         try std.fmt.allocPrint(allocator, "Private identifier '{s}' is not allowed", .{token_text});
     return .{ .msg = msg, .span = .{ .start = 0, .end = 0 } };
 }
-
 
 // ─── Missing parse helper methods from Angular parser.ts ────
 
@@ -2345,7 +2350,10 @@ pub fn forEachUnquotedChar(input: []const u8, callback: anytype) void {
     var string_char: u8 = 0;
     while (i < input.len) : (i += 1) {
         if (in_string) {
-            if (input[i] == '\\' and i + 1 < input.len) { i += 1; continue; }
+            if (input[i] == '\\' and i + 1 < input.len) {
+                i += 1;
+                continue;
+            }
             if (input[i] == string_char) in_string = false;
         } else if (input[i] == '"' or input[i] == '\'' or input[i] == '`') {
             in_string = true;
@@ -2580,7 +2588,6 @@ pub fn wrapLiteralPrimitive(allocator: std.mem.Allocator, value: LiteralValue) !
     };
     return node;
 }
-
 
 // ─── Underscore-prefixed aliases (matching Angular's private method names) ──
 

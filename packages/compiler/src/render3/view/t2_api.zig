@@ -5,6 +5,7 @@ const std = @import("std");
 
 /// BoundTarget — maps template nodes to their directives, references, variables.
 pub fn BoundTarget(comptime T: type) type {
+    _ = T;
     return struct {
         directives: std.AutoHashMap(u32, []const u8),
         references: std.AutoHashMap(u32, []const u8),
@@ -29,7 +30,5 @@ pub fn BoundTarget(comptime T: type) type {
         pub fn getDirective(self: *const @This(), xref: u32) ?[]const u8 {
             return self.directives.get(xref);
         }
-
-        _ = T,
     };
 }

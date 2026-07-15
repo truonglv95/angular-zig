@@ -53,4 +53,3 @@ test "process_rules: should allow to change the content" {
     defer allocator.free(result);
     try std.testing.expect(result.len > 0);
 }
-

@@ -53,7 +53,6 @@ pub const TcbGenericDirectiveTypeOp = struct {
     }
 };
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "directive_type module loads" {

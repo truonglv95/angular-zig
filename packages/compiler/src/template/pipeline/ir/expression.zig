@@ -426,7 +426,6 @@ pub const VisitorContextFlag = enum(u8) {
     InSafeNavigationMigration = 4,
 };
 
-
 pub const ExpressionTransform = *const fn (expr: *IrExpr, flags: VisitorContextFlag) IrExpr;
 
 /// Check whether a given expression is an IR expression.

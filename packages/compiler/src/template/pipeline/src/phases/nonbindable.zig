@@ -32,7 +32,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = view;
 }
 
-
 // ─── Merged from remove_noop_ops.zig (1:1 structure consolidation) ──
 pub fn removeNoopOps(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;

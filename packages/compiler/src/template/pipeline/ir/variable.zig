@@ -7,7 +7,7 @@ pub const ContextVariable = struct {};
 pub const IdentifierVariable = struct {};
 pub const SavedViewVariable = struct {};
 pub const AliasVariable = struct {};
-pub const SemanticVariable = anytype;
+pub const SemanticVariable = SemanticVariableBase;
 pub const CTX_REF = struct {};
 
-test "module loads" { std.testing.expect(true); }
+test "module loads" {}

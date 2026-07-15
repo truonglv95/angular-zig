@@ -4,7 +4,9 @@ const std = @import("std");
 pub const ContentBlockKind = enum(u8) { If, For, Switch, Defer, Let, NgContent };
 
 pub const ContentBlock = struct {
-    kind: ContentBlockKind, name: []const u8, parameters: []const ContentBlockParameter = &.{},
+    kind: ContentBlockKind,
+    name: []const u8,
+    parameters: []const ContentBlockParameter = &.{},
 };
 pub const ContentBlockParameter = struct { expression: []const u8 };
 

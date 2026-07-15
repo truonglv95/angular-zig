@@ -123,28 +123,80 @@ pub fn walkExpression(visitor: *const CombinedVisitor, node: *const expr_ast.Ast
 
     // Recurse into child expressions
     switch (node.data) {
-        .Binary => |b| { walkExpression(visitor, b.left); walkExpression(visitor, b.right); },
+        .Binary => |b| {
+            walkExpression(visitor, b.left);
+            walkExpression(visitor, b.right);
+        },
         .PropertyRead => |pr| walkExpression(visitor, pr.receiver),
         .SafePropertyRead => |spr| walkExpression(visitor, spr.receiver),
-        .MethodCall => |mc| { walkExpression(visitor, mc.receiver); for (mc.args) |arg| { walkExpression(visitor, arg); } },
-        .SafeMethodCall => |smc| { walkExpression(visitor, smc.receiver); for (smc.args) |arg| { walkExpression(visitor, arg); } },
-        .FunctionCall => |fc| { for (fc.args) |arg| { walkExpression(visitor, arg); } },
-        .Conditional => |c| { walkExpression(visitor, c.condition); walkExpression(visitor, c.true_exp); walkExpression(visitor, c.false_exp); },
-        .BindingPipe => |bp| { walkExpression(visitor, bp.exp); for (bp.args) |arg| { walkExpression(visitor, arg); } },
-        .LiteralArray => |la| { for (la.expressions) |e| { walkExpression(visitor, e); } },
-        .LiteralMap => |lm| { for (lm.entries) |entry| { walkExpression(visitor, entry.value); } },
-        .Interpolation => |i| { for (i.expressions) |e| { walkExpression(visitor, e); } },
+        .MethodCall => |mc| {
+            walkExpression(visitor, mc.receiver);
+            for (mc.args) |arg| {
+                walkExpression(visitor, arg);
+            }
+        },
+        .SafeMethodCall => |smc| {
+            walkExpression(visitor, smc.receiver);
+            for (smc.args) |arg| {
+                walkExpression(visitor, arg);
+            }
+        },
+        .FunctionCall => |fc| {
+            for (fc.args) |arg| {
+                walkExpression(visitor, arg);
+            }
+        },
+        .Conditional => |c| {
+            walkExpression(visitor, c.condition);
+            walkExpression(visitor, c.true_exp);
+            walkExpression(visitor, c.false_exp);
+        },
+        .BindingPipe => |bp| {
+            walkExpression(visitor, bp.exp);
+            for (bp.args) |arg| {
+                walkExpression(visitor, arg);
+            }
+        },
+        .LiteralArray => |la| {
+            for (la.expressions) |e| {
+                walkExpression(visitor, e);
+            }
+        },
+        .LiteralMap => |lm| {
+            for (lm.entries) |entry| {
+                walkExpression(visitor, entry.value);
+            }
+        },
+        .Interpolation => |i| {
+            for (i.expressions) |e| {
+                walkExpression(visitor, e);
+            }
+        },
         .PrefixNot => |pn| walkExpression(visitor, pn.expression),
         .Unary => |u| walkExpression(visitor, u.expr),
-        .KeyedRead => |kr| { walkExpression(visitor, kr.receiver); walkExpression(visitor, kr.key); },
-        .SafeKeyedRead => |skr| { walkExpression(visitor, skr.receiver); walkExpression(visitor, skr.key); },
-        .KeyedWrite => |kw| { walkExpression(visitor, kw.receiver); walkExpression(visitor, kw.key); walkExpression(visitor, kw.value); },
+        .KeyedRead => |kr| {
+            walkExpression(visitor, kr.receiver);
+            walkExpression(visitor, kr.key);
+        },
+        .SafeKeyedRead => |skr| {
+            walkExpression(visitor, skr.receiver);
+            walkExpression(visitor, skr.key);
+        },
+        .KeyedWrite => |kw| {
+            walkExpression(visitor, kw.receiver);
+            walkExpression(visitor, kw.key);
+            walkExpression(visitor, kw.value);
+        },
         .NonNullAssert => |nna| walkExpression(visitor, nna.expression),
         .ArrowFunction => |af| walkExpression(visitor, af.body),
         .Parenthesized => |p| walkExpression(visitor, p.expression),
         .TypeofExpr => |t| walkExpression(visitor, t.expression),
         .VoidExpr => |v| walkExpression(visitor, v.expression),
-        .Chain => |c| { for (c.expressions) |e| { walkExpression(visitor, e); } },
+        .Chain => |c| {
+            for (c.expressions) |e| {
+                walkExpression(visitor, e);
+            }
+        },
         else => {},
     }
 }

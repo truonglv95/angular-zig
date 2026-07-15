@@ -25,4 +25,3 @@ test "ng_deep: should handle ::ng-deep" {
     defer allocator.free(result);
     try std.testing.expect(result.len > 0);
 }
-

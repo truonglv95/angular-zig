@@ -235,8 +235,7 @@ pub const TcbNativeFieldOp = struct {
 
         // For date/time inputs, min and max are allowed
         const is_possibly_date_or_time = has_dynamic_type or
-            (input_type != null and (
-                std.mem.eql(u8, input_type.?, "date") or
+            (input_type != null and (std.mem.eql(u8, input_type.?, "date") or
                 std.mem.eql(u8, input_type.?, "time") or
                 std.mem.eql(u8, input_type.?, "month") or
                 std.mem.eql(u8, input_type.?, "week") or
@@ -570,7 +569,7 @@ test "isFormControl — with FormFieldCheckbox" {
 }
 
 test "isFormControl — without form directives" {
-    const dirs = [_][]const u8{"NgIf", "NgFor"};
+    const dirs = [_][]const u8{ "NgIf", "NgFor" };
     try std.testing.expect(!isFormControl(&dirs));
 }
 

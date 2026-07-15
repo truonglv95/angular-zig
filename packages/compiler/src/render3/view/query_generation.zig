@@ -612,7 +612,10 @@ fn nodeToString(buf: *std.array_list.Managed(u8), node: *const QueryNode) !void 
 test "parseQuery element" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.ElementType, query.nodes[0].kind);
     try std.testing.expectEqualStrings("div", query.nodes[0].name);
@@ -621,7 +624,10 @@ test "parseQuery element" {
 test "parseQuery class" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, ".active");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.ClassMatch, query.nodes[0].kind);
     try std.testing.expectEqualStrings("active", query.nodes[0].name);
@@ -630,7 +636,10 @@ test "parseQuery class" {
 test "parseQuery attribute" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "[disabled]");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Attribute, query.nodes[0].kind);
 }
@@ -638,7 +647,10 @@ test "parseQuery attribute" {
 test "parseQuery attribute value" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "[type=\"text\"]");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.AttributeValue, query.nodes[0].kind);
     try std.testing.expectEqualStrings("text", query.nodes[0].value);
@@ -647,7 +659,10 @@ test "parseQuery attribute value" {
 test "parseQuery with descendant combinator" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div .active");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Descendant, query.nodes[0].kind);
 }
@@ -655,7 +670,10 @@ test "parseQuery with descendant combinator" {
 test "parseQuery group" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div, span");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Group, query.nodes[0].kind);
     try std.testing.expectEqual(@as(usize, 2), query.nodes[0].children.len);
@@ -664,7 +682,10 @@ test "parseQuery group" {
 test "matchQuery element" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
 
     const ctx = QueryMatchContext{
         .tag_name = "div",
@@ -684,7 +705,10 @@ test "matchQuery element" {
 test "matchQuery class" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, ".active");
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
 
     const ctx = QueryMatchContext{
         .tag_name = "div",
@@ -711,7 +735,10 @@ test "queryToString roundtrip" {
     const query = try parseQuery(allocator, "div.active[type=\"text\"]");
     const str = try queryToString(allocator, &query);
     defer allocator.free(str);
-    defer { var q = query; q.deinit(allocator); }
+    defer {
+        var q = query;
+        q.deinit(allocator);
+    }
     try std.testing.expect(std.mem.indexOf(u8, str, "div") != null);
     try std.testing.expect(std.mem.indexOf(u8, str, ".active") != null);
     try std.testing.expect(std.mem.indexOf(u8, str, "[type=\"text\"]") != null);

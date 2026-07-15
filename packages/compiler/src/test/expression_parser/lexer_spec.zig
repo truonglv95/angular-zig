@@ -110,7 +110,12 @@ fn expectRegExpBodyToken(tokens: []const Token, source: []const u8, i: usize, id
 }
 
 fn expectRegExpFlagsToken(tokens: []const Token, source: []const u8, i: usize, idx: u32, end: u32, str: []const u8) !void {
-    _ = tokens; _ = source; _ = i; _ = idx; _ = end; _ = str;
+    _ = tokens;
+    _ = source;
+    _ = i;
+    _ = idx;
+    _ = end;
+    _ = str;
 }
 
 // ─── token tests ───────────────────────────────────────────
@@ -118,7 +123,8 @@ fn expectRegExpFlagsToken(tokens: []const Token, source: []const u8, i: usize, i
 test "should tokenize a simple identifier" {
     const a = std.testing.allocator;
     const src = "j";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 1), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "j");
 }
@@ -126,7 +132,8 @@ test "should tokenize a simple identifier" {
 test "should tokenize this" {
     const a = std.testing.allocator;
     const src = "this";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 1), r.tokens.len);
     try expectKeywordToken(r.tokens, src, 0, 0, 4, "this");
 }
@@ -134,7 +141,8 @@ test "should tokenize this" {
 test "should tokenize a dotted identifier" {
     const a = std.testing.allocator;
     const src = "j.k";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "j");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '.');
@@ -144,7 +152,8 @@ test "should tokenize a dotted identifier" {
 test "should tokenize a private identifier" {
     const a = std.testing.allocator;
     const src = "#a";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 1), r.tokens.len);
     try expectPrivateIdentifierToken(r.tokens, src, 0, 0, 2, "#a");
 }
@@ -152,7 +161,8 @@ test "should tokenize a private identifier" {
 test "should tokenize a property access with private identifier" {
     const a = std.testing.allocator;
     const src = "j.#k";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "j");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '.');
@@ -163,12 +173,14 @@ test "should throw an invalid character error when hash not indicating private i
     const a = std.testing.allocator;
     {
         const src = "#";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectErrorToken(r.tokens, 0, 0, 1, "Lexer Error");
     }
     {
         const src = "#0";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectErrorToken(r.tokens, 0, 0, 1, "Lexer Error");
     }
 }
@@ -176,7 +188,8 @@ test "should throw an invalid character error when hash not indicating private i
 test "should tokenize an operator" {
     const a = std.testing.allocator;
     const src = "j-k";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectOperatorToken(r.tokens, src, 1, 1, 2, "-");
 }
@@ -184,7 +197,8 @@ test "should tokenize an operator" {
 test "should tokenize an indexed operator" {
     const a = std.testing.allocator;
     const src = "j[k]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '[');
     try expectCharacterToken(r.tokens, src, 3, 3, 4, ']');
@@ -193,7 +207,8 @@ test "should tokenize an indexed operator" {
 test "should tokenize a safe indexed operator" {
     const a = std.testing.allocator;
     const src = "j?.[k]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 5), r.tokens.len);
     try expectOperatorToken(r.tokens, src, 1, 1, 3, "?.");
     try expectCharacterToken(r.tokens, src, 2, 3, 4, '[');
@@ -203,7 +218,8 @@ test "should tokenize a safe indexed operator" {
 test "should tokenize numbers" {
     const a = std.testing.allocator;
     const src = "88";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 1), r.tokens.len);
     try expectNumberToken(r.tokens, 0, 0, 2, 88);
 }
@@ -211,28 +227,32 @@ test "should tokenize numbers" {
 test "should tokenize numbers within index ops" {
     const a = std.testing.allocator;
     const src = "a[22]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectNumberToken(r.tokens, 2, 2, 4, 22);
 }
 
 test "should tokenize simple quoted strings" {
     const a = std.testing.allocator;
     const src = "\"a\"";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectStringToken(r.tokens, src, 0, 0, 3, "a", .Plain);
 }
 
 test "should tokenize quoted strings with escaped quotes" {
     const a = std.testing.allocator;
     const src = "\"a\\\"\"";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectStringToken(r.tokens, src, 0, 0, 5, "a\"", .Plain);
 }
 
 test "should tokenize a string" {
     const a = std.testing.allocator;
     const src = "j-a.bc[22]+1.3|f:'a\\'c':\"d\\\"e\"";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "j");
     try expectOperatorToken(r.tokens, src, 1, 1, 2, "-");
     try expectIdentifierToken(r.tokens, src, 2, 2, 3, "a");
@@ -254,42 +274,48 @@ test "should tokenize a string" {
 test "should tokenize undefined" {
     const a = std.testing.allocator;
     const src = "undefined";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectKeywordToken(r.tokens, src, 0, 0, 9, "undefined");
 }
 
 test "should tokenize typeof" {
     const a = std.testing.allocator;
     const src = "typeof";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectKeywordToken(r.tokens, src, 0, 0, 6, "typeof");
 }
 
 test "should tokenize void" {
     const a = std.testing.allocator;
     const src = "void";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectKeywordToken(r.tokens, src, 0, 0, 4, "void");
 }
 
 test "should tokenize in keyword" {
     const a = std.testing.allocator;
     const src = "in";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectKeywordToken(r.tokens, src, 0, 0, 2, "in");
 }
 
 test "should tokenize instanceof keyword" {
     const a = std.testing.allocator;
     const src = "instanceof";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectKeywordToken(r.tokens, src, 0, 0, 10, "instanceof");
 }
 
 test "should ignore whitespace" {
     const a = std.testing.allocator;
     const src = "a \t \n \r b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectIdentifierToken(r.tokens, src, 1, 8, 9, "b");
 }
@@ -297,7 +323,8 @@ test "should ignore whitespace" {
 test "should tokenize quoted string" {
     const a = std.testing.allocator;
     const src = "['\\'', \"\\\"\"]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectStringToken(r.tokens, src, 1, 1, 5, "'", .Plain);
     try expectStringToken(r.tokens, src, 3, 7, 11, "\"", .Plain);
 }
@@ -305,7 +332,8 @@ test "should tokenize quoted string" {
 test "should tokenize relation" {
     const a = std.testing.allocator;
     const src = "! == != < > <= >= === !==";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectOperatorToken(r.tokens, src, 0, 0, 1, "!");
     try expectOperatorToken(r.tokens, src, 1, 2, 4, "==");
     try expectOperatorToken(r.tokens, src, 2, 5, 7, "!=");
@@ -320,7 +348,8 @@ test "should tokenize relation" {
 test "should tokenize statements" {
     const a = std.testing.allocator;
     const src = "a;b;";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, ';');
     try expectIdentifierToken(r.tokens, src, 2, 2, 3, "b");
@@ -330,7 +359,8 @@ test "should tokenize statements" {
 test "should tokenize function invocation" {
     const a = std.testing.allocator;
     const src = "a()";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '(');
     try expectCharacterToken(r.tokens, src, 2, 2, 3, ')');
@@ -339,14 +369,16 @@ test "should tokenize function invocation" {
 test "should tokenize simple method invocations" {
     const a = std.testing.allocator;
     const src = "a.method()";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 2, 2, 8, "method");
 }
 
 test "should tokenize method invocation" {
     const a = std.testing.allocator;
     const src = "a.b.c (d) - e.f()";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '.');
     try expectIdentifierToken(r.tokens, src, 2, 2, 3, "b");
@@ -366,7 +398,8 @@ test "should tokenize method invocation" {
 test "should tokenize safe function invocation" {
     const a = std.testing.allocator;
     const src = "a?.()";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectOperatorToken(r.tokens, src, 1, 1, 3, "?.");
     try expectCharacterToken(r.tokens, src, 2, 3, 4, '(');
@@ -376,7 +409,8 @@ test "should tokenize safe function invocation" {
 test "should tokenize a safe method invocations" {
     const a = std.testing.allocator;
     const src = "a.method?.()";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '.');
     try expectIdentifierToken(r.tokens, src, 2, 2, 8, "method");
@@ -388,14 +422,16 @@ test "should tokenize a safe method invocations" {
 test "should tokenize number" {
     const a = std.testing.allocator;
     const src = "0.5";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectNumberToken(r.tokens, 0, 0, 3, 0.5);
 }
 
 test "should tokenize multiplication and exponentiation" {
     const a = std.testing.allocator;
     const src = "1 * 2 ** 3";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectNumberToken(r.tokens, 0, 0, 1, 1);
     try expectOperatorToken(r.tokens, src, 1, 2, 3, "*");
     try expectNumberToken(r.tokens, 2, 4, 5, 2);
@@ -407,13 +443,15 @@ test "should tokenize number with exponent" {
     const a = std.testing.allocator;
     {
         const src = "0.5E-10";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expectEqual(@as(usize, 1), r.tokens.len);
         try expectNumberToken(r.tokens, 0, 0, 7, 0.5e-10);
     }
     {
         const src = "0.5E+10";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectNumberToken(r.tokens, 0, 0, 7, 0.5e10);
     }
 }
@@ -422,12 +460,14 @@ test "should return exception for invalid exponent" {
     const a = std.testing.allocator;
     {
         const src = "0.5E-";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectErrorToken(r.tokens, 0, 4, 5, "Lexer Error: Invalid exponent");
     }
     {
         const src = "0.5E-A";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectErrorToken(r.tokens, 0, 4, 5, "Lexer Error: Invalid exponent");
     }
 }
@@ -435,21 +475,24 @@ test "should return exception for invalid exponent" {
 test "should tokenize number starting with a dot" {
     const a = std.testing.allocator;
     const src = ".5";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectNumberToken(r.tokens, 0, 0, 2, 0.5);
 }
 
 test "should tokenize ?. as operator" {
     const a = std.testing.allocator;
     const src = "?.";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectOperatorToken(r.tokens, src, 0, 0, 2, "?.");
 }
 
 test "should tokenize ?? as operator" {
     const a = std.testing.allocator;
     const src = "??";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try expectOperatorToken(r.tokens, src, 0, 0, 2, "??");
 }
 
@@ -457,12 +500,14 @@ test "should tokenize number with separator" {
     const a = std.testing.allocator;
     {
         const src = "123_456";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
     {
         const src = "1_000_000_000";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
 }
@@ -471,17 +516,20 @@ test "should tokenize number starting with an underscore as an identifier" {
     const a = std.testing.allocator;
     {
         const src = "_123";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectIdentifierToken(r.tokens, src, 0, 0, 4, "_123");
     }
     {
         const src = "_123_";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectIdentifierToken(r.tokens, src, 0, 0, 5, "_123_");
     }
     {
         const src = "_1_2_3_";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectIdentifierToken(r.tokens, src, 0, 0, 7, "_1_2_3_");
     }
 }
@@ -490,12 +538,14 @@ test "should throw error for invalid number separators" {
     const a = std.testing.allocator;
     {
         const src = "123_";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
     {
         const src = "12__3";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
 }
@@ -504,47 +554,56 @@ test "should tokenize assignment operators" {
     const a = std.testing.allocator;
     {
         const src = "=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 0, 0, 1, "=");
     }
     {
         const src = "+=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 0, 0, 2, "+=");
     }
     {
         const src = "-=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 0, 0, 2, "-=");
     }
     {
         const src = "*=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 0, 0, 2, "*=");
     }
     {
         const src = "a /= b";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 1, 2, 4, "/=");
     }
     {
         const src = "%=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectOperatorToken(r.tokens, src, 0, 0, 2, "%=");
     }
     {
         const src = "&&=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
     {
         const src = "||=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
     {
         const src = "??=";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try std.testing.expect(r.tokens.len >= 1);
     }
 }
@@ -552,7 +611,8 @@ test "should tokenize assignment operators" {
 test "should tokenize a spread operator" {
     const a = std.testing.allocator;
     const src = "{...foo}";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
     try expectCharacterToken(r.tokens, src, 0, 0, 1, '{');
     try expectOperatorToken(r.tokens, src, 1, 1, 4, "...");
@@ -563,7 +623,8 @@ test "should tokenize a spread operator" {
 test "should produce an error for a spread with two dots" {
     const a = std.testing.allocator;
     const src = "{..foo}";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
     try expectCharacterToken(r.tokens, src, 0, 0, 1, '{');
     try expectIdentifierToken(r.tokens, src, 2, 3, 6, "foo");
@@ -575,7 +636,8 @@ test "should produce an error for a spread with two dots" {
 test "should tokenize template literal with no interpolations" {
     const a = std.testing.allocator;
     const src = "`hello world`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectStringToken(r.tokens, src, 0, 0, 13, "hello world", .TemplateTail);
 }
@@ -584,7 +646,8 @@ test "should tokenize template literal containing strings" {
     const a = std.testing.allocator;
     {
         const src = "`a \"b\" c`";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectStringToken(r.tokens, src, 0, 0, 9, "a \"b\" c", .TemplateTail);
     }
 }
@@ -592,21 +655,24 @@ test "should tokenize template literal containing strings" {
 test "should tokenize template literal with an interpolation in the end" {
     const a = std.testing.allocator;
     const src = "`hello ${name}`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize template literal with an interpolation in the beginning" {
     const a = std.testing.allocator;
     const src = "`${name} Johnson`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize template literal with an interpolation in the middle" {
     const a = std.testing.allocator;
     const src = "`foo${bar}baz`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
@@ -614,12 +680,14 @@ test "should be able to use interpolation characters inside template string" {
     const a = std.testing.allocator;
     {
         const src = "`foo $`";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectStringToken(r.tokens, src, 0, 0, 7, "foo $", .TemplateTail);
     }
     {
         const src = "`foo }`";
-        var r = try lex(a, src); defer r.l.deinit();
+        var r = try lex(a, src);
+        defer r.l.deinit();
         try expectStringToken(r.tokens, src, 0, 0, 7, "foo }", .TemplateTail);
     }
 }
@@ -627,56 +695,64 @@ test "should be able to use interpolation characters inside template string" {
 test "should tokenize template literal with several interpolations" {
     const a = std.testing.allocator;
     const src = "`${a} - ${b} - ${c}`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize template literal with an object literal inside the interpolation" {
     const a = std.testing.allocator;
     const src = "`foo ${{$: true}} baz`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize two template literal right after each other" {
     const a = std.testing.allocator;
     const src = "`hello ${name}``see ${name} later`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a concatenated template literal" {
     const a = std.testing.allocator;
     const src = "`hello ${name}` + 123";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a template literal with a pipe inside an interpolation" {
     const a = std.testing.allocator;
     const src = "`hello ${name | capitalize}!!!`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a template literal in an literal object value" {
     const a = std.testing.allocator;
     const src = "{foo: `${name}`}";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should produce an error if a template literal is not terminated" {
     const a = std.testing.allocator;
     const src = "`hello";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize tagged template literal with no interpolations" {
     const a = std.testing.allocator;
     const src = "tag`hello world`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectIdentifierToken(r.tokens, src, 0, 0, 3, "tag");
     try expectStringToken(r.tokens, src, 1, 3, 16, "hello world", .TemplateTail);
@@ -685,7 +761,8 @@ test "should tokenize tagged template literal with no interpolations" {
 test "should tokenize nested tagged template literals" {
     const a = std.testing.allocator;
     const src = "tag`hello ${tag`world`}`";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
@@ -694,7 +771,8 @@ test "should tokenize nested tagged template literals" {
 test "should tokenize a simple regex" {
     const a = std.testing.allocator;
     const src = "/abc/";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectRegExpBodyToken(r.tokens, src, 0, 0, 5, "abc");
 }
@@ -702,7 +780,8 @@ test "should tokenize a simple regex" {
 test "should tokenize a regex with flags" {
     const a = std.testing.allocator;
     const src = "/abc/gim";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectRegExpBodyToken(r.tokens, src, 0, 0, 5, "abc");
     try expectRegExpFlagsToken(r.tokens, src, 1, 5, 8, "gim");
@@ -711,14 +790,16 @@ test "should tokenize a regex with flags" {
 test "should tokenize an identifier immediately after a regex" {
     const a = std.testing.allocator;
     const src = "/abc/ g";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex with an escaped slashes" {
     const a = std.testing.allocator;
     const src = "/^http:\\/\\/foo\\.bar/";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectRegExpBodyToken(r.tokens, src, 0, 0, 20, "^http:\\/\\/foo\\.bar");
 }
@@ -726,7 +807,8 @@ test "should tokenize a regex with an escaped slashes" {
 test "should tokenize a regex with un-escaped slashes in a character class" {
     const a = std.testing.allocator;
     const src = "/[a/]$/";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectRegExpBodyToken(r.tokens, src, 0, 0, 7, "[a/]$");
 }
@@ -734,7 +816,8 @@ test "should tokenize a regex with un-escaped slashes in a character class" {
 test "should tokenize a regex with a backslash" {
     const a = std.testing.allocator;
     const src = "/a\\w+/";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectRegExpBodyToken(r.tokens, src, 0, 0, 6, "a\\w+");
 }
@@ -742,7 +825,8 @@ test "should tokenize a regex with a backslash" {
 test "should tokenize a regex after an operator" {
     const a = std.testing.allocator;
     const src = "a = /b/";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectOperatorToken(r.tokens, src, 1, 2, 3, "=");
@@ -752,63 +836,72 @@ test "should tokenize a regex after an operator" {
 test "should tokenize a regex inside parentheses" {
     const a = std.testing.allocator;
     const src = "log(/a/)";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex at the beggining of an array" {
     const a = std.testing.allocator;
     const src = "[/a/]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex in the middle of an array" {
     const a = std.testing.allocator;
     const src = "[1, /a/, 2]";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex inside an object literal" {
     const a = std.testing.allocator;
     const src = "{a: /b/}";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex after a negation operator" {
     const a = std.testing.allocator;
     const src = "log(!/a/.test(\"1\"))";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a regex after several negation operators" {
     const a = std.testing.allocator;
     const src = "log(!!!!!!/a/.test(\"1\"))";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a method call on a regex" {
     const a = std.testing.allocator;
     const src = "/abc/.test(\"foo\")";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize a method call with a regex parameter" {
     const a = std.testing.allocator;
     const src = "\"foo\".match(/abc/)";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should not tokenize a regex preceded by a square bracket" {
     const a = std.testing.allocator;
     const src = "a[0] /= b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectCharacterToken(r.tokens, src, 1, 1, 2, '[');
@@ -821,7 +914,8 @@ test "should not tokenize a regex preceded by a square bracket" {
 test "should not tokenize a regex preceded by an identifier" {
     const a = std.testing.allocator;
     const src = "a / b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectOperatorToken(r.tokens, src, 1, 2, 3, "/");
@@ -831,7 +925,8 @@ test "should not tokenize a regex preceded by an identifier" {
 test "should not tokenize a regex preceded by a number" {
     const a = std.testing.allocator;
     const src = "1 / b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectNumberToken(r.tokens, 0, 0, 1, 1);
     try expectOperatorToken(r.tokens, src, 1, 2, 3, "/");
@@ -841,7 +936,8 @@ test "should not tokenize a regex preceded by a number" {
 test "should not tokenize a regex that is preceded by a string" {
     const a = std.testing.allocator;
     const src = "\"a\" / b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectStringToken(r.tokens, src, 0, 0, 3, "a", .Plain);
     try expectOperatorToken(r.tokens, src, 1, 4, 5, "/");
@@ -851,7 +947,8 @@ test "should not tokenize a regex that is preceded by a string" {
 test "should not tokenize a regex preceded by a closing parenthesis" {
     const a = std.testing.allocator;
     const src = "(a) / b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 5), r.tokens.len);
     try expectCharacterToken(r.tokens, src, 0, 0, 1, '(');
     try expectIdentifierToken(r.tokens, src, 1, 1, 2, "a");
@@ -863,7 +960,8 @@ test "should not tokenize a regex preceded by a closing parenthesis" {
 test "should not tokenize a regex that is preceded by a keyword" {
     const a = std.testing.allocator;
     const src = "this / b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 3), r.tokens.len);
     try expectKeywordToken(r.tokens, src, 0, 0, 4, "this");
     try expectOperatorToken(r.tokens, src, 1, 5, 6, "/");
@@ -871,67 +969,74 @@ test "should not tokenize a regex that is preceded by a keyword" {
 }
 
 test "should not tokenize a regex preceded by a non-null assertion on an identifier" {
-                        const a = std.testing.allocator;
-                        const src = "foo! / 2";
-                        var r = try lex(a, src); defer r.l.deinit();
-                        try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
-                        try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
-                        try expectOperatorToken(r.tokens, src, 1, 3, 4, "!");
-                        try expectOperatorToken(r.tokens, src, 2, 5, 6, "/");
-                        try expectNumberToken(r.tokens, 3, 7, 8, 2);
+    const a = std.testing.allocator;
+    const src = "foo! / 2";
+    var r = try lex(a, src);
+    defer r.l.deinit();
+    try std.testing.expectEqual(@as(usize, 4), r.tokens.len);
+    try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
+    try expectOperatorToken(r.tokens, src, 1, 3, 4, "!");
+    try expectOperatorToken(r.tokens, src, 2, 5, 6, "/");
+    try expectNumberToken(r.tokens, 3, 7, 8, 2);
 }
 
 test "should not tokenize a regex preceded by a non-null assertion on a function call" {
-                        const a = std.testing.allocator;
-                        const src = "foo()! / 2";
-                        var r = try lex(a, src); defer r.l.deinit();
-                        try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
-                        try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
-                        try expectCharacterToken(r.tokens, src, 1, 3, 4, '(');
-                        try expectCharacterToken(r.tokens, src, 2, 4, 5, ')');
-                        try expectOperatorToken(r.tokens, src, 3, 5, 6, "!");
-                        try expectOperatorToken(r.tokens, src, 4, 7, 8, "/");
-                        try expectNumberToken(r.tokens, 5, 9, 10, 2);
+    const a = std.testing.allocator;
+    const src = "foo()! / 2";
+    var r = try lex(a, src);
+    defer r.l.deinit();
+    try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
+    try expectIdentifierToken(r.tokens, src, 0, 0, 3, "foo");
+    try expectCharacterToken(r.tokens, src, 1, 3, 4, '(');
+    try expectCharacterToken(r.tokens, src, 2, 4, 5, ')');
+    try expectOperatorToken(r.tokens, src, 3, 5, 6, "!");
+    try expectOperatorToken(r.tokens, src, 4, 7, 8, "/");
+    try expectNumberToken(r.tokens, 5, 9, 10, 2);
 }
 
 test "should not tokenize a regex preceded by a non-null assertion on an array" {
-                        const a = std.testing.allocator;
-                        const src = "[1]! / 2";
-                        var r = try lex(a, src); defer r.l.deinit();
-                        try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
-                        try expectCharacterToken(r.tokens, src, 0, 0, 1, '[');
-                        try expectNumberToken(r.tokens, 1, 1, 2, 1);
-                        try expectCharacterToken(r.tokens, src, 2, 2, 3, ']');
-                        try expectOperatorToken(r.tokens, src, 3, 3, 4, "!");
-                        try expectOperatorToken(r.tokens, src, 4, 5, 6, "/");
-                        try expectNumberToken(r.tokens, 5, 7, 8, 2);
+    const a = std.testing.allocator;
+    const src = "[1]! / 2";
+    var r = try lex(a, src);
+    defer r.l.deinit();
+    try std.testing.expectEqual(@as(usize, 6), r.tokens.len);
+    try expectCharacterToken(r.tokens, src, 0, 0, 1, '[');
+    try expectNumberToken(r.tokens, 1, 1, 2, 1);
+    try expectCharacterToken(r.tokens, src, 2, 2, 3, ']');
+    try expectOperatorToken(r.tokens, src, 3, 3, 4, "!");
+    try expectOperatorToken(r.tokens, src, 4, 5, 6, "/");
+    try expectNumberToken(r.tokens, 5, 7, 8, 2);
 }
 
 test "should not tokenize consecutive regexes" {
     const a = std.testing.allocator;
     const src = "/ 1 / 2 / 3 / 4";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should not tokenize regex-like characters inside of a pipe" {
     const a = std.testing.allocator;
     const src = "foo / 1000 | date: 'M/d/yy'";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 7), r.tokens.len);
 }
 
 test "should produce an error for an unterminated regex" {
     const a = std.testing.allocator;
     const src = "/a";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expect(r.tokens.len >= 1);
 }
 
 test "should tokenize an arrow function without parenthesis" {
     const a = std.testing.allocator;
     const src = "a => a + 1";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 5), r.tokens.len);
     try expectIdentifierToken(r.tokens, src, 0, 0, 1, "a");
     try expectOperatorToken(r.tokens, src, 1, 2, 4, "=>");
@@ -943,7 +1048,8 @@ test "should tokenize an arrow function without parenthesis" {
 test "should tokenize an arrow function with parenthesis" {
     const a = std.testing.allocator;
     const src = "(a, b) => a + b";
-    var r = try lex(a, src); defer r.l.deinit();
+    var r = try lex(a, src);
+    defer r.l.deinit();
     try std.testing.expectEqual(@as(usize, 9), r.tokens.len);
     try expectCharacterToken(r.tokens, src, 0, 0, 1, '(');
     try expectIdentifierToken(r.tokens, src, 1, 1, 2, "a");

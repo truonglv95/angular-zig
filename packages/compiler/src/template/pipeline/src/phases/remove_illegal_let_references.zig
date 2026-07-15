@@ -11,8 +11,13 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     defer valid_vars.deinit();
     for (view.create.ops.items) |op| {
         if (op.kind == .Variable) {
-            const name = switch (op.data) { .Variable => |v| v.name, else => continue };
-            if (name.len > 0) { valid_vars.put(name, {}) catch {}; }
+            const name = switch (op.data) {
+                .Variable => |v| v.name,
+                else => continue,
+            };
+            if (name.len > 0) {
+                valid_vars.put(name, {}) catch {};
+            }
         }
     }
     var write: usize = 0;
@@ -21,10 +26,15 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         var skip = false;
         if (op.kind == .StoreLet) {
             if (helpers.getExpressionPtrConst(op)) |expr| {
-                if (referencesInvalidVar(expr, &valid_vars)) { skip = true; }
+                if (referencesInvalidVar(expr, &valid_vars)) {
+                    skip = true;
+                }
             }
         }
-        if (!skip) { items[write] = op; write += 1; }
+        if (!skip) {
+            items[write] = op;
+            write += 1;
+        }
     }
     view.update.ops.items.len = write;
 }
@@ -33,7 +43,13 @@ fn referencesInvalidVar(expr: *const @import("../../ir/expression.zig").IrExpr, 
     return switch (expr.data) {
         .ReadVariable => |rv| !valid.contains(rv.name),
         .BinaryExpr => |b| referencesInvalidVar(b.left, valid) or referencesInvalidVar(b.right, valid),
-        .CallExpr => |call| blk: { if (referencesInvalidVar(call.receiver, valid)) break :blk true; for (call.args) |a| { if (referencesInvalidVar(a, valid)) break :blk true; } break :blk false; },
+        .CallExpr => |call| blk: {
+            if (referencesInvalidVar(call.receiver, valid)) break :blk true;
+            for (call.args) |a| {
+                if (referencesInvalidVar(a, valid)) break :blk true;
+            }
+            break :blk false;
+        },
         else => false,
     };
 }

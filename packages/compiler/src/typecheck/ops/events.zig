@@ -132,7 +132,11 @@ pub fn checkDirectiveOutputs(
         if (tcb.config.check_type_of_output_events and is_two_way) {
             // Generate two-way binding check.
             const handler_expr = try tcbEventHandlerExpression(
-                allocator, output.handler, tcb, scope, .Infer,
+                allocator,
+                output.handler,
+                tcb,
+                scope,
+                .Infer,
             );
             const check = try std.fmt.allocPrint(
                 allocator,
@@ -143,7 +147,11 @@ pub fn checkDirectiveOutputs(
         } else if (tcb.config.check_type_of_output_events) {
             // Generate output subscribe check.
             const handler_expr = try tcbEventHandlerExpression(
-                allocator, output.handler, tcb, scope, .Infer,
+                allocator,
+                output.handler,
+                tcb,
+                scope,
+                .Infer,
             );
             const check = try std.fmt.allocPrint(
                 allocator,
@@ -154,7 +162,11 @@ pub fn checkDirectiveOutputs(
         } else {
             // Just check the handler expression with `any` $event.
             const handler_expr = try tcbEventHandlerExpression(
-                allocator, output.handler, tcb, scope, .Any,
+                allocator,
+                output.handler,
+                tcb,
+                scope,
+                .Any,
             );
             try results.append(handler_expr);
         }

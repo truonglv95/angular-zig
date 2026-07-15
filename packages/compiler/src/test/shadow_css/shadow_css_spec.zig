@@ -120,12 +120,12 @@ test "should handle escaped sequences in selectors" {
     {
         const result = try shim(a, "one\\/two {}", "contenta");
         defer a.free(result);
-        try expectContains(result, &.{ "contenta" });
+        try expectContains(result, &.{"contenta"});
     }
     {
         const result = try shim(a, ".one\\:two {}", "contenta");
         defer a.free(result);
-        try expectContains(result, &.{ "contenta" });
+        try expectContains(result, &.{"contenta"});
     }
 }
 
@@ -238,7 +238,7 @@ test "should handle escaped selector with space (if followed by a hex char)" {
     {
         const result = try shim(a, ".\\fc ber {}", "contenta");
         defer a.free(result);
-        try expectContains(result, &.{ "contenta" });
+        try expectContains(result, &.{"contenta"});
     }
 }
 

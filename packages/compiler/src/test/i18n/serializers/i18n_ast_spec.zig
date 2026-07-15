@@ -4,9 +4,6 @@
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
 
-test "i18n_ast: should clone an AST" {
-}
+test "i18n_ast: should clone an AST" {}
 
-test "i18n_ast: should visit all nodes" {
-}
-
+test "i18n_ast: should visit all nodes" {}

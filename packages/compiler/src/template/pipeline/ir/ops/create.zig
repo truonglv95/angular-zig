@@ -448,10 +448,18 @@ pub fn isListenerOp(kind: OpKind) bool {
 /// Check if an op kind consumes a slot.
 pub fn consumesSlot(kind: OpKind) bool {
     return switch (kind) {
-        .ElementStart, .ContainerStart, .Template,
-        .RepeaterCreate, .ConditionalCreate, .ConditionalBranchCreate,
-        .Text, .Projection, .Defer,
-        .I18n, .I18nStart, .I18nAttributes,
+        .ElementStart,
+        .ContainerStart,
+        .Template,
+        .RepeaterCreate,
+        .ConditionalCreate,
+        .ConditionalBranchCreate,
+        .Text,
+        .Projection,
+        .Defer,
+        .I18n,
+        .I18nStart,
+        .I18nAttributes,
         => true,
         else => false,
     };

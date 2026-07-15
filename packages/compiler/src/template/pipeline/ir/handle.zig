@@ -4,4 +4,6 @@ const std = @import("std");
 
 pub const Placeholder = struct {};
 
-test "module loads" { std.testing.expect(true); }
+test "module loads" {
+    std.testing.expect(true);
+}

@@ -1606,7 +1606,7 @@ test "escapeTemplateLiteral via visitTemplateLiteral single element" {
 
 test "escapeTemplateLiteral escapes backticks and \\" {
     const allocator = std.testing.allocator;
-    const elements = [_][]const u8{ "he`llo\\world" };
+    const elements = [_][]const u8{"he`llo\\world"};
     const exprs = [_]*const AstNode{};
     const node = AstNode{ .data = .{ .TemplateLiteral = .{
         .elements = &elements,

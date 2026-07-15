@@ -78,7 +78,8 @@ pub fn emitTemplateFn(
     // (In the TS source: emitChildViews(tpl.root, pool))
     // Our simplified version just emits the root function.
 
-    const result: []const u8 = try buf.toOwnedSlice(); return result;
+    const result: []const u8 = try buf.toOwnedSlice();
+    return result;
 }
 
 /// Emit a template function for an individual view.
@@ -126,7 +127,8 @@ pub fn emitView(job: *CompilationJob, view: *ViewCompilationUnit) ![]const u8 {
 
     try buf.appendSlice("}\n");
 
-    const result: []const u8 = try buf.toOwnedSlice(); return result;
+    const result: []const u8 = try buf.toOwnedSlice();
+    return result;
 }
 
 /// Emit a host binding function.
@@ -175,7 +177,8 @@ pub fn emitHostBindingFunction(job: *CompilationJob) !?[]const u8 {
 
     try buf.appendSlice("}\n");
 
-    const result: []const u8 = try buf.toOwnedSlice(); return result;
+    const result: []const u8 = try buf.toOwnedSlice();
+    return result;
 }
 
 /// Transform a compilation job by running all phases.

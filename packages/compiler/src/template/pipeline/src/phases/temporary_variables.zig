@@ -27,7 +27,6 @@ const getExpressionPtrConst = helpers.getExpressionPtrConst;
 const helpers = @import("../helpers.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(_: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     const allocator = view.update.allocator;
 
@@ -84,4 +83,6 @@ pub fn run(_: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
 }
 
-pub fn generateTemporaryVariables(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn generateTemporaryVariables(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

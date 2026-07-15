@@ -145,11 +145,12 @@ fn isPropertyAllowed(tag_name: []const u8, prop_name: []const u8, schemas: []con
 /// Check if a tag name is a known HTML element.
 fn isKnownHtmlElement(tag_name: []const u8) bool {
     const known_elements = [_][]const u8{
-        "div", "span", "p", "a", "img", "input", "button", "form",
-        "label", "select", "option", "textarea", "table", "tr", "td", "th",
-        "thead", "tbody", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
-        "br", "hr", "link", "script", "style", "meta", "head", "body", "html",
-        "nav", "header", "footer", "main", "section", "article", "aside",
+        "div",     "span",    "p",      "a",        "img",   "input",  "button", "form",
+        "label",   "select",  "option", "textarea", "table", "tr",     "td",     "th",
+        "thead",   "tbody",   "ul",     "ol",       "li",    "h1",     "h2",     "h3",
+        "h4",      "h5",      "h6",     "br",       "hr",    "link",   "script", "style",
+        "meta",    "head",    "body",   "html",     "nav",   "header", "footer", "main",
+        "section", "article", "aside",
     };
     for (known_elements) |elem| {
         if (std.mem.eql(u8, tag_name, elem)) return true;
@@ -160,10 +161,9 @@ fn isKnownHtmlElement(tag_name: []const u8) bool {
 /// Check if a property name is a known HTML property.
 fn isKnownHtmlProperty(prop_name: []const u8) bool {
     const known_props = [_][]const u8{
-        "class", "id", "style", "title", "href", "src", "alt", "value",
-        "type", "name", "placeholder", "disabled", "readonly", "checked",
-        "selected", "required", "hidden", "tabindex", "role", "aria-label",
-        "innerHTML", "outerHTML", "textContent",
+        "class",  "id",       "style",       "title",      "href",      "src",       "alt",         "value",
+        "type",   "name",     "placeholder", "disabled",   "readonly",  "checked",   "selected",    "required",
+        "hidden", "tabindex", "role",        "aria-label", "innerHTML", "outerHTML", "textContent",
     };
     for (known_props) |prop| {
         if (std.mem.eql(u8, prop_name, prop)) return true;

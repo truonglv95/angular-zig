@@ -22,7 +22,10 @@ test "ast_serializer: should support element" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<p></p>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     const serialized = try ml_ast.serializeNodes(allocator, result.root_nodes);
     defer allocator.free(serialized);
@@ -34,7 +37,10 @@ test "ast_serializer: should support attributes" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<p k=\"value\"></p>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.attrs.len);
@@ -50,7 +56,10 @@ test "ast_serializer: should support text" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "some text");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Text, result.root_nodes[0].kind);
     const serialized = try ml_ast.serializeNodes(allocator, result.root_nodes);
@@ -65,7 +74,10 @@ test "ast_serializer: should support expansion" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "{number, plural, =0 {none} =1 {one} other {many}}");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expect(result.root_nodes.len >= 1);
 }
 
@@ -74,7 +86,10 @@ test "ast_serializer: should support comment" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!--comment-->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Comment, result.root_nodes[0].kind);
     const serialized = try ml_ast.serializeNodes(allocator, result.root_nodes);
@@ -88,7 +103,10 @@ test "ast_serializer: should support nesting" {
     defer arena.deinit();
     const html = "<div i18n=\"meaning|desc\"><span>{{ interpolation }}</span><!--comment--><p expansion=\"true\"></p></div>";
     const result = try parseHtml(allocator, &arena, html);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.attrs.len);

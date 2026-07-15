@@ -19,32 +19,28 @@ test "binding: should match directives and detect pipes in eager and deferrable 
     // TS: parse template, match directives, detect pipes
     // Direct port of TS: match directives and detect pipes
     const selectors = [_][]const u8{ "[title]", "my-defer-cmp", "not-matching" };
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div [title]=\"abc | uppercase\"></div>", &selectors);
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div [title]=\"abc | uppercase\"></div>", &selectors);
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should return empty directive list if no selectors are provided" {
     const selectors = [_][]const u8{};
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div [title]=\"abc | uppercase\"></div>", &selectors);
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div [title]=\"abc | uppercase\"></div>", &selectors);
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should return a directive and a pipe only once (either as a regular or deferrable)" {
     const selectors = [_][]const u8{ "[title]", "my-defer-cmp", "not-matching" };
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<my-defer-cmp [label]=\"abc | lowercase\" [title]=\"abc | uppercase\" />", &selectors);
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<my-defer-cmp [label]=\"abc | lowercase\" [title]=\"abc | uppercase\" />", &selectors);
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should handle directives on elements with local refs" {
     // Verify binding classification for [(ngModel)] and #ctrl
-    try std.testing.expectEqual(t2.BindingDirection.TwoWay,
-        t2.classifyBindingDirection("ngModel", false, false, true));
+    try std.testing.expectEqual(t2.BindingDirection.TwoWay, t2.classifyBindingDirection("ngModel", false, false, true));
     try std.testing.expectEqual(t2.BindingPrefix.Hash, t2.detectPrefix("#ctrl"));
     try std.testing.expectEqualStrings("ctrl", t2.stripPrefix("#ctrl"));
 }
@@ -87,21 +83,21 @@ test "binding: should get @let declarations when resolving entities at the root"
 }
 
 test "binding: should scope @let declarations to their current view" {
-                    var parent = t2.Scope.init(allocator);
-                    defer parent.deinit();
-                    try parent.addEntity("one", .{ .kind = .Directive, .name = "one" });
-                
-                    var child = t2.Scope.init(allocator);
-                    defer child.deinit();
-                    try parent.addChild(&child);
-                    try child.addEntity("two", .{ .kind = .Directive, .name = "two" });
-                
-                    // Child can see parent's entities
-                    try std.testing.expect(child.lookup("one") != null);
-                    try std.testing.expect(child.lookup("two") != null);
-                
-                    // Parent cannot see child's entities
-                    try std.testing.expect(parent.lookup("two") == null);
+    var parent = t2.Scope.init(allocator);
+    defer parent.deinit();
+    try parent.addEntity("one", .{ .kind = .Directive, .name = "one" });
+
+    var child = t2.Scope.init(allocator);
+    defer child.deinit();
+    try parent.addChild(&child);
+    try child.addEntity("two", .{ .kind = .Directive, .name = "two" });
+
+    // Child can see parent's entities
+    try std.testing.expect(child.lookup("one") != null);
+    try std.testing.expect(child.lookup("two") != null);
+
+    // Parent cannot see child's entities
+    try std.testing.expect(parent.lookup("two") == null);
 }
 
 test "binding: should resolve expressions to an @let declaration" {
@@ -152,8 +148,7 @@ test "binding: should resolve an element reference without a directive matcher" 
 
 test "binding: should work for bound attributes" {
     // [prop] should be classified as Input
-    try std.testing.expectEqual(t2.BindingDirection.Input,
-        t2.classifyBindingDirection("prop", true, false, false));
+    try std.testing.expectEqual(t2.BindingDirection.Input, t2.classifyBindingDirection("prop", true, false, false));
 }
 
 test "binding: should work for text attributes on elements" {
@@ -173,60 +168,52 @@ test "binding: should not match directives on attribute bindings with the same n
 
 test "binding: should bind to the encompassing node when no directive input is matched" {
     // When no directive claims the input, it binds to the element
-    try std.testing.expectEqual(t2.BindingDirection.Input,
-        t2.classifyBindingDirection("unknown", true, false, false));
+    try std.testing.expectEqual(t2.BindingDirection.Input, t2.classifyBindingDirection("unknown", true, false, false));
 }
 
 // ─── matching outputs to consuming directives ──────────────
 
 test "binding: should work for bound events" {
     // (click) should be classified as Output
-    try std.testing.expectEqual(t2.BindingDirection.Output,
-        t2.classifyBindingDirection("click", false, true, false));
+    try std.testing.expectEqual(t2.BindingDirection.Output, t2.classifyBindingDirection("click", false, true, false));
 }
 
 test "binding: should bind to the encompassing node when no directive output is matched" {
     // When no directive claims the output, it binds to the element
-    try std.testing.expectEqual(t2.BindingDirection.Output,
-        t2.classifyBindingDirection("unknown", false, true, false));
+    try std.testing.expectEqual(t2.BindingDirection.Output, t2.classifyBindingDirection("unknown", false, true, false));
 }
 
 // ─── extracting defer blocks info ──────────────────────────
 
 test "binding: should extract top-level defer blocks" {
     // Verify template parsing handles @defer
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder {}", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder {}", &.{});
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should extract nested defer blocks and associated pipes" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { @defer { <div></div> } } @placeholder {}", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { @defer { <div></div> } } @placeholder {}", &.{});
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should identify pipes used after a nested defer block as being lazy" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } <div>{{ a | pipe }}</div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } <div>{{ a | pipe }}</div>", &.{});
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should extract nested defer blocks and associated directives" {
     const selectors = [_][]const u8{"[dir]"};
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { @defer { <div dir></div> } } @placeholder {}", &selectors);
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { @defer { <div dir></div> } } @placeholder {}", &selectors);
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
 
 test "binding: should identify directives used after a nested defer block as being lazy" {
     const selectors = [_][]const u8{"[dir]"};
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } <div dir></div>", &selectors);
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } <div dir></div>", &selectors);
     defer allocator.free(result);
     try std.testing.expectEqual(@as(usize, 0), result.len);
 }
@@ -234,113 +221,97 @@ test "binding: should identify directives used after a nested defer block as bei
 // ─── defer trigger tests ───────────────────────────────────
 
 test "binding: should identify a trigger element that is a parent of the deferred block" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div (click)=\"show()\">@defer { <div></div> }</div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div (click)=\"show()\">@defer { <div></div> }</div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify a trigger element outside of the deferred block" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<button (click)=\"show()\"></button>@defer { <div></div> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<button (click)=\"show()\"></button>@defer { <div></div> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify a trigger element in a parent embedded view" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@if (cond) { <button (click)=\"show()\"></button>@defer { <div></div> } }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@if (cond) { <button (click)=\"show()\"></button>@defer { <div></div> } }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify a trigger element inside the placeholder" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { <button (click)=\"show()\"></button> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { <button (click)=\"show()\"></button> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify a trigger inside the main content block" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <button (click)=\"show()\"></button> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <button (click)=\"show()\"></button> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify a trigger element on a component" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<comp #c (click)=\"c.show()\">@defer { <div></div> }</comp>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<comp #c (click)=\"c.show()\">@defer { <div></div> }</comp>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify a trigger element on a directive" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div dir #d (click)=\"d.show()\">@defer { <div></div> }</div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div dir #d (click)=\"d.show()\">@defer { <div></div> }</div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify an implicit trigger inside the placeholder block" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { <button>trigger</button> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { <button>trigger</button> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should identify an implicit trigger inside the placeholder block with comments" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { <!-- comment --> <button>trigger</button> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { <!-- comment --> <button>trigger</button> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify an implicit trigger if the placeholder has multiple root nodes" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { <button>a</button> <button>b</button> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { <button>a</button> <button>b</button> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify an implicit trigger if there is no placeholder" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify an implicit trigger if the placeholder has a single root text node" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { text }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { text }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify a trigger inside a sibling embedded view" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@if (a) { <button (click)=\"show()\"></button> } @defer { <div></div> }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@if (a) { <button (click)=\"show()\"></button> } @defer { <div></div> }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify a trigger element in an embedded view inside the placeholder" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { @if (a) { <button (click)=\"show()\"></button> } }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { @if (a) { <button (click)=\"show()\"></button> } }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify a trigger element inside the a deferred block within the placeholder" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <div></div> } @placeholder { @defer { <button (click)=\"show()\"></button> } }", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <div></div> } @placeholder { @defer { <button (click)=\"show()\"></button> } }", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should not identify a trigger element on a template" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<ng-template #t>@defer { <div></div> }</ng-template>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<ng-template #t>@defer { <div></div> }</ng-template>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
@@ -348,29 +319,25 @@ test "binding: should not identify a trigger element on a template" {
 // ─── used pipes tests ──────────────────────────────────────
 
 test "binding: should record pipes used in interpolations" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div>{{ a | uppercase }}</div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div>{{ a | uppercase }}</div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should record pipes used in bound attributes" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div [title]=\"a | uppercase\"></div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div [title]=\"a | uppercase\"></div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should record pipes used in bound template attributes" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div *ngIf=\"a | uppercase\"></div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div *ngIf=\"a | uppercase\"></div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should record pipes used in ICUs" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<div>{count, plural, =0 {none} other {{a | uppercase}}}</div>", &.{});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<div>{count, plural, =0 {none} other {{a | uppercase}}}</div>", &.{});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
@@ -431,22 +398,19 @@ test "binding: should get consumer of directive bindings" {
 }
 
 test "binding: should get eagerly-used selectorless directives" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "<comp></comp>", &.{"comp"});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "<comp></comp>", &.{"comp"});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should get deferred selectorless directives" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@defer { <comp></comp> } @placeholder {}", &.{"comp"});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@defer { <comp></comp> } @placeholder {}", &.{"comp"});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }
 
 test "binding: should get selectorless directives nested in other code" {
-    const result = try t2.findMatchingDirectivesAndPipes(allocator,
-        "@if (cond) { <comp></comp> }", &.{"comp"});
+    const result = try t2.findMatchingDirectivesAndPipes(allocator, "@if (cond) { <comp></comp> }", &.{"comp"});
     defer allocator.free(result);
     try std.testing.expect(result.len == 0);
 }

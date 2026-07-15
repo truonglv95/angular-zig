@@ -163,7 +163,10 @@ pub const ConstantPool = struct {
 fn escapeString(buf: *std.ArrayList(u8), s: []const u8) !void {
     for (s) |ch| {
         switch (ch) {
-            '"', '\\' => { try buf.append('\\'); try buf.append(ch); },
+            '"', '\\' => {
+                try buf.append('\\');
+                try buf.append(ch);
+            },
             '\n' => try buf.appendSlice("\\n"),
             '\r' => try buf.appendSlice("\\r"),
             '\t' => try buf.appendSlice("\\t"),

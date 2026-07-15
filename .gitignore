@@ -18,3 +18,5 @@ test_emit
 # OS
 .DS_Store
 Thumbs.db
+tool-results/
+worklog.md

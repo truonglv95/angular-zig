@@ -27,7 +27,6 @@ const bindingPriority = helpers.bindingPriority;
 const helpers = @import("../helpers.zig");
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const items = view.update.ops.items;
@@ -52,7 +51,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
         items[j] = key;
     }
 }
-
 
 // ─── Merged from convert_attribute_to_property.zig (1:1 structure consolidation) ──
 pub fn convertAttributeToProperty(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -91,4 +89,6 @@ pub fn convertAttributeToProperty(job: *ComponentCompilationJob, view: *ViewComp
     }
 }
 
-pub fn specializeBindings(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn specializeBindings(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

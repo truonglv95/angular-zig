@@ -27,10 +27,10 @@ test "dom_element_schema_registry: should detect elements" {
 }
 
 test "dom_element_schema_registry: should detect elements missing from chrome" {
-        // Elements like "frame", "frameset", "basefont" are deprecated but still known
-        try std.testing.expect(schema.isKnownElement("frame"));
-        try std.testing.expect(schema.isKnownElement("frameset"));
-        try std.testing.expect(schema.isKnownElement("basefont"));
+    // Elements like "frame", "frameset", "basefont" are deprecated but still known
+    try std.testing.expect(schema.isKnownElement("frame"));
+    try std.testing.expect(schema.isKnownElement("frameset"));
+    try std.testing.expect(schema.isKnownElement("basefont"));
 }
 
 test "dom_element_schema_registry: should detect properties on regular elements" {
@@ -73,15 +73,15 @@ test "dom_element_schema_registry: should return true for all elements if the NO
 }
 
 test "dom_element_schema_registry: should re-map property names that are specified in DOM facade" {
-        // Common HTML attribute → DOM property mappings
-        try std.testing.expectEqualStrings("htmlFor", schema.getMappedPropName("for"));
-        try std.testing.expectEqualStrings("className", schema.getMappedPropName("class"));
-        try std.testing.expectEqualStrings("tabIndex", schema.getMappedPropName("tabindex"));
-        try std.testing.expectEqualStrings("readOnly", schema.getMappedPropName("readonly"));
-        try std.testing.expectEqualStrings("colSpan", schema.getMappedPropName("colspan"));
-        try std.testing.expectEqualStrings("rowSpan", schema.getMappedPropName("rowspan"));
-        try std.testing.expectEqualStrings("cellPadding", schema.getMappedPropName("cellpadding"));
-        try std.testing.expectEqualStrings("cellSpacing", schema.getMappedPropName("cellspacing"));
+    // Common HTML attribute → DOM property mappings
+    try std.testing.expectEqualStrings("htmlFor", schema.getMappedPropName("for"));
+    try std.testing.expectEqualStrings("className", schema.getMappedPropName("class"));
+    try std.testing.expectEqualStrings("tabIndex", schema.getMappedPropName("tabindex"));
+    try std.testing.expectEqualStrings("readOnly", schema.getMappedPropName("readonly"));
+    try std.testing.expectEqualStrings("colSpan", schema.getMappedPropName("colspan"));
+    try std.testing.expectEqualStrings("rowSpan", schema.getMappedPropName("rowspan"));
+    try std.testing.expectEqualStrings("cellPadding", schema.getMappedPropName("cellpadding"));
+    try std.testing.expectEqualStrings("cellSpacing", schema.getMappedPropName("cellspacing"));
 }
 
 test "dom_element_schema_registry: should not re-map property names that are not specified in DOM facade" {
@@ -123,9 +123,9 @@ test "dom_element_schema_registry: should return security contexts for elements"
 }
 
 test "dom_element_schema_registry: should detect properties on namespaced elements" {
-        // Namespaced elements like svg:circle — verify schema handles them
-        try std.testing.expect(schema.isKnownElement("circle"));
-        try std.testing.expect(schema.isKnownElement("svg"));
+    // Namespaced elements like svg:circle — verify schema handles them
+    try std.testing.expect(schema.isKnownElement("circle"));
+    try std.testing.expect(schema.isKnownElement("svg"));
 }
 
 test "dom_element_schema_registry: should check security contexts case insensitive" {
@@ -157,14 +157,14 @@ test "dom_element_schema_registry: should validate attribute names" {
 }
 
 test "dom_element_schema_registry: should normalize animation style property" {
-        // float → cssFloat
-        try std.testing.expectEqualStrings("cssFloat", schema.normalizeAnimationStyleProperty("float"));
+    // float → cssFloat
+    try std.testing.expectEqualStrings("cssFloat", schema.normalizeAnimationStyleProperty("float"));
 }
 
 test "dom_element_schema_registry: should normalize animation style value" {
-        // Zig schema doesn't expose normalizeAnimationStyleValue as standalone fn.
-        // We skip the value check but verify the property name normalization works.
-        try std.testing.expectEqualStrings("cssFloat", schema.normalizeAnimationStyleProperty("float"));
+    // Zig schema doesn't expose normalizeAnimationStyleValue as standalone fn.
+    // We skip the value check but verify the property name normalization works.
+    try std.testing.expectEqualStrings("cssFloat", schema.normalizeAnimationStyleProperty("float"));
 }
 
 test "dom_element_schema_registry: should return all known element names" {

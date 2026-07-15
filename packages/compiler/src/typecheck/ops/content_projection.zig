@@ -49,7 +49,6 @@ pub fn checkContentProjection(
     return std.fmt.allocPrint(allocator, "/* content projection: {d} */", .{node});
 }
 
-
 // ─── Tests ──────────────────────────────────────────────────
 
 test "content_projection module loads" {

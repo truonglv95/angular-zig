@@ -4,6 +4,4 @@
 /// ALL test cases ported from the Angular TS source.
 const std = @import("std");
 
-test "r3_ast_visitor: should not mutate IfBlockBranch children when visiting" {
-}
-
+test "r3_ast_visitor: should not mutate IfBlockBranch children when visiting" {}

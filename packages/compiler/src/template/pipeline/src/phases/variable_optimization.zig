@@ -29,7 +29,6 @@ const helpers = @import("../helpers.zig");
 const getExpressionPtr = helpers.getExpressionPtr;
 const AbsoluteSourceSpan = source_span.AbsoluteSourceSpan;
 
-
 pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     _ = job;
     const allocator = view.update.allocator;
@@ -83,7 +82,6 @@ pub fn run(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
     }
     view.update.ops.items.len = write;
 }
-
 
 // ─── Merged from inline_simple_variables.zig (1:1 structure consolidation) ──
 pub fn inlineSimpleVariables(job: *ComponentCompilationJob, view: *ViewCompilationUnit) !void {
@@ -161,4 +159,6 @@ pub fn inlineSimpleVariables(job: *ComponentCompilationJob, view: *ViewCompilati
     view.update.ops.items.len = write;
 }
 
-pub fn optimizeVariables(allocator: std.mem.Allocator) void { _ = allocator; }
+pub fn optimizeVariables(allocator: std.mem.Allocator) void {
+    _ = allocator;
+}

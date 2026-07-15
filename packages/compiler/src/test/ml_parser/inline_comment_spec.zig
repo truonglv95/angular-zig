@@ -14,7 +14,8 @@ const arena_mod = @import("../../arena.zig");
 fn parseHtml(allocator: std.mem.Allocator, arena: *arena_mod.AstArena, source: []const u8) !ml_ast.ParseTreeResult {
     var lex = ml_lexer.Lexer.init(allocator, source);
     defer lex.deinit();
-    const lex_result = try lex.tokenize(); const lex_tokens = lex_result[0];
+    const lex_result = try lex.tokenize();
+    const lex_tokens = lex_result[0];
     var parser = ml_parser.Parser.init(allocator, arena, source, lex_tokens);
     return parser.parse();
 }
@@ -24,7 +25,10 @@ test "inline_comment: should parse HTML comment" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!-- comment -->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
     try std.testing.expectEqual(ml_ast.NodeKind.Comment, result.root_nodes[0].kind);
 }
@@ -34,7 +38,10 @@ test "inline_comment: should parse comment with content" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!-- this is a comment -->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -43,7 +50,10 @@ test "inline_comment: should parse comment inside element" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<div><!-- comment --></div>");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const elem = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), elem.children.len);
 }
@@ -53,7 +63,10 @@ test "inline_comment: should parse multiple comments" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!-- first --><!-- second -->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 2), result.root_nodes.len);
 }
 
@@ -62,7 +75,10 @@ test "inline_comment: should parse empty comment" {
     var arena = arena_mod.AstArena.init(allocator);
     defer arena.deinit();
     const result = try parseHtml(allocator, &arena, "<!---->");
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     try std.testing.expectEqual(@as(usize, 1), result.root_nodes.len);
 }
 
@@ -74,7 +90,10 @@ test "inline_comment: should ignore single line comments between attributes" {
     defer arena.deinit();
     const source = "<div \n // comment 1\n attr1=\"value1\"\n // comment 2\n attr2=\"value2\"\n></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
     try std.testing.expectEqualStrings("attr1", element.attrs[0].name);
@@ -87,7 +106,10 @@ test "inline_comment: should ignore single line comments between inputs and outp
     defer arena.deinit();
     const source = "<div \n // comment 1\n [input]=\"value1\"\n // comment 2\n (output)=\"handler()\"\n></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
@@ -98,7 +120,10 @@ test "inline_comment: should ignore single line comments at the end of tag" {
     defer arena.deinit();
     const source = "<div attr1=\"value1\" // comment \n ></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
@@ -109,7 +134,10 @@ test "inline_comment: should handle commented out attribute" {
     defer arena.deinit();
     const source = "<div /* attr1=\"value1\" */ attr2=\"value2\"></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
@@ -120,7 +148,10 @@ test "inline_comment: should comment an attribute with a // on a new line" {
     defer arena.deinit();
     const source = "<div\n // attr1=\"value1\"\n attr2=\"value2\"></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
@@ -131,7 +162,10 @@ test "inline_comment: should ignore multi-line comments between attributes" {
     defer arena.deinit();
     const source = "<div \n /* comment 1 */\n attr1=\"value1\"\n /* comment 2 spanning multiple lines */\n attr2=\"value2\"\n></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
@@ -142,7 +176,10 @@ test "inline_comment: should ignore multi-line comments at the end of tag" {
     defer arena.deinit();
     const source = "<div attr1=\"value1\" /* comment */ ></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 1), element.attrs.len);
 }
@@ -153,7 +190,10 @@ test "inline_comment: should handle * inside multi-line comments" {
     defer arena.deinit();
     const source = "<div attr1=\"value1\" /* comment with * inside */ attr2=\"value2\"></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }
@@ -164,7 +204,10 @@ test "inline_comment: should maintain correct source spans with comments" {
     defer arena.deinit();
     const source = "<div attr1=\"a\" /* comment */ attr2=\"b\"></div>";
     const result = try parseHtml(allocator, &arena, source);
-    defer { var r = result; r.deinit(allocator); }
+    defer {
+        var r = result;
+        r.deinit(allocator);
+    }
     const element = result.root_nodes[0].data.Element;
     try std.testing.expectEqual(@as(usize, 2), element.attrs.len);
 }

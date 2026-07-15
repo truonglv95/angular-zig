@@ -172,7 +172,8 @@ pub fn main() !void {
         }
     }
 
-    var dr = detail_result; dr.deinit(allocator);
+    var dr = detail_result;
+    dr.deinit(allocator);
     detail_compiler.deinit();
 
     std.debug.print("\n✓ Benchmark complete\n", .{});
