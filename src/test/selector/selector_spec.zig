@@ -144,7 +144,8 @@ test "selector: should not select twice with two matches in a list" {
 
 test "selector: should detect element names" {
     const a = std.testing.allocator;
-    const sel = try dm.parseSelector(a, "div");
+    var sel = try dm.parseSelector(a, "div");
+    defer sel.deinit(a);
     try std.testing.expectEqual(@as(usize, 1), sel.parts.len);
     try std.testing.expectEqual(dm.SimpleSelectorKind.Element, sel.parts[0].kind);
     try std.testing.expectEqualStrings("div", sel.parts[0].name);
@@ -167,7 +168,8 @@ test "selector: should error on attr names with unescaped $" {
 
 test "selector: should detect class names" {
     const a = std.testing.allocator;
-    const sel = try dm.parseSelector(a, ".foo");
+    var sel = try dm.parseSelector(a, ".foo");
+    defer sel.deinit(a);
     try std.testing.expectEqual(@as(usize, 1), sel.parts.len);
     try std.testing.expectEqual(dm.SimpleSelectorKind.Class, sel.parts[0].kind);
     try std.testing.expectEqualStrings("foo", sel.parts[0].name);
@@ -175,7 +177,8 @@ test "selector: should detect class names" {
 
 test "selector: should detect attr names" {
     const a = std.testing.allocator;
-    const sel = try dm.parseSelector(a, "[disabled]");
+    var sel = try dm.parseSelector(a, "[disabled]");
+    defer sel.deinit(a);
     try std.testing.expectEqual(@as(usize, 1), sel.parts.len);
     try std.testing.expectEqual(dm.SimpleSelectorKind.Attribute, sel.parts[0].kind);
     try std.testing.expectEqualStrings("disabled", sel.parts[0].name);
@@ -183,7 +186,8 @@ test "selector: should detect attr names" {
 
 test "selector: should detect attr values" {
     const a = std.testing.allocator;
-    const sel = try dm.parseSelector(a, "[type=text]");
+    var sel = try dm.parseSelector(a, "[type=text]");
+    defer sel.deinit(a);
     try std.testing.expectEqual(@as(usize, 1), sel.parts.len);
     try std.testing.expectEqual(dm.SimpleSelectorKind.AttributeValue, sel.parts[0].kind);
     try std.testing.expectEqualStrings("type", sel.parts[0].name);
@@ -234,7 +238,8 @@ test "selector: should select via attribute contains substring" {
 
 test "selector: should calculate specificity" {
     const a = std.testing.allocator;
-    const sel = try dm.parseSelector(a, "div.foo[bar]");
+    var sel = try dm.parseSelector(a, "div.foo[bar]");
+    defer sel.deinit(a);
     const spec = dm.calcSpecificity(&sel);
     // Specificity: 1 element (c), 1 class (b), 1 attribute (b)
     // So expected: (0, 2, 1) — 1 element + 1 class + 1 attribute
@@ -244,7 +249,9 @@ test "selector: should calculate specificity" {
 test "selector: should compare specificity" {
     const a = std.testing.allocator;
     var sel1 = try dm.parseSelector(a, "div");
+    defer sel1.deinit(a);
     var sel2 = try dm.parseSelector(a, "div.foo");
+    defer sel2.deinit(a);
     const spec1 = dm.calcSpecificity(&sel1);
     const spec2 = dm.calcSpecificity(&sel2);
     // sel2 (div.foo) should have higher specificity than sel1 (div)
