@@ -203,6 +203,12 @@ fn extractFromNode(
                         info.custom_id,
                         null,
                     );
+                    // Free the temporary HtmlNodeInput children arrays (recursively).
+                    // These were allocated by `mlNodeToHtmlInput` and are no longer
+                    // needed after `toI18nMessage` has processed them.
+                    for (html_inputs.items) |input| {
+                        freeHtmlNodeInputs(allocator, input);
+                    }
                     // Free the message_string that initWithNodes computed — we
                     // replace it with the serialized XML-like form below.
                     if (msg.owns_message_string and msg.message_string.len > 0) {
@@ -292,6 +298,18 @@ fn extractFromNode(
             }
         },
         else => {},
+    }
+}
+
+/// Recursively free HtmlNodeInput children arrays (allocated by `mlNodeToHtmlInput`).
+fn freeHtmlNodeInputs(allocator: std.mem.Allocator, input: i18n_parser.HtmlNodeInput) void {
+    if (input.kind == .element) {
+        if (input.children.len > 0) {
+            for (input.children) |child| {
+                freeHtmlNodeInputs(allocator, child);
+            }
+            allocator.free(input.children);
+        }
     }
 }
 
