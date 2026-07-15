@@ -196,7 +196,7 @@ pub const I18nVisitor = struct {
         context_ptr.is_icu = nodes.len == 1 and nodes[0].kind == .expansion;
         context_ptr.visit_node_fn = visit_node_fn;
 
-        var i18nodes = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
+        var i18nodes = std.array_list.Managed(i18n_ast.Node).init(context_ptr.string_arena.allocator());
         defer i18nodes.deinit();
 
         for (nodes) |node| {
@@ -214,6 +214,10 @@ pub const I18nVisitor = struct {
             description,
             custom_id,
         );
+        // nodes and children are now allocated from context_ptr.string_arena,
+        // which is freed via placeholderRegistryDeinit. So don't free them
+        // individually in Message.deinit.
+        msg.owns_nodes = false;
         // Transfer ownership of the context (and its placeholder_registry)
         // to the message. The message's deinit will call placeholderRegistryDeinit.
         msg.placeholder_registry = @ptrCast(context_ptr);
@@ -275,7 +279,7 @@ pub const I18nVisitor = struct {
         context: *I18nMessageVisitorContext,
     ) anyerror!?i18n_ast.Node {
         // Visit children
-        var children = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
+        var children = std.array_list.Managed(i18n_ast.Node).init(context.string_arena.allocator());
         defer children.deinit();
         for (node.children) |child| {
             if (try self.visitAny(&child, context)) |result| {
@@ -398,7 +402,7 @@ pub const I18nVisitor = struct {
         // Build ICU cases
         var cases = try context.string_arena.allocator().alloc(i18n_ast.IcuCase, icu.icu_cases.len);
         for (icu.icu_cases, 0..) |caze, i| {
-            var children = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
+            var children = std.array_list.Managed(i18n_ast.Node).init(context.string_arena.allocator());
             defer children.deinit();
             for (caze.expression) |child| {
                 if (try self.visitAny(&child, context)) |result| {
@@ -469,7 +473,7 @@ pub const I18nVisitor = struct {
         block: *const HtmlNodeInput,
         context: *I18nMessageVisitorContext,
     ) !?i18n_ast.Node {
-        var children = std.array_list.Managed(i18n_ast.Node).init(self.allocator);
+        var children = std.array_list.Managed(i18n_ast.Node).init(context.string_arena.allocator());
         defer children.deinit();
         for (block.children) |child| {
             if (try self.visitAny(&child, context)) |result| {
@@ -827,7 +831,6 @@ test "I18nVisitor visitElement — non-void element with children" {
     }};
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
-    defer allocator.free(msg.nodes[0].data.tag_placeholder.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
     const tp = msg.nodes[0].data.tag_placeholder;
@@ -866,7 +869,6 @@ test "I18nVisitor visitBlock — switch becomes container" {
     }};
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
-    defer allocator.free(msg.nodes[0].data.container.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
     try std.testing.expectEqual(i18n_ast.NodeKind.container, msg.nodes[0].kind);
@@ -888,7 +890,6 @@ test "I18nVisitor visitBlock — if becomes block_placeholder" {
     }};
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
-    defer allocator.free(msg.nodes[0].data.block_placeholder.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
     try std.testing.expectEqual(i18n_ast.NodeKind.block_placeholder, msg.nodes[0].kind);
