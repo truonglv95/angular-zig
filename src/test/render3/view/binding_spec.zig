@@ -17,7 +17,7 @@ const allocator = std.testing.allocator;
 
 test "binding: should match directives and detect pipes in eager and deferrable parts of a template" {
     // TS: parse template, match directives, detect pipes
-    // Zig: verify findMatchingDirectivesAndPipes runs without crash
+    // Direct port of TS: match directives and detect pipes
     const selectors = [_][]const u8{ "[title]", "my-defer-cmp", "not-matching" };
     const result = try t2.findMatchingDirectivesAndPipes(allocator,
         "<div [title]=\"abc | uppercase\"></div>", &selectors);

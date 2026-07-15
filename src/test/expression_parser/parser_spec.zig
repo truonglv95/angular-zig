@@ -10,7 +10,7 @@
 ///   - expectBindingError(text, message) — parse binding, expect ≥1 error containing message substring
 ///   - checkActionWithError(text, expected, error) — check action with error recovery
 ///   - checkInterpolation(text) — verify splitInterpolation succeeds
-///   - checkTemplateBindings(allocator, source) — call parseTemplateBindings, verify no crash
+///   - checkTemplateBindings(allocator, source) — call parseTemplateBindings, assert 0 errors
 ///
 /// Each test verifies ACTUAL behavior. Tests that cannot pass due to Zig parser gaps
 /// are marked with `return error.SkipZigTest;` and the original assertion is preserved

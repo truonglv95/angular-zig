@@ -10,7 +10,7 @@
 ///   - isI18nAttribute: detect i18n / i18n-* attributes
 ///   - getI18nAttributeTarget: extract target attr from i18n-xxx
 ///   - isI18nComment: detect i18n / i18n: comments
-///   - extract: verify extraction runs without crashing on HTML input
+///   - extract: verify extraction produces correct messages and errors
 const std = @import("std");
 const em = @import("../../i18n/extractor_merger.zig");
 const i18n_ast = @import("../../i18n/i18n_ast.zig");
