@@ -1736,8 +1736,23 @@ pub fn parseInterpolationExpression(allocator: std.mem.Allocator, source: []cons
 /// strings doesn't trigger a false positive.
 pub fn checkNoInterpolation(input: []const u8) ?[]const u8 {
     var i: usize = 0;
+    var in_line_comment = false;
     while (i + 1 < input.len) : (i += 1) {
         const ch = input[i];
+
+        // Handle line comments: // ... \n
+        if (in_line_comment) {
+            if (ch == '\n') {
+                in_line_comment = false;
+            }
+            continue;
+        }
+        if (ch == '/' and i + 1 < input.len and input[i + 1] == '/') {
+            in_line_comment = true;
+            i += 1; // skip the second /
+            continue;
+        }
+
         // Skip string literals
         if (ch == '\'' or ch == '"') {
             const quote = ch;
