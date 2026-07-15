@@ -57,8 +57,10 @@ pub const ExtractionResult = struct {
         if (self.messages_list.len > 0) {
             allocator.free(self.messages_list);
         }
-        // Note: `messages` map is not always initialized (extractMessagesFromNodes
-        // doesn't initialize it). Skip deinit to avoid undefined behavior.
+        // Free errors slice (allocated via toOwnedSlice).
+        if (self.errors.len > 0) {
+            allocator.free(self.errors);
+        }
     }
 };
 
@@ -152,14 +154,110 @@ pub fn extractMessagesFromNodes(
     var errors = std.array_list.Managed(ExtractionResult.ParseError).init(allocator);
     var visitor = i18n_parser.I18nVisitor.init(allocator, false, true);
 
+    // Track i18n comment blocks (<!-- i18n:m|d --> ... <!-- /i18n -->).
+    var in_i18n_block = false;
+    var i18n_block_info = I18nAttrInfo{};
+    var i18n_block_nodes = std.array_list.Managed(*const ml_ast.Node).init(allocator);
+    defer i18n_block_nodes.deinit();
+
     for (root_nodes) |node| {
-        try extractFromNode(allocator, &visitor, node, source, &messages, &errors);
+        // Check for i18n comment block markers
+        if (node.data == .Comment) {
+            const comment_val = node.data.Comment.value;
+            // Trim whitespace from comment value for matching
+            const trimmed = std.mem.trim(u8, comment_val, " \t\n\r");
+            // Check for closing i18n block
+            if (std.mem.startsWith(u8, trimmed, "/i18n")) {
+                if (in_i18n_block) {
+                    if (i18n_block_nodes.items.len > 0) {
+                        try createMessageFromNodes(
+                            allocator, &visitor, i18n_block_nodes.items,
+                            i18n_block_info, source, &messages,
+                        );
+                    }
+                    i18n_block_nodes.clearRetainingCapacity();
+                    in_i18n_block = false;
+                    i18n_block_info = .{};
+                } else {
+                    try errors.append(.{
+                        .msg = "Trying to close an unopened block",
+                        .span = null,
+                    });
+                }
+                continue;
+            }
+            // Check for opening i18n block
+            if (isI18nComment(trimmed)) {
+                if (in_i18n_block) {
+                    try errors.append(.{
+                        .msg = "Could not start a block inside a translatable section",
+                        .span = null,
+                    });
+                } else {
+                    in_i18n_block = true;
+                    const stripped = stripI18nCommentPrefix(trimmed);
+                    i18n_block_info = parseI18nAttrValue(stripped);
+                }
+                continue;
+            }
+        }
+
+        if (in_i18n_block) {
+            try i18n_block_nodes.append(node);
+        } else {
+            try extractFromNode(allocator, &visitor, node, source, &messages, &errors);
+        }
+    }
+
+    if (in_i18n_block) {
+        try errors.append(.{
+            .msg = "Unclosed block",
+            .span = null,
+        });
     }
 
     return .{
         .messages_list = try messages.toOwnedSlice(),
         .errors = try errors.toOwnedSlice(),
     };
+}
+
+/// Create an i18n message from a list of HTML nodes (for i18n comment blocks).
+fn createMessageFromNodes(
+    allocator: std.mem.Allocator,
+    visitor: *i18n_parser.I18nVisitor,
+    nodes: []const *const ml_ast.Node,
+    info: I18nAttrInfo,
+    source: []const u8,
+    messages: *std.array_list.Managed(i18n_ast.Message),
+) !void {
+    var html_inputs = std.array_list.Managed(i18n_parser.HtmlNodeInput).init(allocator);
+    defer html_inputs.deinit();
+    for (nodes) |node| {
+        try html_inputs.append(try mlNodeToHtmlInput(allocator, node, source));
+    }
+
+    var msg = try visitor.toI18nMessage(
+        html_inputs.items,
+        info.meaning,
+        info.description,
+        info.custom_id,
+        null,
+    );
+    for (html_inputs.items) |input| {
+        freeHtmlNodeInputs(allocator, input);
+    }
+    if (msg.owns_message_string and msg.message_string.len > 0) {
+        if (msg.allocator) |a| a.free(msg.message_string);
+        msg.owns_message_string = false;
+    }
+    const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
+    defer allocator.free(serialized);
+    msg.message_string = try allocator.dupe(u8, serialized);
+    msg.owns_message_string = true;
+    msg.id = try digest.computeDigest(allocator, &msg);
+    msg.owns_id = true;
+    try messages.append(msg);
 }
 
 /// Recursively extract i18n messages from a single HTML node.
