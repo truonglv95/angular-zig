@@ -646,6 +646,7 @@ test "buildMatchContext extracts classes" {
         .{ .name = "id", .value = "my-id" },
     };
     const ctx = try buildMatchContext(allocator, "div", &attrs);
+    defer allocator.free(ctx.classes);
     try std.testing.expectEqual(@as(usize, 2), ctx.classes.len);
     try std.testing.expectEqualStrings("foo", ctx.classes[0]);
     try std.testing.expectEqualStrings("bar", ctx.classes[1]);

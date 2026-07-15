@@ -358,7 +358,9 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
 
     // If multiple parts, wrap in a group
     if (parts.items.len == 1) {
-        return parts.items[0];
+        const result = parts.items[0];
+        parts.deinit(); // Free the array (but not the items — result owns them)
+        return result;
     }
 
     return .{

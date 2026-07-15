@@ -64,6 +64,11 @@ pub const IdentifierGenerator = struct {
     }
 
     pub fn deinit(self: *IdentifierGenerator) void {
+        // Free all duped string keys (allocated via `allocator.dupe`).
+        var it = self.seen.iterator();
+        while (it.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+        }
         self.seen.deinit();
     }
 
@@ -213,9 +218,17 @@ pub const IdentifierGenerator = struct {
         const len: usize = writer.end;
         const name = buf[0..len];
 
-        // Dedup: if we've seen this name before, return the original
+        // Dedup: if we've seen this name before, return the original (owned) string
         if (self.seen.get(name)) |_| {
-            return name;
+            // Return the owned key from the map (not the stack-local `name`).
+            // We need to look up the key pointer.
+            // Note: `seen.get` returns the value, not the key. We need to iterate.
+            var it = self.seen.iterator();
+            while (it.next()) |entry| {
+                if (std.mem.eql(u8, entry.key_ptr.*, name)) {
+                    return entry.key_ptr.*;
+                }
+            }
         }
 
         // First occurrence: dupe and register
@@ -228,6 +241,7 @@ pub const IdentifierGenerator = struct {
     fn generateIdHeap(self: *IdentifierGenerator, parts: *const IdParts) ![]const u8 {
         const sep = self.ctx.separator;
         var list = std.array_list.Managed(u8).initCapacity(self.allocator, parts.prefix.len + parts.module_name.len + parts.type_name.len + 3) catch unreachable;
+        defer list.deinit();
         try list.appendSlice(parts.prefix);
         try list.append(sep);
         try list.appendSlice(parts.module_name);
@@ -236,7 +250,13 @@ pub const IdentifierGenerator = struct {
 
         const name = list.items;
         if (self.seen.get(name)) |_| {
-            return name;
+            // Return the owned key from the map (not the list-owned `name`).
+            var it = self.seen.iterator();
+            while (it.next()) |entry| {
+                if (std.mem.eql(u8, entry.key_ptr.*, name)) {
+                    return entry.key_ptr.*;
+                }
+            }
         }
 
         const duped = try self.allocator.dupe(u8, name);
@@ -319,7 +339,6 @@ test "IdentifierGenerator componentId" {
     defer gen.deinit();
 
     const id = try gen.componentId("MyButton");
-    defer allocator.free(id);
     try std.testing.expectEqualStrings("Component_MyApp_MyButton", id);
 }
 
@@ -329,7 +348,6 @@ test "IdentifierGenerator directiveId" {
     defer gen.deinit();
 
     const id = try gen.directiveId("NgIf");
-    defer allocator.free(id);
     try std.testing.expectEqualStrings("Directive_MyApp_NgIf", id);
 }
 
@@ -352,7 +370,6 @@ test "IdentifierGenerator viewId" {
     defer gen.deinit();
 
     const id = try gen.viewId("MyComp", 0);
-    defer allocator.free(id);
     try std.testing.expect(std.mem.startsWith(u8, id, "View_MyComp_"));
 }
 
@@ -362,7 +379,6 @@ test "IdentifierGenerator handlerFnName" {
     defer gen.deinit();
 
     const id = try gen.handlerFnName("MyComp", "click", 0);
-    defer allocator.free(id);
     try std.testing.expect(std.mem.startsWith(u8, id, "MyComp_handleClick_"));
 }
 
@@ -372,7 +388,6 @@ test "IdentifierGenerator pipeFactoryName" {
     defer gen.deinit();
 
     const id = try gen.pipeFactoryName("MyComp", "date", 0);
-    defer allocator.free(id);
     try std.testing.expect(std.mem.startsWith(u8, id, "MyComp_pipe_date_"));
 }
 
@@ -401,7 +416,6 @@ test "custom separator" {
     defer gen.deinit();
 
     const id = try gen.componentId("MyButton");
-    defer allocator.free(id);
     try std.testing.expectEqualStrings("Component.MyApp.MyButton", id);
 }
 
@@ -414,6 +428,5 @@ test "custom prefix" {
     defer gen.deinit();
 
     const id = try gen.componentId("MyButton");
-    defer allocator.free(id);
     try std.testing.expectEqualStrings("Widget_MyApp_MyButton", id);
 }
