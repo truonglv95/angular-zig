@@ -151,6 +151,14 @@ pub const Node = struct {
 pub const ParseTreeResult = struct {
     root_nodes: []const *const Node,
     errors: []const ParseError,
+
+    /// Free the root_nodes slice (allocated by `mergeAdjacentTextNodes`).
+    /// Call this when the parse result is no longer needed.
+    pub fn deinit(self: *ParseTreeResult, allocator: std.mem.Allocator) void {
+        if (self.root_nodes.len > 0) {
+            allocator.free(self.root_nodes);
+        }
+    }
 };
 
 // ─── Serialization ────────────────────────────────────────────
