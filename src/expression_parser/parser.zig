@@ -355,7 +355,11 @@ pub const Parser = struct {
             // Pipe name — must be identifier or keyword
             const name_tok = self.next();
             if (name_tok.type != .Identifier and name_tok.type != .Keyword) {
-                try self.errorAt(name_tok.index, "Unexpected token, expected identifier or keyword");
+                if (name_tok.type == .EOF) {
+                    try self.errorAt(name_tok.index, "Unexpected end of expression");
+                } else {
+                    try self.errorAt(name_tok.index, "Unexpected token, expected identifier or keyword");
+                }
             }
             const name = name_tok.slice(self.source);
 
@@ -365,9 +369,33 @@ pub const Parser = struct {
 
             if (self.atOperator(":")) {
                 _ = self.next();
-                try args.append(try self.parsePipe());
+                // Check for empty pipe arg
+                if (self.at(.EOF)) {
+                    try self.errorAt(self.current().index, "Unexpected end of expression");
+                    // Append empty expr for recovery
+                    const empty_node = try self.arena.create(Ast);
+                    empty_node.* = .{
+                        .span = self.span(self.current().index, self.current().index),
+                        .abs_span = self.absSpan(self.current().index, self.current().index),
+                        .data = .Empty,
+                    };
+                    try args.append(empty_node);
+                } else {
+                    try args.append(try self.parsePipe());
+                }
                 while (self.atOperator(":")) {
                     _ = self.next();
+                    if (self.at(.EOF)) {
+                        try self.errorAt(self.current().index, "Unexpected end of expression");
+                        const empty_node = try self.arena.create(Ast);
+                        empty_node.* = .{
+                            .span = self.span(self.current().index, self.current().index),
+                            .abs_span = self.absSpan(self.current().index, self.current().index),
+                            .data = .Empty,
+                        };
+                        try args.append(empty_node);
+                        break;
+                    }
                     try args.append(try self.parsePipe());
                 }
             }
