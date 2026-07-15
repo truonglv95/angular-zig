@@ -5,6 +5,12 @@
 /// DOD: Minimal overhead — each iteration creates a fresh Compiler,
 /// runs the full pipeline, and properly frees all memory.
 const std = @import("std");
+
+fn getNsTimestamp() i64 {
+    var ts: std.os.linux.timespec = undefined;
+    _ = std.os.linux.clock_gettime(std.os.linux.CLOCK.MONOTONIC, &ts);
+    return @as(i64, ts.sec) * @as(i64, 1_000_000_000) + @as(i64, ts.nsec);
+}
 const Compiler = @import("angular-compiler").Compiler;
 
 const TEMPLATES = [_][]const u8{
@@ -61,14 +67,14 @@ pub fn main() !void {
     std.debug.print("╚══════════════════════════════════════════╝\n\n", .{});
 
     const iterations = 1000;
-    var total_ns: u64 = 0;
+    var total_ns: i64 = 0;
 
     // ── Simple templates ──────────────────────────────────────
     std.debug.print("── Simple Templates ({d} iterations each) ──\n\n", .{iterations});
 
     for (TEMPLATES, 0..) |tpl, i| {
         var compiler = Compiler.init(allocator, .{});
-        const start = std.time.nanoTimestamp();
+        const start = getNsTimestamp();
 
         var j: usize = 0;
         while (j < iterations) : (j += 1) {
@@ -79,11 +85,11 @@ pub fn main() !void {
             result.deinit(allocator);
         }
 
-        const elapsed = std.time.nanoTimestamp() - start;
+        const elapsed = getNsTimestamp() - start;
         total_ns += elapsed;
         compiler.deinit();
 
-        const per_template = elapsed / iterations;
+        const per_template = @divFloor(elapsed, @as(i64, @intCast(iterations)));
         std.debug.print("  Template {d:2}: {d:6} ns/template ({d:4} chars)\n", .{
             i + 1,
             per_template,
@@ -95,7 +101,7 @@ pub fn main() !void {
     std.debug.print("\n── Complex Template ({d} iterations) ──────\n\n", .{iterations});
 
     var complex_compiler = Compiler.init(allocator, .{});
-    const complex_start = std.time.nanoTimestamp();
+    const complex_start = getNsTimestamp();
 
     var k: usize = 0;
     while (k < iterations) : (k += 1) {
@@ -106,10 +112,10 @@ pub fn main() !void {
         result.deinit(allocator);
     }
 
-    const complex_elapsed = std.time.nanoTimestamp() - complex_start;
+    const complex_elapsed = getNsTimestamp() - complex_start;
     complex_compiler.deinit();
 
-    const complex_per = complex_elapsed / iterations;
+    const complex_per = @divFloor(complex_elapsed, @as(i64, @intCast(iterations)));
     std.debug.print("  Complex:      {d:6} ns/template ({d:4} chars)\n", .{
         complex_per,
         COMPLEX_TEMPLATE.len,
@@ -117,8 +123,8 @@ pub fn main() !void {
 
     // ── Summary ──────────────────────────────────────────────
     const total_templates = TEMPLATES.len * iterations + iterations;
-    const all_ns = total_ns + complex_elapsed;
-    const avg = all_ns / total_templates;
+    const all_ns: i64 = total_ns + complex_elapsed;
+    const avg = @divFloor(all_ns, @as(i64, @intCast(total_templates)));
 
     std.debug.print("\n── Summary ──────────────────────────────────\n\n", .{});
     std.debug.print("  Total templates:  {d}\n", .{total_templates});
@@ -162,11 +168,11 @@ pub fn main() !void {
     if (detail_result.stats.phase_timings.len > 0) {
         std.debug.print("\n  ── 50 IR Phase Details ──\n\n", .{});
         for (detail_result.stats.phase_timings) |pt| {
-            std.debug.print("    {s:45} {d:8} ns\n", .{ pt.phase_name, pt.elapsed_ns });
+            std.debug.print("    {s:45} {d:8} ns\n", .{ pt.name, pt.elapsed_ns });
         }
     }
 
-    detail_result.deinit(allocator);
+    var dr = detail_result; dr.deinit(allocator);
     detail_compiler.deinit();
 
     std.debug.print("\n✓ Benchmark complete\n", .{});
