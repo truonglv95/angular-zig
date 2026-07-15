@@ -182,7 +182,7 @@ test "ml_lexer: should store the locations (open tags)" {
 }
 
 test "ml_lexer: terminated with EOF" {
-                            try expectTokens(std.testing.allocator, "<div", 1);
+    try expectTokens(std.testing.allocator, "<div", 1);
 }
 
 test "ml_lexer: after tag name" {
@@ -346,7 +346,7 @@ test "ml_lexer: should report unescaped { on error" {
 }
 
 test "ml_lexer: should report unescaped { as an error, even after a prematurely terminated interpolation" {
-                            try expectTokens(std.testing.allocator, "{{a}{b}", 1);
+    try expectTokens(std.testing.allocator, "{{a}{b}", 1);
 }
 
 test "ml_lexer: should include 2 lines of context in message" {
@@ -936,15 +936,11 @@ test "lexer: should store the locations" {
 }
 
 test "lexer: should report <!- without -" {
-            
-                try expectLexerErrors(std.testing.allocator, "<!-a", 1);
-            
+    try expectLexerErrors(std.testing.allocator, "<!-a", 1);
 }
 
 test "lexer: should report missing end comment" {
-            
-                try expectLexerErrors(std.testing.allocator, "<!--", 1);
-            
+    try expectLexerErrors(std.testing.allocator, "<!--", 1);
 }
 
 test "lexer: should accept comments finishing by too many dashes (even number)" {
@@ -959,28 +955,20 @@ test "lexer: should parse doctypes" {
     try expectTokens(std.testing.allocator, "<!DOCTYPE html>", 1);
 }
 
-
 test "lexer: should report missing end doctype" {
-            
-                try expectLexerErrors(std.testing.allocator, "<!", 1);
-            
+    try expectLexerErrors(std.testing.allocator, "<!", 1);
 }
 
 test "lexer: should parse CDATA" {
     try expectTokens(std.testing.allocator, "<![CDATA[t\ne\rs\r\nt]]>", 1);
 }
 
-
 test "lexer: should report <![ without CDATA[" {
-            
-                try expectLexerErrors(std.testing.allocator, "<![a", 1);
-            
+    try expectLexerErrors(std.testing.allocator, "<![a", 1);
 }
 
 test "lexer: should report missing end cdata" {
-            
-                try expectLexerErrors(std.testing.allocator, "<![CDATA[", 1);
-            
+    try expectLexerErrors(std.testing.allocator, "<![CDATA[", 1);
 }
 
 test "lexer: should parse open tags without prefix" {
@@ -988,100 +976,99 @@ test "lexer: should parse open tags without prefix" {
 }
 
 test "lexer: should parse namespace prefix" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<ns1:test>", 1);
 }
 
 test "lexer: should parse void tags" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<test/>", 1);
 }
 
 test "lexer: should allow whitespace after the tag name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<test >", 1);
 }
 
-
 test "lexer: terminated with EOF" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div", 1);
 }
 
 test "lexer: after tag name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div<span><div</span>", 1);
 }
 
 test "lexer: in attribute" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div class=\"hi\" sty<span></span>", 1);
 }
 
 test "lexer: after quote" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div \"<span></span>", 1);
 }
 
 test "lexer: should parse a basic component tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp>hello</MyComp>", 1);
 }
 
 test "lexer: should parse a component tag with a tag name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:button>hello</MyComp:button>", 1);
 }
 
 test "lexer: should parse a component tag with a tag name and namespace" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:svg:title>hello</MyComp:svg:title>", 1);
 }
 
 test "lexer: should parse a self-closing component tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp/>", 1);
 }
 
 test "lexer: should produce spans for component tags" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:svg:title>hello</MyComp:svg:title>", 1);
 }
 
 test "lexer: should parse an incomplete component open tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:span class=\"hi\" sty<span></span>", 1);
 }
 
 test "lexer: should parse a component tag with raw text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:script>t\ne\rs\r\nt</MyComp:script>", 1);
 }
 
 test "lexer: should parse a component tag with escapable raw text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<MyComp:title>t\ne\rs\r\nt</MyComp:title>", 1);
 }
 
 test "lexer: should parse a basic directive" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div @MyDir></div>", 1);
 }
 
 test "lexer: should parse a directive with parentheses, but no attributes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div @MyDir()></div>", 1);
 }
 
 test "lexer: should parse a directive with a single attribute without a value" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div @MyDir(foo)></div>", 1);
 }
 
 test "lexer: should parse a directive with attributes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div @MyDir(static=\"one\" [bound]=\"expr\" [(twoWay)]=\"expr\" #ref=\"name\" (click)=\"handler()\")></div>", 1);
 }
 
 test "lexer: should parse a directive mixed in with other attributes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div before=\"value\" @OneDir([one]=\"1\" two=\"2\") middle @TwoDir @ThreeDir((three)=\"handleThree()\") after=\"value\"></div>", 1);
 }
 
 test "lexer: should not pick up selectorless-like text inside a tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div>@MyDir()</div>", 1);
 }
 
 test "lexer: should not pick up selectorless-like text inside an attribute" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div hello=\"@MyDir\"></div>", 1);
 }
 
 test "lexer: should produce spans for directives" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div @Empty @NoAttrs() @WithAttr([one]=\"1\" two=\"2\") @WithSimpleAttr(simple)></div>", 1);
 }
 
 test "lexer: should not capture whitespace in directive spans" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div    @Dir   (  one=\"1\"    (two)=\"handleTwo()\"     )     ></div>", 1);
 }
 
 test "lexer: should parse text" {
@@ -1089,99 +1076,95 @@ test "lexer: should parse text" {
 }
 
 test "lexer: should detect entities" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<title>&amp;</title>", 1);
 }
 
 test "lexer: should ignore other opening tags" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<title>a<div></title>", 1);
 }
 
 test "lexer: should ignore other closing tags" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<title>a</test></title>", 1);
 }
 
-
 test "lexer: should parse an SVG <title> tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<svg:title>test</svg:title>", 1);
 }
 
 test "lexer: should parse an SVG <title> tag with children" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<svg:title><f>test</f></svg:title>", 1);
 }
 
 test "lexer: should parse an expansion form" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{one.two, three, =4 {four} =5 {five} foo {bar} }", 1);
 }
 
 test "lexer: should parse an expansion form with text elements surrounding it" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "before{one.two, three, =4 {four}}after", 1);
 }
 
 test "lexer: should parse an expansion form as a tag single child" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div><span>{a, b, =4 {c}}</span></div>", 1);
 }
 
 test "lexer: should parse an expansion form with whitespace surrounding it" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div><span> {a, b, =4 {c}} </span></div>", 1);
 }
 
 test "lexer: should parse an expansion forms with elements in it" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{one.two, three, =4 {four <b>a</b>}}", 1);
 }
 
 test "lexer: should parse an expansion forms containing an interpolation" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{one.two, three, =4 {four {{a}}}}", 1);
 }
 
 test "lexer: should parse nested expansion forms" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{one.two, three, =4 { {xx, yy, =x {one}} }}", 1);
 }
 
 test "lexer: should normalize line-endings in expansion forms if `i18nNormalizeLineEndingsInICUs` is true" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{\r\n    messages.length,\r\n    plural,\r\n    =0 {You have \r\nno\r\n messages}\r\n    =1 {One {{message}}}}\r\n", 1);
 }
 
 test "lexer: should not normalize line-endings in ICU expressions when `i18nNormalizeLineEndingsInICUs` is not defined" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{\r\n    messages.length,\r\n    plural,\r\n    =0 {You have \r\nno\r\n messages}\r\n    =1 {One {{message}}}}\r\n", 1);
 }
 
 test "lexer: should not normalize line endings in nested expansion forms when `i18nNormalizeLineEndingsInICUs` is not defined" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{\r\n  messages.length, plural,\r\n  =0 { zero \r\n       {\r\n         p.gender, select,\r\n         male {m}\r\n       }\r\n     }\r\n}", 1);
 }
-
 
 test "lexer: should not normalize line-endings in ICU expressions when `i18nNormalizeLineEndingsInICUs` is not defined (escapedString:false)" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{\r\n    messages.length,\r\n    plural,\r\n    =0 {You have \r\nno\r\n messages}\r\n    =1 {One {{message}}}}\r\n", 1);
 }
-
 
 test "lexer: should report unescaped " {
     try expectLexerErrorsWithICU(std.testing.allocator, "<p>before { after</p>", 1);
 }
 
-
 test "lexer: should include 2 lines of context in message" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "111\n222\n333\nE\n444\n555\n666\n", 1);
 }
 
 test "lexer: should support unicode characters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<p>İ</p>", 1);
 }
 
 test "lexer: should unescape standard escape sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\' \\' \\'", 1);
 }
 
 test "lexer: should unescape null sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\0", 1);
 }
 
 test "lexer: should unescape octal sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\001 \\01 \\1 \\12 \\223 \\19 \\2234 \\999", 1);
 }
 
 test "lexer: should unescape hex sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\x12 \\x4F \\xDC", 1);
 }
 
 test "lexer: should report an error on an invalid hex sequence" {
@@ -1191,7 +1174,7 @@ test "lexer: should report an error on an invalid hex sequence" {
 }
 
 test "lexer: should unescape fixed length Unicode sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\u0123 \\uABCD", 1);
 }
 
 test "lexer: should error on an invalid fixed length Unicode sequence" {
@@ -1199,7 +1182,7 @@ test "lexer: should error on an invalid fixed length Unicode sequence" {
 }
 
 test "lexer: should unescape variable length Unicode sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "\\u{01} \\u{ABC} \\u{1234} \\u{123AB}", 1);
 }
 
 test "lexer: should error on an invalid variable length Unicode sequence" {
@@ -1207,99 +1190,99 @@ test "lexer: should error on an invalid variable length Unicode sequence" {
 }
 
 test "lexer: should unescape line continuations" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "abc\\\ndef", 1);
 }
 
 test "lexer: should remove backslash from " {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "a g ~", 1);
 }
 
 test "lexer: should unescape sequences in plain text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "abc\ndef\\nghi\\tjkl\\`\\'\\\"mno", 1);
 }
 
 test "lexer: should unescape sequences in raw text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<script>abc\ndef\\nghi\\tjkl\\`\\'\\\"mno</script>", 1);
 }
 
 test "lexer: should unescape sequences in escapable raw text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<title>abc\ndef\\nghi\\tjkl\\`\\'\\\"mno</title>", 1);
 }
 
 test "lexer: should parse over escape sequences in tag definitions" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a=\\\"b\\\" \\n c=\\'d\\'>", 1);
 }
 
 test "lexer: should parse over escaped new line in tag definitions" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t\\n></t>", 1);
 }
 
 test "lexer: should parse over escaped characters in tag definitions" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t\x13></t>", 1);
 }
 
 test "lexer: should unescape characters in tag names" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t\\x64></t\\x64>", 1);
 }
 
 test "lexer: should unescape characters in attributes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t \\x64=\"\\x65\"></t>", 1);
 }
 
 test "lexer: should parse over escaped new line in attribute values" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a=b\\n></t>", 1);
 }
 
 test "lexer: should tokenize the correct span when there are escape sequences" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "selector: \"app-root\",\ntemplate: \"line 1\\n\\\"line 2\\\"\\nline 3\",\ninputs: []", 1);
 }
 
 test "lexer: should account for escape sequences when computing source spans " {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t>line 1</t>\n<t>line 2</t>\\n<t>line 3\\\n</t>", 1);
 }
 
 test "lexer: should parse a @let declaration" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = 123 + 456;", 1);
 }
 
 test "lexer: should parse @let declarations with arbitrary number of spaces" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let               foo       =          123 + 456;", 1);
 }
 
 test "lexer: should parse a @let declaration with newlines before/after its name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let\nfoo = 123;", 1);
 }
 
 test "lexer: should parse a @let declaration with new lines in its value" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = \n123 + \n 456 + \n789\n;", 1);
 }
 
 test "lexer: should parse a @let declaration inside of a block" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@defer {@let foo = 123 + 456;}", 1);
 }
 
 test "lexer: should parse @let declaration using semicolon inside of a string" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = 'a; b';", 1);
 }
 
 test "lexer: should parse @let declaration using escaped quotes in a string" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = '\\';\\'' + \"\\\",\";", 1);
 }
 
 test "lexer: should parse @let declaration using function calls in its value" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = fn(a, b) + fn2(c, d, e);", 1);
 }
 
 test "lexer: should parse @let declarations using array literals in their value" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = [1, 2, 3];", 1);
 }
 
 test "lexer: should parse @let declarations using object literals" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = {a: 1, b: {c: something + 2}};", 1);
 }
 
 test "lexer: should parse a @let declaration containing complex expression" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = fn({a: 1, b: [otherFn([{c: \";\"}], 321, {d: [',']})]});", 1);
 }
 
 test "lexer: should handle @let declaration with invalid syntax in the value" {
@@ -1310,27 +1293,27 @@ test "lexer: should handle @let declaration with invalid syntax in the value" {
 }
 
 test "lexer: should parse a @let declaration without a value" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo =;", 1);
 }
 
 test "lexer: should handle no space after @let" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@letFoo = 123;", 1);
 }
 
 test "lexer: should handle unsupported characters in the name of @let" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo\\bar = 123;", 1);
 }
 
 test "lexer: should handle digits in the name of an @let" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let a123 = foo;", 1);
 }
 
 test "lexer: should handle an @let declaration without an ending token" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@let foo = 123 + 456", 1);
 }
 
 test "lexer: should not parse @let inside an interpolation" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ @let foo = 123; }}", 1);
 }
 
 test "lexer: should parse attributes without prefix" {
@@ -1342,7 +1325,7 @@ test "lexer: should parse attributes with interpolation" {
 }
 
 test "lexer: should end interpolation on an unescaped matching quote" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a=\"{{ a \\\" ' b \">", 1);
 }
 
 test "lexer: should parse attributes with prefix" {
@@ -1370,7 +1353,7 @@ test "lexer: should parse attributes with unquoted interpolation value" {
 }
 
 test "lexer: should parse bound inputs with expressions containing newlines" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<app-component\n        [attr]=\"[\n        {text: 'some text',url:'//www.google.com'},\n        {text:'other text',url:'//www.google.com'}]\">", 1);
 }
 
 test "lexer: should parse attributes with empty quoted value" {
@@ -1378,7 +1361,7 @@ test "lexer: should parse attributes with empty quoted value" {
 }
 
 test "lexer: should allow whitespace" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a = b >", 1);
 }
 
 test "lexer: should parse attributes with entities in values" {
@@ -1386,7 +1369,7 @@ test "lexer: should parse attributes with entities in values" {
 }
 
 test "lexer: should not decode entities without trailing " {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a=\"&amp\" b=\"c&&d\">", 1);
 }
 
 test "lexer: should parse attributes with " {
@@ -1397,7 +1380,6 @@ test "lexer: should parse values with CR and LF" {
     try expectTokens(std.testing.allocator, "<t\n>\r\na\r</t>", 3);
 }
 
-
 test "lexer: should report missing closing single quote" {
     try expectLexerErrors(std.testing.allocator, "<t a='b>", 1);
 }
@@ -1407,26 +1389,24 @@ test "lexer: should report missing closing double quote" {
 }
 
 test "lexer: should permit more characters in square-bracketed attributes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<foo [class.text-primary/80]=\"expr\"/>", 1);
 }
 
 test "lexer: should allow mismatched square brackets in attribute name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<foo [class.a]b]c]=\"expr\"/>", 1);
 }
 
 test "lexer: should stop permissive parsing of square brackets on new line" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<foo [class.text-\nprimary/80]=\"expr\"/>", 1);
 }
 
 test "lexer: should parse closing tags without prefix" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "</test>", 1);
 }
 
 test "lexer: should parse closing tags with prefix" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "</ns1:test>", 1);
 }
-
-
 
 test "lexer: should report missing name after </" {
     try expectLexerErrors(std.testing.allocator, "</", 1);
@@ -1437,19 +1417,19 @@ test "lexer: should report missing >" {
 }
 
 test "lexer: should parse named entities" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "a&amp;b", 1);
 }
 
 test "lexer: should parse named entities containing digits" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "&sup1;", 1);
 }
 
 test "lexer: should parse hexadecimal entities" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "&#x41;&#X41;", 1);
 }
 
 test "lexer: should parse decimal entities" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "&#65;", 1);
 }
 
 test "lexer: should parse entities with more than 4 hex digits" {
@@ -1460,7 +1440,6 @@ test "lexer: should parse entities with more than 4 decimal digits" {
     try expectTokens(std.testing.allocator, "&amp;", 1);
 }
 
-
 test "lexer: should report malformed/unknown entities" {
     try expectLexerErrors(std.testing.allocator, "&tbo;", 1);
     try expectLexerErrors(std.testing.allocator, "&#3sdf;", 1);
@@ -1469,20 +1448,19 @@ test "lexer: should report malformed/unknown entities" {
 }
 
 test "lexer: should not parse js object methods" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "&valueOf;", 1);
 }
-
 
 test "lexer: should parse interpolation" {
     try expectTokens(std.testing.allocator, "{{a}}", 1);
 }
 
 test "lexer: should handle CR & LF in text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "t\ne\rs\r\nt", 1);
 }
 
 test "lexer: should handle CR & LF in interpolation" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{t\ne\rs\r\nt}}", 1);
 }
 
 test "lexer: should parse entities" {
@@ -1493,25 +1471,24 @@ test "lexer: should parse text starting with " {
     try expectTokens(std.testing.allocator, "some text", 1);
 }
 
-
 test "lexer: should allow " {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ a < b ? c : d }}", 1);
 }
 
 test "lexer: should break out of interpolation in text token on valid start tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ a <b && c > d }}", 1);
 }
 
 test "lexer: should break out of interpolation in text token on valid comment" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ a }<!---->}", 1);
 }
 
 test "lexer: should end interpolation on a valid closing tag" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<p>{{ a </p>", 1);
 }
 
 test "lexer: should break out of interpolation in text token on valid CDATA" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ a }<![CDATA[]]>}", 1);
 }
 
 test "lexer: should ignore invalid start tag in interpolation" {
@@ -1519,148 +1496,99 @@ test "lexer: should ignore invalid start tag in interpolation" {
 }
 
 test "lexer: should parse start tags quotes in place of an attribute name as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t \">", 1);
 }
 
 test "lexer: should parse start tags quotes in place of an attribute name (after a valid attribute)" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<t a=\"b\" \">", 1);
 }
 
 test "lexer: should be able to escape {" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ \"{\" }}", 1);
 }
 
 test "lexer: should be able to escape {{" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ \"{{\" }}", 1);
 }
 
 test "lexer: should capture everything up to the end of file in the interpolation expression part if there are mismatched quotes" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{{ \"{{a}}' }}", 1);
 }
 
 test "lexer: should treat expansion form as text when they are not parsed" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<span>{a, b, =4 {c}}</span>", 1);
 }
-
 
 test "lexer: should not detect entities" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<script>&amp;</SCRIPT>", 1);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 test "lexer: should not normalize line-endings in ICU expressions when `i18nNormalizeLineEndingsInICUs` is not defined (escapeString: false)" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "{\r\n    messages.length,\r\n    plural,\r\n    =0 {You have \r\nno\r\n messages}\r\n    =1 {One {{message}}}}\r\n", 1);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 test "lexer: should parse a block without parameters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if {hello}", 1);
 }
 
 test "lexer: should parse @default never;" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@default never;", 1);
 }
 
 test "lexer: should parse @default never(expr);" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@default never(expr);", 1);
 }
 
 test "lexer: should parse @default never ;" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@default never ;", 1);
 }
 
 test "lexer: should parse a block with parameters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for (item of items; track item.id) {hello}", 1);
 }
 
 test "lexer: should parse a block with a trailing semicolon after the parameters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for (item of items;) {hello}", 1);
 }
 
 test "lexer: should parse a block with a space in its name" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@else if {hello}", 1);
 }
 
 test "lexer: should normalize @else if block name with spaces" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@else            if {hello}", 1);
 }
 
 test "lexer: should parse a block with an arbitrary amount of spaces around the parentheses" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for(a; b; c){hello}", 1);
 }
 
 test "lexer: should parse a block with multiple trailing semicolons" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for (item of items;;;;;) {hello}", 1);
 }
 
 test "lexer: should parse a block with trailing whitespace" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@defer                        {hello}", 1);
 }
 
 test "lexer: should parse a block with no trailing semicolon" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for (item of items){hello}", 1);
 }
 
 test "lexer: should handle semicolons, braces and parentheses used in a block parameter" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@for (a === \";\"; b === ')'; c === \"(\"; d === '}'; e === \"{\") {hello}", 1);
 }
 
 test "lexer: should handle object literals and function calls in block parameters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@defer (on a({a: 1, b: 2}, false, {c: 3}); when b({d: 4})) {hello}", 1);
 }
 
 test "lexer: should parse block with unclosed parameters" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (a === b {hello}", 1);
 }
 
 test "lexer: should parse block with stray parentheses in the parameter position" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if a === b) {hello}", 1);
 }
 
 test "lexer: should report invalid quotes in a parameter" {
@@ -1673,74 +1601,73 @@ test "lexer: should report unclosed object literal inside a parameter" {
 }
 
 test "lexer: should handle a semicolon used in a nested string inside a block parameter" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (condition === \"';'\") {hello}", 1);
 }
 
 test "lexer: should handle a semicolon next to an escaped quote used in a block parameter" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (condition === \"\\\";\") {hello}", 1);
 }
 
 test "lexer: should parse mixed text and html content in a block" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (a === 1) {foo <b>bar</b> baz}", 1);
 }
 
 test "lexer: should parse HTML tags with attributes containing curly braces inside blocks" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (a === 1) {<div a=\"}\" b=\"{\"></div>}", 1);
 }
 
 test "lexer: should parse HTML tags with attribute containing block syntax" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "<div a=\"@if (foo) {}\"></div>", 1);
 }
 
 test "lexer: should parse nested blocks" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@if (a) {hello a@if {hello unnamed@if (b) {hello b@if (c) {hello c}}}}", 1);
 }
 
 test "lexer: should parse a block containing an expansion" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@defer {{one.two, three, =4 {four} =5 {five} foo {bar} }}", 1);
 }
 
 test "lexer: should parse a block containing an interpolation" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@defer {{{message}}}", 1);
 }
 
 test "lexer: should parse an incomplete block start without parameters with surrounding text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "My email frodo@for.com", 1);
 }
 
 test "lexer: should parse an incomplete block start at the end of the input" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "My favorite console is @switch", 1);
 }
 
 test "lexer: should parse an incomplete block start with parentheses but without params" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "Use the @for() block", 1);
 }
 
 test "lexer: should parse an incomplete block start with parentheses and params" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "This is the @if({alias: \"foo\"}) expression", 1);
 }
 
 test "lexer: should parse @ as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@", 1);
 }
 
 test "lexer: should parse space followed by @ as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, " @", 1);
 }
 
 test "lexer: should parse @ followed by space as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@ ", 1);
 }
 
 test "lexer: should parse @ followed by newline and text as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@\nfoo", 1);
 }
 
 test "lexer: should parse @ in the middle of text as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "foo bar @ baz clink", 1);
 }
 
 test "lexer: should parse incomplete block with space, then name as text" {
-    try expectTokens(std.testing.allocator, "", 1);
+    try expectTokens(std.testing.allocator, "@ if", 1);
 }
-

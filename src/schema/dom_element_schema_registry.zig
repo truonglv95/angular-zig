@@ -587,6 +587,10 @@ pub fn validateProperty(name: []const u8) ValidationResult {
     if (name.len == 0) {
         return .{ .error_flag = true, .msg = "Property name cannot be empty" };
     }
+    // Event properties (starting with "on", case-insensitive) are disallowed.
+    if (name.len >= 2 and std.ascii.eqlIgnoreCase(name[0..2], "on")) {
+        return .{ .error_flag = true, .msg = "Binding to event property is disallowed for security reasons" };
+    }
     // Property names must start with a letter, $, or _
     const first = name[0];
     if (!(std.ascii.isAlphabetic(first) or first == '$' or first == '_')) {
@@ -600,6 +604,10 @@ pub fn validateProperty(name: []const u8) ValidationResult {
 pub fn validateAttribute(name: []const u8) ValidationResult {
     if (name.len == 0) {
         return .{ .error_flag = true, .msg = "Attribute name cannot be empty" };
+    }
+    // Event attributes (starting with "on", case-insensitive) are disallowed.
+    if (name.len >= 2 and std.ascii.eqlIgnoreCase(name[0..2], "on")) {
+        return .{ .error_flag = true, .msg = "Binding to event attribute is disallowed for security reasons" };
     }
     return .{};
 }

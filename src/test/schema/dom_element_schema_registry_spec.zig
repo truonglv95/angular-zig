@@ -94,16 +94,19 @@ test "dom_element_schema_registry: should not re-map property names that are not
 }
 
 test "dom_element_schema_registry: should return an error message when asserting event properties" {
-    // Event properties (starting with "on") should be flagged
-    // The Zig validator may not specifically check for events, but we verify it accepts valid names.
-    const result = schema.validateProperty("onclick");
-    _ = result;
+    // Direct port of TS: validateProperty('onClick') should error.
+    const result1 = schema.validateProperty("onClick");
+    try std.testing.expect(result1.error_flag);
+    const result2 = schema.validateProperty("onAnything");
+    try std.testing.expect(result2.error_flag);
 }
 
 test "dom_element_schema_registry: should return an error message when asserting event attributes" {
-    // Event attributes (starting with "on") should be flagged
-    const result = schema.validateAttribute("onclick");
-    _ = result;
+    // Direct port of TS: validateAttribute('onClick') should error.
+    const result1 = schema.validateAttribute("onClick");
+    try std.testing.expect(result1.error_flag);
+    const result2 = schema.validateAttribute("onAnything");
+    try std.testing.expect(result2.error_flag);
 }
 
 test "dom_element_schema_registry: should not return an error message when asserting non-event properties or attributes" {
