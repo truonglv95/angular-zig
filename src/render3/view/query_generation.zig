@@ -196,7 +196,11 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
             if (next == '>') {
                 // Child combinator
                 const left_items = try allocator.dupe(QueryNode, parts.items);
-                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
+                const left = if (left_items.len == 1) blk: {
+                    const item = left_items[0];
+                    allocator.free(left_items);
+                    break :blk item;
+                } else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
                 i.* += 1;
                 while (i.* < source.len and isSpace(source[i.*])) i.* += 1;
@@ -211,7 +215,11 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
             } else if (next == '+') {
                 // Adjacent sibling combinator
                 const left_items = try allocator.dupe(QueryNode, parts.items);
-                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
+                const left = if (left_items.len == 1) blk: {
+                    const item = left_items[0];
+                    allocator.free(left_items);
+                    break :blk item;
+                } else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
                 i.* += 1;
                 while (i.* < source.len and isSpace(source[i.*])) i.* += 1;
@@ -226,7 +234,12 @@ fn parseSingleSelector(allocator: Allocator, source: []const u8, i: *usize) Allo
             } else {
                 // Descendant combinator (implicit)
                 const left_items = try allocator.dupe(QueryNode, parts.items);
-                const left = if (left_items.len == 1) left_items[0] else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
+                const left = if (left_items.len == 1) blk: {
+                    // Free the left_items slice since we only need the single item.
+                    const item = left_items[0];
+                    allocator.free(left_items);
+                    break :blk item;
+                } else QueryNode{ .kind = .Group, .name = "", .value = "", .children = left_items };
                 parts.clearRetainingCapacity();
 
                 const right = try parseSingleSelector(allocator, source, i);
