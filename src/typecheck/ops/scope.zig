@@ -155,7 +155,22 @@ pub const Scope = struct {
     }
 
     pub fn deinit(self: *Scope) void {
+        // Free memoized result strings (allocated via `std.fmt.allocPrint`).
+        // Only entries in the `result` state have allocated strings to free.
+        for (self.op_queue.items) |entry| {
+            switch (entry) {
+                .result => |r| {
+                    if (r) |str| {
+                        self.allocator.free(str);
+                    }
+                },
+                .op, .infer_type => {},
+            }
+        }
         self.op_queue.deinit();
+        // Note: `guard` and `statements` are not freed here — they may be
+        // static strings or owned by the caller. Callers that allocate these
+        // strings must free them.
         self.element_op_map.deinit();
         self.host_element_op_map.deinit();
         self.component_node_op_map.deinit();

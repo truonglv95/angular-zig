@@ -228,6 +228,16 @@ pub const Message = struct {
     message_string: []const u8 = "",
     /// Source locations.
     sources: []const MessageSpan = &.{},
+    /// Allocator used for `message_string` and `sources` (null if not owned).
+    /// Direct port of TS not-needed (V8 GC handles it).
+    allocator: ?Allocator = null,
+    /// Whether `message_string` is owned (allocated by `serializeMessage`).
+    /// If false, the caller is responsible for freeing it.
+    owns_message_string: bool = false,
+    /// Whether `sources` is owned (allocated by `initWithNodes`).
+    owns_sources: bool = false,
+    /// Whether `id` is owned (allocated by `computeDigest`).
+    owns_id: bool = false,
 
     /// Full constructor — direct port of `Message` constructor in the TS source.
     /// Computes `id` (from customId) and `messageString` (from nodes).
@@ -250,6 +260,8 @@ pub const Message = struct {
             .custom_id = custom_id,
             .id = custom_id,
             .message_string = try serializeMessage(allocator, nodes),
+            .allocator = allocator,
+            .owns_message_string = true,
         };
 
         // Compute sources from first/last node spans (direct port of lines 50-62 in TS).
@@ -268,6 +280,7 @@ pub const Message = struct {
             const sources = try allocator.alloc(MessageSpan, 1);
             sources[0] = src;
             msg.sources = sources;
+            msg.owns_sources = true;
         }
 
         return msg;
@@ -287,6 +300,20 @@ pub const Message = struct {
     }
 
     pub fn deinit(self: *Message) void {
+        if (self.allocator) |a| {
+            if (self.owns_message_string and self.message_string.len > 0) {
+                a.free(self.message_string);
+                self.owns_message_string = false;
+            }
+            if (self.owns_sources and self.sources.len > 0) {
+                a.free(self.sources);
+                self.owns_sources = false;
+            }
+            if (self.owns_id and self.id.len > 0) {
+                a.free(self.id);
+                self.owns_id = false;
+            }
+        }
         self.placeholders.deinit();
         self.placeholder_to_message.deinit();
     }

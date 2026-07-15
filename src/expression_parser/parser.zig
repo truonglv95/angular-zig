@@ -1823,6 +1823,16 @@ pub const SplitInterpolation = struct {
     strings: []const []const u8,
     expressions: []const []const u8,
     offsets: []const u32,
+
+    /// Free all memory owned by this result.
+    /// Note: `strings` and `expressions` are zero-copy slices of the input
+    /// string, so they are NOT freed here. Only the slice arrays themselves
+    /// (allocated via `toOwnedSlice`) are freed.
+    pub fn deinit(self: *SplitInterpolation, allocator: std.mem.Allocator) void {
+        allocator.free(self.strings);
+        allocator.free(self.expressions);
+        if (self.offsets.len > 0) allocator.free(self.offsets);
+    }
 };
 
 /// TemplateBindingParseResult — result of parsing template bindings.

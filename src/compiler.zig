@@ -87,6 +87,10 @@ pub const CompilationResult = struct {
         if (self.errors.len > 0) {
             allocator.free(self.errors);
         }
+        // template_fn_name was allocPrint'd — free it
+        if (self.template_fn_name.len > 0) {
+            allocator.free(self.template_fn_name);
+        }
     }
 };
 
@@ -261,6 +265,7 @@ pub const Compiler = struct {
 
         if (job.pool.size() > 0) {
             const consts_name = try std.fmt.allocPrint(self.allocator, "_c{d}", .{job.pool.size() - 1});
+            defer self.allocator.free(consts_name);
             try buf.appendSlice("const ");
             try buf.appendSlice(consts_name);
             try buf.appendSlice(" = [\n");
@@ -820,6 +825,7 @@ fn estimateCol(source: []const u8, offset: u32) u32 {
 test "compile simple component with full pipeline" {
     const allocator = std.testing.allocator;
     var compiler = Compiler.init(allocator, .{});
+    defer compiler.deinit();
 
     const result = try compiler.compileComponent(.{
         .name = "TestComponent",
@@ -843,6 +849,7 @@ test "compile simple component with full pipeline" {
 test "compile with nested elements" {
     const allocator = std.testing.allocator;
     var compiler = Compiler.init(allocator, .{});
+    defer compiler.deinit();
 
     const result = try compiler.compileComponent(.{
         .name = "CardComponent",
@@ -857,6 +864,7 @@ test "compile with nested elements" {
 test "compile stats" {
     const allocator = std.testing.allocator;
     var compiler = Compiler.init(allocator, .{});
+    defer compiler.deinit();
 
     const result = try compiler.compileComponent(.{
         .name = "StatsComponent",

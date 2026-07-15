@@ -730,7 +730,6 @@ test "parse creates message with metadata" {
     var msg = try parse(allocator, "Hello", "greeting", "A greeting", "custom-id");
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     try std.testing.expectEqualStrings("greeting", msg.meaning);
     try std.testing.expectEqualStrings("A greeting", msg.description);
     try std.testing.expectEqualStrings("custom-id", msg.custom_id);
@@ -773,7 +772,6 @@ test "I18nVisitor toI18nMessage — single text" {
     var msg = try visitor.toI18nMessage(&nodes, "greeting", "A greeting", "custom-id", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     try std.testing.expectEqualStrings("greeting", msg.meaning);
     try std.testing.expectEqualStrings("Hello World", msg.message_string);
 }
@@ -789,7 +787,6 @@ test "I18nVisitor visitElement — void element" {
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
     try std.testing.expectEqual(i18n_ast.NodeKind.tag_placeholder, msg.nodes[0].kind);
     try std.testing.expect(msg.nodes[0].data.tag_placeholder.is_void);
@@ -812,7 +809,6 @@ test "I18nVisitor visitElement — non-void element with children" {
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     defer allocator.free(msg.nodes[0].data.tag_placeholder.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
@@ -834,7 +830,6 @@ test "I18nVisitor visitComment returns null" {
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     try std.testing.expectEqual(@as(usize, 0), msg.nodes.len);
 }
 
@@ -855,7 +850,6 @@ test "I18nVisitor visitBlock — switch becomes container" {
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     defer allocator.free(msg.nodes[0].data.container.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);
@@ -879,7 +873,6 @@ test "I18nVisitor visitBlock — if becomes block_placeholder" {
     var msg = try visitor.toI18nMessage(&nodes, "", "", "", null);
     defer msg.deinit();
     defer allocator.free(msg.nodes);
-    defer allocator.free(msg.message_string);
     defer allocator.free(msg.nodes[0].data.block_placeholder.children);
 
     try std.testing.expectEqual(@as(usize, 1), msg.nodes.len);

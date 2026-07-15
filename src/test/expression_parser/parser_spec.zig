@@ -158,8 +158,8 @@ fn checkActionWithError(
 
 /// Verify that splitInterpolation succeeds on the given input.
 fn checkInterpolation(allocator: Allocator, text: []const u8) !void {
-    const result = try parser_mod.splitInterpolation(allocator, text);
-    _ = result;
+    var result = try parser_mod.splitInterpolation(allocator, text);
+    defer result.deinit(allocator);
 }
 
 /// Verify that parseTemplateBindings (the Parser method) doesn't crash on the given source.
@@ -177,7 +177,7 @@ fn checkTemplateBindings(allocator: Allocator, source: []const u8) !void {
 /// Verify wrapLiteralString produces a literal AST without crashing.
 fn checkWrapLiteralPrimitive(allocator: Allocator, value: []const u8) !void {
     const ast = try parser_mod.wrapLiteralString(allocator, value);
-    _ = ast;
+    allocator.destroy(ast);
 }
 
 // ─── parseAction tests ─────────────────────────────────────

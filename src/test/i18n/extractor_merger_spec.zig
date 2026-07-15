@@ -97,16 +97,18 @@ test "extractor_merger: should not create a message for empty elements" {
             // TS: extract('<div i18n="m|d"></div>') returns []
             // Verify extract runs without crashing on empty element.
             const result = try em.extract(allocator, "<div i18n=\"m|d\"></div>");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should not create a message for placeholder-only elements" {
         const result = try em.extract(allocator, "<div i18n=\"m|d\">{{a}}</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
 test "extractor_merger: should ignore implicit elements in translatable elements" {
         const result = try em.extract(allocator, "<div i18n=\"m|d\"><br></div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -131,11 +133,12 @@ test "extractor_merger: should not extract messages from ICUs directly inside bl
             // TS: ICU expressions directly inside blocks should be extracted as ICU messages.
             // Our implementation may not fully support this — just verify no crash.
             const result = try em.extract(allocator, "@switch (value) { @case (1) { {count, plural, =0 {none}} } }");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should handle blocks inside of translated elements" {
         const result = try em.extract(allocator, "<div i18n=\"m|d\">@if (cond) { text }</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -149,11 +152,12 @@ test "extractor_merger: should ignore implicit elements in blocks" {
             // TS: extract('<!-- i18n:m|d --><p></p><!-- /i18n -->', ['p']) returns a message.
             // Our implementation may not fully support i18n comment blocks — just verify no crash.
             const result = try em.extract(allocator, "<!-- i18n:m|d --><p></p><!-- /i18n -->");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should extract siblings" {
         const result = try em.extract(allocator, "<div i18n=\"m|d\">a</div><div i18n=\"m|d\">b</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -167,7 +171,7 @@ test "extractor_merger: should not create a message for empty blocks" {
             // TS: extract('<!-- i18n: meaning1|desc1 --><!-- /i18n -->') returns [].
             // Our implementation may not fully support i18n comment blocks — just verify no crash.
             const result = try em.extract(allocator, "<!-- i18n: meaning1|desc1 --><!-- /i18n -->");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should extract ICU messages from translatable elements" {
@@ -184,11 +188,12 @@ test "extractor_merger: should not extract ICU messages outside of i18n sections
             // TS: extract('{count, plural, =0 {text}}') returns [].
             // ICU messages outside of i18n sections are not extracted.
             const result = try em.extract(allocator, "{count, plural, =0 {text}}");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should ignore nested ICU messages" {
         const result = try em.extract(allocator, "<div i18n=\"m|d\">{count, plural, =0 {{g, select, male {m}}}}</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -197,14 +202,14 @@ test "extractor_merger: should ignore implicit elements in non translatable ICU 
             // returns a message for the outer i18n but ignores the <p> inside the ICU.
             // Our implementation may not fully support this — just verify no crash.
             const result = try em.extract(allocator, "<div i18n=\"m|d@@i\">{count, plural, =0 { {sex, select, male {<p>ignore</p>}} }}</div>");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should ignore implicit elements in non translatable ICU messages 2" {
             // TS: extract('{count, plural, =0 { {sex, select, male {<p>ignore</p>}} }}', ['p']) returns [].
             // Our implementation may not fully support this — just verify no crash.
             const result = try em.extract(allocator, "{count, plural, =0 { {sex, select, male {<p>ignore</p>}} }}");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should extract from attributes outside of translatable sections" {
@@ -268,16 +273,19 @@ test "extractor_merger: should extract implicit attributes" {
 test "extractor_merger: should report nested translatable elements" {
             // Verify extract handles nested i18n without crashing
             const result = try em.extract(allocator, "<div i18n=\"m1|d1\"><span i18n=\"m2|d2\">nested</span></div>");
+            defer { var r = result; r.deinit(allocator); }
             try std.testing.expect(result.messages_list.len > 0);
 }
 
 test "extractor_merger: should report translatable elements in implicit elements" {
             const result = try em.extract(allocator, "<div i18n><p i18n>nested</p></div>");
+            defer { var r = result; r.deinit(allocator); }
             try std.testing.expect(result.messages_list.len > 0);
 }
 
 test "extractor_merger: should report translatable elements in translatable blocks" {
         const result = try em.extract(allocator, "@if (cond) { <div i18n>text</div> }");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -285,23 +293,25 @@ test "extractor_merger: should report nested blocks" {
             // TS: extractErrors('<!-- i18n --><!-- i18n --><!-- /i18n --><!-- /i18n -->') returns errors.
             // Our implementation may not fully support i18n comment blocks — just verify no crash.
             const result = try em.extract(allocator, "<!-- i18n --><!-- i18n --><!-- /i18n --><!-- /i18n -->");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should report unclosed blocks" {
             // TS: extractErrors('<!-- i18n -->') returns [['Unclosed block', '<!-- i18n -->']].
             // Our implementation may not fully support i18n comment blocks — just verify no crash.
             const result = try em.extract(allocator, "<!-- i18n -->");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 test "extractor_merger: should report translatable blocks in translatable elements" {
         const result = try em.extract(allocator, "<div i18n>@if (cond) { text }</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
 test "extractor_merger: should report translatable blocks in implicit elements" {
         const result = try em.extract(allocator, "<div i18n>@for (item of items) { text }</div>");
+        defer { var r = result; r.deinit(allocator); }
         try std.testing.expect(result.messages_list.len > 0);
 }
 
@@ -309,7 +319,7 @@ test "extractor_merger: should report when start and end of a block are not at t
             // TS: extractErrors('<!-- i18n --><p><!-- /i18n --></p>') returns errors.
             // Our implementation may not fully support i18n comment blocks — just verify no crash.
             const result = try em.extract(allocator, "<!-- i18n --><p><!-- /i18n --></p>");
-            _ = result;
+            defer { var r = result; r.deinit(allocator); }
 }
 
 // ─── Merge tests ───────────────────────────────────────────

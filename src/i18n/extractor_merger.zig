@@ -44,6 +44,22 @@ pub const ExtractionResult = struct {
         msg: []const u8,
         span: ?[]const u8 = null,
     };
+
+    /// Free all memory owned by this result (messages_list, messages map,
+    /// and each message's internal allocations).
+    /// Direct port of TS not-needed (V8 GC handles it).
+    pub fn deinit(self: *ExtractionResult, allocator: std.mem.Allocator) void {
+        // Free each message's internal allocations.
+        for (self.messages_list) |*msg| {
+            var m = msg.*;
+            m.deinit();
+        }
+        if (self.messages_list.len > 0) {
+            allocator.free(self.messages_list);
+        }
+        // Note: `messages` map is not always initialized (extractMessagesFromNodes
+        // doesn't initialize it). Skip deinit to avoid undefined behavior.
+    }
 };
 
 /// Parse i18n attribute value to extract meaning, description, and custom ID.
@@ -119,6 +135,7 @@ pub fn extract(allocator: std.mem.Allocator, source: []const u8) !ExtractionResu
     defer lex.deinit();
     const lex_result = try lex.tokenize();
     var html_parser = ml_parser.Parser.init(allocator, &arena, source, lex_result[0]);
+    defer html_parser.deinit();
     const html_result = try html_parser.parse();
     return try extractMessagesFromNodes(allocator, html_result.root_nodes, source);
 }
@@ -186,11 +203,21 @@ fn extractFromNode(
                         info.custom_id,
                         null,
                     );
+                    // Free the message_string that initWithNodes computed — we
+                    // replace it with the serialized XML-like form below.
+                    if (msg.owns_message_string and msg.message_string.len > 0) {
+                        if (msg.allocator) |a| {
+                            a.free(msg.message_string);
+                        }
+                        msg.owns_message_string = false;
+                    }
                     // Compute message string and id
                     const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
                     defer allocator.free(serialized);
                     msg.message_string = try allocator.dupe(u8, serialized);
+                    msg.owns_message_string = true;
                     msg.id = try digest.computeDigest(allocator, &msg);
+                    msg.owns_id = true;
                     try messages.append(msg);
                 }
             }
@@ -227,10 +254,19 @@ fn extractFromNode(
                                 info.custom_id,
                                 null,
                             );
+                            // Free the message_string that initWithNodes computed.
+                            if (msg.owns_message_string and msg.message_string.len > 0) {
+                                if (msg.allocator) |a| {
+                                    a.free(msg.message_string);
+                                }
+                                msg.owns_message_string = false;
+                            }
                             const serialized = try i18n_ast.serializeNodesXmlLike(allocator, msg.nodes);
                             defer allocator.free(serialized);
                             msg.message_string = try allocator.dupe(u8, serialized);
+                            msg.owns_message_string = true;
                             msg.id = try digest.computeDigest(allocator, &msg);
+                            msg.owns_id = true;
                             try messages.append(msg);
                         }
                     }

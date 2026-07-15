@@ -29,6 +29,7 @@ fn extractMessages(html: []const u8) ![]const i18n_ast.Message {
     defer lex.deinit();
     const lex_result = try lex.tokenize();
     var parser = ml_parser.Parser.init(allocator, arena, html, lex_result[0]);
+    defer parser.deinit();
     const html_result = try parser.parse();
     const result = try em.extractMessagesFromNodes(allocator, html_result.root_nodes, html);
     return result.messages_list;

@@ -64,7 +64,29 @@ pub const CompiledQuery = struct {
     nodes: []const QueryNode,
     /// Original query string (for error messages)
     source: []const u8,
+
+    /// Free all memory owned by this query (nodes, source, and children recursively).
+    /// Direct port of TS not-needed (V8 GC handles it).
+    pub fn deinit(self: *CompiledQuery, allocator: Allocator) void {
+        for (self.nodes) |node| {
+            freeQueryNode(allocator, node);
+        }
+        allocator.free(self.nodes);
+        if (self.source.len > 0) {
+            allocator.free(self.source);
+        }
+    }
 };
+
+/// Recursively free a QueryNode and its children.
+fn freeQueryNode(allocator: Allocator, node: QueryNode) void {
+    if (node.children.len > 0) {
+        for (node.children) |child| {
+            freeQueryNode(allocator, child);
+        }
+        allocator.free(node.children);
+    }
+}
 
 // ─── Query Parser ────────────────────────────────────────────
 
@@ -575,10 +597,7 @@ fn nodeToString(buf: *std.array_list.Managed(u8), node: *const QueryNode) !void 
 test "parseQuery element" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.ElementType, query.nodes[0].kind);
     try std.testing.expectEqualStrings("div", query.nodes[0].name);
@@ -587,10 +606,7 @@ test "parseQuery element" {
 test "parseQuery class" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, ".active");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.ClassMatch, query.nodes[0].kind);
     try std.testing.expectEqualStrings("active", query.nodes[0].name);
@@ -599,10 +615,7 @@ test "parseQuery class" {
 test "parseQuery attribute" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "[disabled]");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Attribute, query.nodes[0].kind);
 }
@@ -610,10 +623,7 @@ test "parseQuery attribute" {
 test "parseQuery attribute value" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "[type=\"text\"]");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.AttributeValue, query.nodes[0].kind);
     try std.testing.expectEqualStrings("text", query.nodes[0].value);
@@ -622,10 +632,7 @@ test "parseQuery attribute value" {
 test "parseQuery with descendant combinator" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div .active");
-    defer {
-        if (query.nodes.len > 0) allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expectEqual(@as(usize, 1), query.nodes.len);
     try std.testing.expectEqual(QueryNodeType.Descendant, query.nodes[0].kind);
 }
@@ -645,10 +652,7 @@ test "parseQuery group" {
 test "matchQuery element" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, "div");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
 
     const ctx = QueryMatchContext{
         .tag_name = "div",
@@ -668,10 +672,7 @@ test "matchQuery element" {
 test "matchQuery class" {
     const allocator = std.testing.allocator;
     const query = try parseQuery(allocator, ".active");
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
 
     const ctx = QueryMatchContext{
         .tag_name = "div",
@@ -697,10 +698,7 @@ test "queryToString roundtrip" {
     const query = try parseQuery(allocator, "div.active[type=\"text\"]");
     const str = try queryToString(allocator, &query);
     defer allocator.free(str);
-    defer {
-        allocator.free(query.nodes);
-        if (query.source.len > 0) allocator.free(query.source);
-    }
+    defer { var q = query; q.deinit(allocator); }
     try std.testing.expect(std.mem.indexOf(u8, str, "div") != null);
     try std.testing.expect(std.mem.indexOf(u8, str, ".active") != null);
     try std.testing.expect(std.mem.indexOf(u8, str, "[type=\"text\"]") != null);
